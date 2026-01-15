@@ -1,0 +1,167 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider     = "postgresql"
+  url          = env("DATABASE_URL")
+}
+
+enum UserRole {
+  ADMIN
+  USER
+}
+
+enum ActionType {
+  SEND
+  CALL
+  FOLLOW_UP
+  PAY
+  VALIDATE
+}
+
+enum EmailStatus {
+  EXTRACTED // Email synchronisé, métadonnées extraites
+  ANALYZED  // Email analysé pour extraction d'actions
+}
+
+enum ActionStatus {
+  TODO
+  DONE
+  IGNORED
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?  @db.Text
+  access_token      String?  @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?  @db.Text
+  session_state     String?
+  createdAt         DateTime @default(now()) @map(name: "created_at")
+  updatedAt         DateTime @default(now()) @map(name: "updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+  @@map(name: "accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map(name: "sessions")
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime  @default(now()) @map(name: "created_at")
+  updatedAt     DateTime  @default(now()) @map(name: "updated_at")
+  role          UserRole  @default(USER)
+
+  accounts Account[]
+  sessions Session[]
+  actions  Action[]
+  emailMetadata EmailMetadata[]
+
+  stripeCustomerId       String?   @unique @map(name: "stripe_customer_id")
+  stripeSubscriptionId   String?   @unique @map(name: "stripe_subscription_id")
+  stripePriceId          String?   @map(name: "stripe_price_id")
+  stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
+
+  // Gmail sync
+  lastGmailSync           DateTime? @map(name: "last_gmail_sync")
+  gmailHistoryId          String?   @map(name: "gmail_history_id")
+  lastEmailExtractionDate DateTime? @map(name: "last_email_extraction_date")
+
+  // Notification preferences
+  emailNotifications   Boolean   @default(true) @map(name: "email_notifications")
+  lastNotificationSent DateTime? @map(name: "last_notification_sent")
+  syncEnabled          Boolean   @default(true) @map(name: "sync_enabled")
+
+  @@map(name: "users")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map(name: "verification_tokens")
+}
+
+model Action {
+  id               String       @id @default(cuid())
+  userId           String
+  title            String
+  type             ActionType
+  status           ActionStatus @default(TODO)
+  dueDate          DateTime?
+  sourceSentence   String       @db.Text
+  emailFrom        String
+  emailReceivedAt  DateTime
+  gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message Gmail pour créer un lien
+  createdAt        DateTime     @default(now()) @map(name: "created_at")
+  updatedAt        DateTime     @default(now()) @updatedAt @map(name: "updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([type])
+  @@index([dueDate])
+  @@map(name: "actions")
+}
+
+// Stockage minimal des métadonnées d'emails (RGPD compliant)
+model EmailMetadata {
+  id             String   @id @default(cuid())
+  userId         String
+
+  // Gmail identifiers
+  gmailMessageId String   @map(name: "gmail_message_id") // Gmail internal ID
+  gmailThreadId  String   @map(name: "gmail_thread_id")  // Gmail thread ID
+
+  // Métadonnées minimales
+  from           String   // Expéditeur
+  subject        String?  // Sujet (peut être null)
+  snippet        String   @db.Text // Extrait court (max 200 caractères selon Gmail API)
+  receivedAt     DateTime @map(name: "received_at") // Date de réception
+
+  // Labels Gmail (stockés en JSON array)
+  labels         String[] @default([])
+
+  // Gestion du statut
+  status         EmailStatus @default(EXTRACTED) // EXTRACTED -> ANALYZED
+  createdAt      DateTime    @default(now()) @map(name: "created_at")
+  updatedAt      DateTime    @default(now()) @updatedAt @map(name: "updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, gmailMessageId])
+  @@index([userId])
+  @@index([gmailMessageId])
+  @@index([receivedAt])
+  @@index([status])
+  @@map(name: "email_metadata")
+}
