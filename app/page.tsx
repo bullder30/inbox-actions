@@ -1,10 +1,11 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell } from "lucide-react";
+import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
+import packageJson from "@/package.json";
 
 export default async function HomePage() {
   const session = await auth();
@@ -43,6 +44,14 @@ export default async function HomePage() {
       <section className="relative overflow-hidden border-b py-20 lg:py-32">
         <MaxWidthWrapper>
           <div className="mx-auto max-w-4xl text-center">
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
+              <span className="inline-flex items-center rounded-full border border-orange-200 bg-orange-50 px-3 py-1 text-xs font-medium text-orange-700 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-300">
+                v{packageJson.version} MVP
+              </span>
+              <span className="inline-flex items-center rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-300">
+                Emails en français uniquement
+              </span>
+            </div>
             <div className="mb-6 inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium">
               <Eye className="mr-2 h-4 w-4 text-blue-500" />
               Zéro stress • Zéro doute • Toujours explicable
@@ -516,8 +525,18 @@ export default async function HomePage() {
             <div className="flex items-center gap-2">
               <Mail className="h-5 w-5 text-primary" />
               <span className="font-semibold">Inbox Actions</span>
+              <span className="text-xs text-muted-foreground">v{packageJson.version}</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
+              <Link
+                href="https://github.com/bullder30/inbox-actions"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 hover:text-foreground"
+              >
+                <Github className="h-4 w-4" />
+                AGPL-3.0
+              </Link>
               <Link href="/contact" className="hover:text-foreground">
                 Contact
               </Link>

@@ -44,7 +44,13 @@
       "Bash(tasklist:*)",
       "Bash(node -e:*)",
       "Bash(pnpm store prune:*)",
-      "Bash(pnpm install:*)"
+      "Bash(pnpm install:*)",
+      "Bash(git status:*)",
+      "Bash(git add:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ndocs: add comprehensive README for Inbox Actions\n\nReplace the original SaaS starter README with project-specific documentation:\n- Project overview and philosophy\n- Features list and tech stack\n- Installation and setup guide\n- Google OAuth configuration steps\n- How it works explanation\n- Project structure\n- API endpoints documentation\n- Security and privacy information\n\nCo-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git push:*)",
+      "Bash(git commit:*)",
+      "Bash(curl:*)"
     ]
   }
 }

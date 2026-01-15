@@ -1,10 +1,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Clock, XCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { CheckCircle2, Clock, Info, XCircle } from "lucide-react";
 
 import { ActionCard } from "@/components/actions/action-card";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/components/dashboard/header";
 import Link from "next/link";
+import packageJson from "@/package.json";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { PendingSyncCard } from "@/components/dashboard/pending-sync-card";
 import { constructMetadata } from "@/lib/utils";
@@ -99,6 +101,14 @@ export default async function DashboardPage() {
         heading="Tableau de bord"
         text="Bienvenue ! Voici un aperçu de vos actions extraites de vos emails."
       />
+
+      {/* MVP Banner */}
+      <Alert variant="default" className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
+        <Info className="size-4 text-blue-600 dark:text-blue-400" />
+        <AlertDescription className="text-sm text-blue-800 dark:text-blue-200">
+          <strong>Version {packageJson.version} (MVP)</strong> — Cette version analyse uniquement les emails rédigés en français.
+        </AlertDescription>
+      </Alert>
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

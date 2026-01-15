@@ -6,6 +6,10 @@ Transform your Gmail emails into clear, actionable tasks. No magic, no guessing 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC)
+![Version](https://img.shields.io/badge/version-0.1.0--MVP-orange)
+![Language](https://img.shields.io/badge/emails-French%20only-blue)
+
+> **MVP Notice:** This version only analyzes emails written in **French**. Multi-language support is planned for future releases.
 
 ## Overview
 
@@ -58,7 +62,7 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/inbox-actions.git
+git clone https://github.com/bullder30/inbox-actions.git
 cd inbox-actions
 
 # Install dependencies
@@ -237,14 +241,18 @@ Contributions are welcome! Please read our contributing guidelines before submit
 4. Push to the branch (`git push origin feature/amazing-feature`)
 5. Open a Pull Request
 
+## Credits
+
+This project is based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt). Thank you for the excellent foundation!
+
 ## License
 
-This project is licensed under the MIT License — see the [LICENSE](LICENSE) file for details.
+This project is licensed under the GNU Affero General Public License v3.0 (AGPL-3.0) — see the [LICENSE](LICENSE.md) file for details.
 
 ## Support
 
 - **Contact Form** — [/contact](/contact)
-- **Issues** — [GitHub Issues](https://github.com/yourusername/inbox-actions/issues)
+- **Issues** — [GitHub Issues](https://github.com/bullder30/inbox-actions/issues)
 
 ---
 

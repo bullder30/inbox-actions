@@ -4,7 +4,7 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 
 ## Project Overview
 
-**Inbox Actions** is a Next.js 14 SaaS application that extracts actionable tasks from Gmail emails using deterministic regex patterns (and optionally AI via Anthropic Claude). The application has been heavily customized from the original Next.js SaaS Stripe Starter template, with most marketing/blog/docs features removed to focus on the core action extraction functionality.
+**Inbox Actions** is a Next.js 14 SaaS application that extracts actionable tasks from Gmail emails using deterministic regex patterns (and optionally AI via Anthropic Claude). The application is based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt), heavily customized with most marketing/blog/docs features removed to focus on the core action extraction functionality.
 
 **Core Value Proposition:**
 - Connect Gmail account (read-only OAuth)
@@ -12,6 +12,8 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - Organize actions by type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE)
 - Track due dates and completion status
 - Receive email digests with pending actions
+
+**MVP Limitation:** This version (0.1.0) only analyzes emails written in **French**. The regex patterns are designed for French language detection. Multi-language support is planned for future releases.
 
 ## Technology Stack
 
@@ -1867,8 +1869,16 @@ Include:
 - ESLint for linting
 - Follow existing patterns in codebase
 
+## License
+
+This project is licensed under the **GNU Affero General Public License v3.0 (AGPL-3.0)**. See the [LICENSE](LICENSE.md) file for details.
+
+## Credits
+
+Based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt).
+
 ---
 
-**Last Updated:** 2026-01-13
+**Last Updated:** 2026-01-16
 **Version:** 1.0
-**Maintainer:** Internal use - heavily customized SaaS starter
+**License:** AGPL-3.0
