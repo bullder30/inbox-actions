@@ -4,7 +4,7 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 
 ## Project Overview
 
-**Inbox Actions** is a Next.js 14 SaaS application that extracts actionable tasks from Gmail emails using deterministic regex patterns (and optionally AI via Anthropic Claude). The application is based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt), heavily customized with most marketing/blog/docs features removed to focus on the core action extraction functionality.
+**Inbox Actions** is a Next.js 14 SaaS application that extracts actionable tasks from Gmail emails using deterministic regex patterns. The application is based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt), heavily customized with most marketing/blog/docs features removed to focus on the core action extraction functionality.
 
 **Core Value Proposition:**
 - Connect Gmail account (read-only OAuth)
@@ -31,7 +31,6 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
   - Google OAuth provider (active)
   - Resend magic links (commented, to implement)
 - **Gmail API** (googleapis) - Email access (read-only)
-- **Anthropic Claude SDK** - AI-based extraction (optional)
 - **Stripe** - Payment processing
 - **Resend** - Transactional emails
 
@@ -97,8 +96,6 @@ inbox-actions/
 │   │   └── gmail-service.ts     # Gmail API service (541 lines)
 │   ├── actions/
 │   │   └── extract-actions-regex.ts  # Regex-based extraction (573 lines)
-│   ├── ai/
-│   │   └── extract-actions.ts   # AI-based extraction (Claude, optional)
 │   ├── cron/                    # Cron job implementations
 │   │   ├── cron-service.ts     # Main cron service (114 lines)
 │   │   ├── count-new-emails-job.ts   # Count emails job (106 lines)
@@ -122,9 +119,10 @@ inbox-actions/
 │   │   ├── actions-header.tsx  # Page header
 │   │   ├── empty-state.tsx     # Empty state display
 │   │   └── action-card-skeleton.tsx  # Loading skeleton
-│   ├── dashboard/               # Dashboard components (8 files)
+│   ├── dashboard/               # Dashboard components (9 files)
 │   │   ├── stats-card.tsx      # Statistics cards
-│   │   ├── pending-sync-card.tsx    # Pending emails indicator
+│   │   ├── pending-sync-card.tsx    # Pending emails indicator (FEATURE_EMAIL_COUNT)
+│   │   ├── sync-card.tsx       # Manual sync card (default)
 │   │   ├── sync-button.tsx     # Manual sync button
 │   │   ├── quick-actions.tsx   # Quick actions widget
 │   │   ├── gmail-settings-section.tsx    # Gmail config
@@ -214,11 +212,7 @@ class GmailService {
 - Updates Account table with new tokens
 - Graceful error handling for expired/revoked access
 
-#### Step 2: Action Extraction (Dual Approach)
-
-The application supports TWO complementary extraction methods:
-
-##### A. Regex-Based Extraction (Production Default)
+#### Step 2: Action Extraction (Regex-Based)
 
 **File:** `lib/actions/extract-actions-regex.ts` (573 lines)
 
@@ -264,45 +258,6 @@ The application supports TWO complementary extraction methods:
 pnpm test:regex  # Test regex patterns against examples
 ```
 
-##### B. AI-Based Extraction (Optional)
-
-**File:** `lib/ai/extract-actions.ts` (218 lines)
-
-**Model:** Claude 3.5 Sonnet (Anthropic)
-
-**Features:**
-- Structured prompt with extraction rules
-- JSON response with confidence score (0-1)
-- Filters results with confidence >= 0.5
-- Token limit: 8000 tokens (~32K characters)
-- Rate limiting: 500ms delay between requests
-
-**Configuration:**
-- Requires `ANTHROPIC_API_KEY` environment variable
-- Optional fallback to regex if API unavailable
-
-**Advantages:**
-- Flexible natural language understanding
-- Handles edge cases and nuanced requests
-- Better context understanding
-
-**Disadvantages:**
-- API cost per request
-- Latency (~1-3 seconds)
-- Less transparent than regex
-
-**Usage:**
-```typescript
-import { extractActionsWithAI } from '@/lib/ai/extract-actions';
-
-const actions = await extractActionsWithAI({
-  from: "sender@example.com",
-  subject: "Subject",
-  body: "Email content",
-  receivedAt: new Date()
-});
-```
-
 ### 2. Automated Cron Jobs System
 
 **Implementation:** Node-cron within Next.js process
@@ -314,9 +269,11 @@ const actions = await extractActionsWithAI({
 
 **Configuration File:** `lib/cron/cron-service.ts` (114 lines)
 
-#### Job 1: Count New Emails
+#### Job 1: Count New Emails (Optional)
 
 **File:** `lib/cron/count-new-emails-job.ts` (106 lines)
+
+**⚠️ Feature Flag:** This job is disabled by default. Set `FEATURE_EMAIL_COUNT=true` to enable.
 
 **Frequency:** Every 10 minutes
 **Schedule:** `*/10 * * * *` (Europe/Paris)
@@ -387,38 +344,33 @@ const actions = await extractActionsWithAI({
 
 #### Job 3: Cleanup
 
-**File:** `lib/cron/cleanup-job.ts` (140 lines)
+**File:** `lib/cron/cleanup-job.ts`
 
 **Frequency:** Once per day at 11:00 PM
 **Schedule:** `0 23 * * *` (Europe/Paris)
-**Purpose:** Delete email metadata older than 3 days
+**Purpose:** Delete ALL email metadata (MVP: retention = 0)
 
-**Strategy:**
-- Deletes ALL emails (EXTRACTED or ANALYZED) older than 3 days
-- Simple, no status distinction
-- Keeps database lean
+**Strategy (MVP):**
+- Deletes ALL email metadata every night
+- Actions are preserved, only temporary metadata is deleted
+- Keeps database minimal and GDPR-compliant
 
 **Process:**
 ```typescript
-prisma.emailMetadata.deleteMany({
-  where: {
-    userId: user.id,
-    createdAt: { lt: retentionDate } // retentionDate = now - 3 days
-  }
-})
+prisma.emailMetadata.deleteMany({})
 ```
 
 **Logs:**
 ```
 [CRON SERVICE] ⏰ Cleanup job triggered
 [CLEANUP JOB] 🧹 Starting...
-[CLEANUP JOB] Processing 1 users
-[CLEANUP JOB] User user@example.com: deleted 42 emails older than 3 days
-[CLEANUP JOB] ✨ Completed in 156ms
-[CLEANUP JOB] Stats: { totalUsers: 1, totalDeleted: 42, retentionDays: 3 }
+[CLEANUP JOB] ✨ Completed in 45ms
+[CLEANUP JOB] Stats: 42 email metadata deleted
 ```
 
 **HTTP Endpoint:** `/api/cron/cleanup-metadata` (with Bearer token auth)
+
+**Future (Pro):** Configurable retention (3, 7, 30 days)
 
 #### Testing Crons
 
@@ -938,8 +890,16 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 
 **pending-sync-card.tsx**
 - Shows count of emails pending analysis
+- Only displayed when `FEATURE_EMAIL_COUNT=true`
 - Badge indicator when count > 0
-- Link to settings page
+- Sync button when emails pending
+
+**sync-card.tsx**
+- Manual sync card (default when `FEATURE_EMAIL_COUNT=false`)
+- Shows last sync timestamp
+- "Lancer une synchronisation" button
+- Two-step sync: extract emails → analyze for actions
+- Loading states and toast notifications
 
 **sync-button.tsx**
 - Manual sync button
@@ -1068,11 +1028,11 @@ STRIPE_WEBHOOK_SECRET=          # Stripe webhook signing secret
 RESEND_API_KEY=                 # Resend API key
 EMAIL_FROM=                     # Sender email (e.g., "App <noreply@example.com>")
 
-# AI (Optional)
-ANTHROPIC_API_KEY=              # Claude API key (optional, for AI extraction)
-
 # Cron Security (Optional in dev, required in prod)
 CRON_SECRET=                    # Secret for securing cron endpoints
+
+# Feature Flags (Optional)
+FEATURE_EMAIL_COUNT=false       # Enable email count job and dashboard KPI (default: false)
 ```
 
 **Required Client Variables:**
@@ -1664,7 +1624,6 @@ This project was heavily refactored from the Next.js SaaS Starter template:
 - Gmail integration with OAuth
 - Email metadata storage (RGPD compliant)
 - Regex-based action extraction
-- Optional AI-based extraction
 - Cron jobs system (node-cron)
 - Notification digest system
 - Action management UI
@@ -1841,7 +1800,6 @@ CMD ["npm", "start"]
 - [ ] Mobile app (React Native)
 
 ### Low Priority
-- [ ] AI-based extraction as primary method (toggle in settings)
 - [ ] Multi-language support (i18n)
 - [ ] Dashboard analytics (charts, graphs)
 - [ ] Admin dashboard for monitoring

@@ -104,7 +104,9 @@ EMAIL_FROM="Inbox Actions <noreply@yourdomain.com>"
 NEXT_PUBLIC_APP_URL=http://localhost:3000
 
 # Optional
+CRON_SECRET=                    # Secure cron endpoints (required in prod)
 SUPPORT_EMAIL=                  # Contact form recipient
+FEATURE_EMAIL_COUNT=false       # Enable email count job & KPI (default: false)
 ```
 
 ### Google OAuth Setup
@@ -207,7 +209,7 @@ pnpm email        # Start React Email dev server
 | Job | Schedule | Description |
 |-----|----------|-------------|
 | Daily Sync | 8:00 AM | Fetch and analyze new emails |
-| Cleanup | 11:00 PM | Delete email metadata older than 3 days |
+| Cleanup | 11:00 PM | Delete all email metadata (MVP: no retention) |
 
 ## API Endpoints
 
@@ -227,7 +229,7 @@ pnpm email        # Start React Email dev server
 - **Read-only Gmail access** — Cannot send, delete, or modify emails
 - **No email body storage** — Content is analyzed in memory, then discarded
 - **Minimal metadata** — Only sender, subject, and 200-char snippet stored
-- **3-day retention** — Email metadata auto-deleted after 3 days
+- **No retention (MVP)** — Email metadata deleted daily, actions preserved
 - **User data isolation** — All queries scoped to authenticated user
 - **Cascade delete** — Disconnecting Gmail removes all related data
 

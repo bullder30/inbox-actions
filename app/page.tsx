@@ -173,10 +173,10 @@ export default async function HomePage() {
               <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/10">
                 <Clock className="h-6 w-6 text-orange-500" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold">État du scan en temps réel</h3>
+              <h3 className="mb-2 text-xl font-semibold">Synchronisation à la demande</h3>
               <p className="text-muted-foreground">
-                Toujours visible : dernier scan, nombre d&apos;emails analysés, emails en attente.
-                Vous savez exactement où en est le système.
+                Bouton de synchronisation manuelle directement sur le tableau de bord. Pas besoin d&apos;attendre le scan automatique.
+                <strong className="mt-2 block">Idéal pour tester ou forcer une mise à jour.</strong>
               </p>
             </div>
 
@@ -250,9 +250,9 @@ export default async function HomePage() {
                 2
               </div>
               <div>
-                <h3 className="mb-2 text-xl font-semibold">Scan quotidien automatique (8h00)</h3>
+                <h3 className="mb-2 text-xl font-semibold">Scan automatique ou manuel</h3>
                 <p className="text-muted-foreground">
-                  Chaque matin, le système récupère vos nouveaux emails INBOX.
+                  Scan quotidien automatique à 8h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.
                   <strong className="mt-2 block">Sont automatiquement exclus :</strong>
                   newsletters, notifications automatiques, emails no-reply, footers de désinscription.
                 </p>
@@ -481,7 +481,7 @@ export default async function HomePage() {
               </div>
               <h3 className="mb-2 text-xl font-semibold">Pas de &ldquo;synchronisation parfaite&rdquo;</h3>
               <p className="text-muted-foreground">
-                Nous préférons vous dire &ldquo;17 emails non encore analysés&rdquo; plutôt que de vous faire croire que tout est parfait.
+                Nous ne prétendons pas que tout est synchronisé en temps réel. Vous voyez clairement quand le dernier scan a eu lieu.
               </p>
             </div>
           </div>

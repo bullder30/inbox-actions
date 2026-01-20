@@ -60,7 +60,7 @@ export default function PrivacyPage() {
                 <Trash2 className="mt-0.5 size-5 shrink-0 text-purple-600" />
                 <div>
                   <p className="font-medium text-purple-800 dark:text-purple-400">Suppression auto</p>
-                  <p className="text-sm text-purple-700 dark:text-purple-500">Métadonnées supprimées après 3 jours</p>
+                  <p className="text-sm text-purple-700 dark:text-purple-500">Métadonnées supprimées chaque nuit</p>
                 </div>
               </div>
               <div className="flex items-start gap-3 rounded-lg border bg-orange-50/50 p-4 dark:bg-orange-950/20">
@@ -183,7 +183,7 @@ export default function PrivacyPage() {
                       </tr>
                       <tr>
                         <td className="py-2 pr-4">Métadonnées d&apos;emails</td>
-                        <td className="py-2">3 jours (suppression automatique)</td>
+                        <td className="py-2">24h max (suppression chaque nuit à 23h)</td>
                       </tr>
                       <tr>
                         <td className="py-2 pr-4">Actions créées</td>

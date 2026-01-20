@@ -9,6 +9,7 @@ import Link from "next/link";
 import packageJson from "@/package.json";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { PendingSyncCard } from "@/components/dashboard/pending-sync-card";
+import { SyncCard } from "@/components/dashboard/sync-card";
 import { constructMetadata } from "@/lib/utils";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -74,18 +75,8 @@ export default async function DashboardPage() {
       }),
     ]);
 
-  // Compter les nouveaux emails dans Gmail non synchronisés
-  let pendingSyncCount = 0;
-  try {
-    const { createGmailService } = await import("@/lib/gmail/gmail-service");
-    const gmailService = await createGmailService(user.id);
-    if (gmailService) {
-      pendingSyncCount = await gmailService.countNewEmailsInGmail();
-    }
-  } catch (error) {
-    console.error("Error counting pending sync emails:", error);
-    // En cas d'erreur, on affiche 0
-  }
+  // Feature flag for email count
+  const isEmailCountEnabled = process.env.FEATURE_EMAIL_COUNT === "true";
 
   const lastSyncText = gmailStatus?.lastGmailSync
     ? formatDistanceToNow(gmailStatus.lastGmailSync, {
@@ -138,7 +129,11 @@ export default async function DashboardPage() {
           }
           icon={XCircle}
         />
-        <PendingSyncCard lastSyncText={lastSyncText} />
+        {isEmailCountEnabled ? (
+          <PendingSyncCard lastSyncText={lastSyncText} />
+        ) : (
+          <SyncCard lastSyncText={lastSyncText} />
+        )}
       </div>
 
       {/* Recent Actions */}

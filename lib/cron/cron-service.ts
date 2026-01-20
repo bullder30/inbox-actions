@@ -18,8 +18,10 @@ let cleanupTask: cron.ScheduledTask | null = null;
 export function startCronJobs() {
   console.log("[CRON SERVICE] 🚀 Starting cron jobs...");
 
-  // Count new emails job: toutes les 10 minutes
-  if (!countNewEmailsTask) {
+  // Count new emails job: toutes les 10 minutes (optional, controlled by FEATURE_EMAIL_COUNT)
+  const isEmailCountEnabled = process.env.FEATURE_EMAIL_COUNT === "true";
+
+  if (isEmailCountEnabled && !countNewEmailsTask) {
     countNewEmailsTask = cron.schedule(
       "*/10 * * * *", // Toutes les 10 minutes
       async () => {
@@ -37,6 +39,8 @@ export function startCronJobs() {
     );
 
     console.log("[CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)");
+  } else if (!isEmailCountEnabled) {
+    console.log("[CRON SERVICE] ⏭️ Count-new-emails job disabled (FEATURE_EMAIL_COUNT=false)");
   }
 
   // Daily-sync job: tous les jours à 8h00
@@ -110,5 +114,7 @@ export function stopCronJobs() {
  * Vérifie si les crons sont actifs
  */
 export function isCronRunning() {
-  return countNewEmailsTask !== null && dailySyncTask !== null && cleanupTask !== null;
+  const isEmailCountEnabled = process.env.FEATURE_EMAIL_COUNT === "true";
+  const emailCountOk = isEmailCountEnabled ? countNewEmailsTask !== null : true;
+  return emailCountOk && dailySyncTask !== null && cleanupTask !== null;
 }
