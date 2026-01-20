@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { runDailySyncJob } from "@/lib/cron/daily-sync-job";
 import { runCleanupJob } from "@/lib/cron/cleanup-job";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/cron/test-trigger?job=daily-sync|cleanup
  * Endpoint de test pour déclencher manuellement les jobs cron

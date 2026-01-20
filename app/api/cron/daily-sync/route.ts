@@ -3,6 +3,8 @@ import { prisma } from "@/lib/db";
 import { createGmailService } from "@/lib/gmail/gmail-service";
 import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/cron/daily-sync
  * Scan quotidien automatique des emails Gmail pour tous les utilisateurs
