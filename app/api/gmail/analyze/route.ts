@@ -5,6 +5,8 @@ import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
 import { prisma } from "@/lib/db";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/gmail/analyze
  * Analyse les emails non traités et extrait les actions par REGEX

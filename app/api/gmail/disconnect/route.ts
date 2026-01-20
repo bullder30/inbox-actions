@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { google } from "googleapis";
 
+export const dynamic = "force-dynamic";
+
 /**
  * POST /api/gmail/disconnect
  * Déconnecte Gmail et supprime toutes les données associées (RGPD compliant)

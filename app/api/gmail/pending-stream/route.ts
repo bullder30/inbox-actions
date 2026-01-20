@@ -1,6 +1,8 @@
 import { auth } from "@/auth";
 import { createGmailService } from "@/lib/gmail/gmail-service";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/gmail/pending-stream
  * Server-Sent Events (SSE) endpoint pour streamer le count d'emails en attente en temps réel

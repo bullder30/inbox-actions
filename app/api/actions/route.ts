@@ -3,6 +3,8 @@ import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { ActionStatus, ActionType } from "@prisma/client";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/actions
  * Récupère la liste des actions de l'utilisateur connecté

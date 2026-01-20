@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/gmail/status
  * Vérifie si l'utilisateur a connecté Gmail et le statut de la synchronisation

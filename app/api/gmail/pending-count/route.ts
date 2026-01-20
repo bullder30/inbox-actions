@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createGmailService } from "@/lib/gmail/gmail-service";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/gmail/pending-count
  * Récupère le nombre de nouveaux emails non synchronisés dans Gmail

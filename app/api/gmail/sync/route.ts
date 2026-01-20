@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createGmailService } from "@/lib/gmail/gmail-service";
 
+export const dynamic = "force-dynamic";
+
 /**
  * GET /api/gmail/sync
  * Synchronise les emails Gmail depuis le dernier scan
