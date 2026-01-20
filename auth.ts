@@ -23,6 +23,7 @@ export const {
 } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
+  trustHost: true,
   session: {
     strategy: "jwt",
     maxAge: 7 * 24 * 60 * 60, // 7 jours (durée maximale de la session)
