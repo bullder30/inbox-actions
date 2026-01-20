@@ -25,14 +25,17 @@ export default async function HomePage() {
               <Mail className="h-6 w-6 text-primary" />
               <span className="text-xl font-bold">Inbox Actions</span>
             </div>
-            <nav className="flex items-center gap-4">
+            <nav className="flex items-center gap-2 sm:gap-4">
               <Link href="/login">
-                <Button variant="ghost">Connexion</Button>
+                <Button variant="ghost" className="h-8 px-2 text-sm sm:h-9 sm:px-4">
+                  Connexion
+                </Button>
               </Link>
               <Link href="/register">
-                <Button>
-                  Commencer gratuitement
-                  <ArrowRight className="ml-2 h-4 w-4" />
+                <Button className="h-8 px-2 text-sm sm:h-9 sm:px-4">
+                  <span className="hidden sm:inline">Commencer gratuitement</span>
+                  <span className="sm:hidden">Commencer</span>
+                  <ArrowRight className="ml-1 h-3 w-3 sm:ml-2 sm:h-4 sm:w-4" />
                 </Button>
               </Link>
             </nav>
