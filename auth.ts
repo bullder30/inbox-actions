@@ -23,7 +23,11 @@ export const {
 } = NextAuth({
   ...authConfig,
   adapter: PrismaAdapter(prisma),
-  session: { strategy: "jwt" },
+  session: {
+    strategy: "jwt",
+    maxAge: 7 * 24 * 60 * 60, // 7 jours (durée maximale de la session)
+    updateAge: 24 * 60 * 60, // 24 heures (rafraîchit le token si actif depuis > 24h)
+  },
   callbacks: {
     async signIn({ user, account, profile }) {
       // Si c'est une connexion OAuth (Google)
