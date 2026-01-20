@@ -98,7 +98,7 @@ export async function ScanStatusHeader() {
 
   return (
     <Alert variant={statusVariant} className="border-l-4">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <div className="flex flex-1 items-start gap-3">
           <div className="mt-0.5">{statusIcon}</div>
           <div className="flex-1 space-y-1">
