@@ -15,11 +15,14 @@ export async function runDailySyncJob() {
   console.log("[DAILY-SYNC JOB] 🚀 Starting...");
 
   try {
-    // Récupérer tous les utilisateurs avec Gmail connecté
+    // Récupérer tous les utilisateurs avec Gmail connecté et sync activé
     const usersWithGmail = await prisma.account.findMany({
       where: {
         provider: "google",
         access_token: { not: null },
+        user: {
+          syncEnabled: true,
+        },
       },
       select: {
         userId: true,
@@ -28,13 +31,14 @@ export async function runDailySyncJob() {
             id: true,
             email: true,
             lastGmailSync: true,
+            syncEnabled: true,
           },
         },
       },
       distinct: ["userId"],
     });
 
-    console.log(`[DAILY-SYNC JOB] Found ${usersWithGmail.length} users with Gmail connected`);
+    console.log(`[DAILY-SYNC JOB] Found ${usersWithGmail.length} users with Gmail connected and sync enabled`);
 
     // Stats globales
     const stats = {

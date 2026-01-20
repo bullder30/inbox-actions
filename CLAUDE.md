@@ -304,7 +304,7 @@ pnpm test:regex  # Test regex patterns against examples
 
 **Process:**
 1. **Sync Phase:**
-   - Fetch all users with Gmail connected
+   - Fetch all users with Gmail connected AND `syncEnabled: true`
    - For each user:
      - Create GmailService instance
      - Refresh token if expired
@@ -487,7 +487,7 @@ model User {
   // User preferences
   emailNotifications   Boolean   @default(true)   // Email digest toggle
   lastNotificationSent DateTime?                  // Last notification time
-  syncEnabled          Boolean   @default(true)   // Auto-sync toggle
+  syncEnabled          Boolean   @default(true)   // Include in daily-sync job
 
   // Relations
   accounts       Account[]
