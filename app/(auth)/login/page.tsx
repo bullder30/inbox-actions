@@ -7,6 +7,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { UserAuthForm } from "@/components/forms/user-auth-form";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Icons } from "@/components/shared/icons";
+import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 
 export const metadata: Metadata = {
   title: "Connexion",
@@ -31,7 +32,7 @@ export default function LoginPage() {
       </Link>
       <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
         <div className="flex flex-col space-y-2 text-center">
-          <Icons.logo className="mx-auto size-10" />
+          <InboxActionsIcon size="lg" className="mx-auto" />
           <h1 className="text-2xl font-semibold tracking-tight">
             Inbox Actions
           </h1>

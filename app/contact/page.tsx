@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Icons } from "@/components/shared/icons";
+import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 import { toast } from "sonner";
 
 export default function ContactPage() {
@@ -74,7 +75,7 @@ export default function ContactPage() {
 
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center space-y-2 text-center">
-          <Icons.logo className="size-10" />
+          <InboxActionsIcon size="lg" />
           <h1 className="text-2xl font-semibold tracking-tight">Nous contacter</h1>
           <p className="text-sm text-muted-foreground">
             Une question, un problème ou une suggestion ? Écrivez-nous !

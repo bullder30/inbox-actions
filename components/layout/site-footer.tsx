@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { siteConfig } from "@/config/site";
+import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 import packageJson from "@/package.json";
 
 export function SiteFooter() {
@@ -8,9 +9,12 @@ export function SiteFooter() {
     <footer className="border-t bg-background">
       <div className="container flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
         <div className="flex flex-col items-center gap-1 md:flex-row md:gap-2">
-          <p className="text-center text-sm text-muted-foreground">
-            &copy; {new Date().getFullYear()} {siteConfig.name}
-          </p>
+          <div className="flex items-center gap-2">
+            <InboxActionsIcon size="sm" />
+            <p className="text-center text-sm text-muted-foreground">
+              &copy; {new Date().getFullYear()} {siteConfig.name}
+            </p>
+          </div>
           <span className="hidden text-muted-foreground md:inline">·</span>
           <p className="text-center text-xs text-muted-foreground">
             v{packageJson.version}

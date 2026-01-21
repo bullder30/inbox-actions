@@ -20,6 +20,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Icons } from "@/components/shared/icons";
+import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 
 interface DashboardSidebarProps {
   links: SidebarNavItem[];
@@ -72,13 +73,13 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
               <div className="flex h-14 items-center p-4 lg:h-[60px]">
                 {isSidebarExpanded ? (
                   <Link href="/dashboard" className="flex items-center gap-2">
-                    <Icons.logo className="size-6" />
+                    <InboxActionsIcon size="md" />
                     <span className="font-urban text-lg font-bold">
                       {siteConfig.name}
                     </span>
                   </Link>
                 ) : (
-                  <Icons.logo className="size-6" />
+                  <InboxActionsIcon size="md" />
                 )}
 
                 <Button
@@ -207,7 +208,7 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
                   href="/dashboard"
                   className="flex items-center gap-2 text-lg font-semibold"
                 >
-                  <Icons.logo className="size-6" />
+                  <InboxActionsIcon size="md" />
                   <span className="font-urban text-xl font-bold">
                     {siteConfig.name}
                   </span>

@@ -1,10 +1,11 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github } from "lucide-react";
+import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
+import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 import packageJson from "@/package.json";
 
 export default async function HomePage() {
@@ -22,20 +23,27 @@ export default async function HomePage() {
         <MaxWidthWrapper>
           <div className="flex h-16 items-center justify-between">
             <div className="flex items-center gap-2">
-              <Mail className="h-6 w-6 text-primary" />
+              <InboxActionsIcon size="md" />
               <span className="text-xl font-bold">Inbox Actions</span>
             </div>
-            <nav className="flex items-center gap-2 sm:gap-4">
+            <nav className="flex items-center gap-1 sm:gap-4">
               <Link href="/login">
-                <Button variant="ghost" className="h-8 px-2 text-sm sm:h-9 sm:px-4">
+                <Button variant="ghost" size="icon" className="size-8 sm:hidden">
+                  <LogIn className="size-4" />
+                  <span className="sr-only">Connexion</span>
+                </Button>
+                <Button variant="ghost" className="hidden h-9 px-4 text-sm sm:inline-flex">
                   Connexion
                 </Button>
               </Link>
               <Link href="/register">
-                <Button className="h-8 px-2 text-sm sm:h-9 sm:px-4">
-                  <span className="hidden sm:inline">Commencer gratuitement</span>
-                  <span className="sm:hidden">Commencer</span>
-                  <ArrowRight className="ml-1 h-3 w-3 sm:ml-2 sm:h-4 sm:w-4" />
+                <Button size="icon" className="size-8 sm:hidden">
+                  <UserPlus className="size-4" />
+                  <span className="sr-only">Commencer</span>
+                </Button>
+                <Button className="hidden h-9 px-4 text-sm sm:inline-flex">
+                  Commencer gratuitement
+                  <ArrowRight className="ml-2 size-4" />
                 </Button>
               </Link>
             </nav>
@@ -526,7 +534,7 @@ export default async function HomePage() {
         <MaxWidthWrapper>
           <div className="flex flex-col items-center justify-between gap-4 sm:flex-row">
             <div className="flex items-center gap-2">
-              <Mail className="h-5 w-5 text-primary" />
+              <InboxActionsIcon size="sm" />
               <span className="font-semibold">Inbox Actions</span>
               <span className="text-xs text-muted-foreground">v{packageJson.version}</span>
             </div>
