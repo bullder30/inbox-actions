@@ -9,7 +9,6 @@ import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@/components/analytics";
 import ModalProvider from "@/components/modals/providers";
 import { TailwindIndicator } from "@/components/tailwind-indicator";
-import { PendingEmailsProvider } from "@/components/providers/pending-emails-provider";
 
 interface RootLayoutProps {
   children: React.ReactNode;
@@ -37,9 +36,7 @@ export default function RootLayout({ children }: RootLayoutProps) {
             enableSystem
             disableTransitionOnChange
           >
-            <PendingEmailsProvider>
-              <ModalProvider>{children}</ModalProvider>
-            </PendingEmailsProvider>
+            <ModalProvider>{children}</ModalProvider>
             <Analytics />
             <Toaster richColors closeButton />
             <TailwindIndicator />
