@@ -43,7 +43,7 @@ const SEND_PATTERNS = [
   // Avec objet explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:m[''])?(?:transmettre|faire parvenir|adresser)\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
 
-  // Questions = demande implicite
+  // Questions = demande explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:m[''])?(?:transférer|faire suivre)\s+(.{1,100}?)(?:\.|$|\?)/i,
 ];
 
@@ -62,7 +62,9 @@ const CALL_PATTERNS = [
 
   // Visio/réunion
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:organiser|planifier)\s+(?:une\s+)?(?:visio|réunion|call)\s+(?:avec\s+)?(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
-  /il (?:faut|faudrait)\s+(?:qu['']on|que tu)\s+(?:appelle|contacte)/i,
+
+  // ⚠️ Pattern trop vague supprimé (créait "Appeler" sans cible)
+  // /il (?:faut|faudrait)\s+(?:qu['']on|que tu)\s+(?:appelle|contacte)/i,
 ];
 
 /**
@@ -79,7 +81,9 @@ const FOLLOW_UP_PATTERNS = [
 
   // Rappel
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:me\s+)?(?:faire\s+un\s+)?rappel\s+(?:pour|sur|de)\s+(.{1,50}?)(?:\.|$|avant)/i,
-  /(?:n['']oublie|n['']oubliez)\s+pas\s+de\s+(?:relancer|faire un suivi)/i,
+
+  // ⚠️ Pattern trop vague supprimé (créait "Faire un suivi" sans cible)
+  // /(?:n['']oublie|n['']oubliez)\s+pas\s+de\s+(?:relancer|faire un suivi)/i,
 ];
 
 /**
@@ -113,7 +117,9 @@ const VALIDATE_PATTERNS = [
 
   // Donner avis/OK
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:me\s+)?(?:donner\s+(?:ton|votre)\s+)?(?:avis|OK|accord|validation)\s+(?:sur|pour)\s+(.{1,50}?)(?:\.|$|avant)/i,
-  /il (?:faut|faudrait)\s+(?:que tu|qu['']on)\s+valide/i,
+
+  // ⚠️ Pattern trop vague supprimé (créait "Valider" sans objet)
+  // /il (?:faut|faudrait)\s+(?:que tu|qu['']on)\s+valide/i,
 ];
 
 // ============================================================================
@@ -128,14 +134,12 @@ const EXCLUSION_PATTERNS = {
   fromExclusions: [
     /no-?reply@/i,
     /noreply@/i,
+    /mailer-daemon@/i,
+    /bounce@/i,
+    /automated@/i,
+    /do-?not-?reply@/i,
     /notifications?@/i,
     /newsletter@/i,
-    /info@/i,
-    /contact@/i,
-    /support@/i,
-    /automated@/i,
-    /bounce@/i,
-    /mailer-daemon@/i,
   ],
 
   // Sujets à exclure
@@ -161,13 +165,14 @@ const EXCLUSION_PATTERNS = {
 };
 
 /**
- * Patterns conditionnels (phrases qui peuvent annuler une action)
+ * Patterns conditionnels "faibles" (annulent l'action uniquement si pas de deadline)
+ * On évite d'annuler les tournures polies courantes ("si possible", "si tu peux") quand une échéance existe.
  */
-const CONDITIONAL_PATTERNS = [
-  /si\s+(?:tu\s+)?(?:peux|as le temps|c['']est possible)/i,
-  /(?:quand|lorsque)\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
-  /si\s+jamais/i,
+const WEAK_CONDITIONAL_PATTERNS = [
   /éventuellement/i,
+  /si\s+jamais/i,
+  /quand\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
+  /lorsque\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
 ];
 
 // ============================================================================
@@ -178,10 +183,10 @@ const CONDITIONAL_PATTERNS = [
  * Patterns pour extraire les dates d'échéance
  */
 const DEADLINE_PATTERNS = [
-  // Relatif
-  { pattern: /avant\s+(?:le\s+)?(\d{1,2})\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i, type: "absolute" },
-  { pattern: /pour\s+(?:le\s+)?(\d{1,2})\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i, type: "absolute" },
-  { pattern: /d['']ici\s+(?:le\s+)?(\d{1,2})\s+(?:janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i, type: "absolute" },
+  // Date absolue (jour + mois)
+  { pattern: /avant\s+(?:le\s+)?(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i, type: "absolute" },
+  { pattern: /pour\s+(?:le\s+)?(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i, type: "absolute" },
+  { pattern: /d['']ici\s+(?:le\s+)?(\d{1,2})\s+(janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre)/i, type: "absolute" },
 
   // Jour de la semaine
   { pattern: /avant\s+(lundi|mardi|mercredi|jeudi|vendredi|samedi|dimanche)/i, type: "weekday" },
@@ -214,12 +219,28 @@ const DEADLINE_PATTERNS = [
 ];
 
 const MONTH_NAMES: { [key: string]: number } = {
-  janvier: 0, février: 1, mars: 2, avril: 3, mai: 4, juin: 5,
-  juillet: 6, août: 7, septembre: 8, octobre: 9, novembre: 10, décembre: 11,
+  janvier: 0,
+  février: 1,
+  mars: 2,
+  avril: 3,
+  mai: 4,
+  juin: 5,
+  juillet: 6,
+  août: 7,
+  septembre: 8,
+  octobre: 9,
+  novembre: 10,
+  décembre: 11,
 };
 
 const WEEKDAY_NAMES: { [key: string]: number } = {
-  lundi: 1, mardi: 2, mercredi: 3, jeudi: 4, vendredi: 5, samedi: 6, dimanche: 0,
+  lundi: 1,
+  mardi: 2,
+  mercredi: 3,
+  jeudi: 4,
+  vendredi: 5,
+  samedi: 6,
+  dimanche: 0,
 };
 
 /**
@@ -234,49 +255,42 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
 
     switch (type) {
       case "before_noon": {
-        // Avant midi → 12h aujourd'hui
         const date = new Date(now);
         date.setHours(12, 0, 0, 0);
         return date;
       }
 
       case "this_morning": {
-        // Ce matin → 12h aujourd'hui
         const date = new Date(now);
         date.setHours(12, 0, 0, 0);
         return date;
       }
 
       case "this_afternoon": {
-        // Cet après-midi → 18h aujourd'hui
         const date = new Date(now);
         date.setHours(18, 0, 0, 0);
         return date;
       }
 
       case "this_evening": {
-        // Ce soir → 20h aujourd'hui
         const date = new Date(now);
         date.setHours(20, 0, 0, 0);
         return date;
       }
 
       case "end_of_day": {
-        // Fin de journée → 18h aujourd'hui
         const date = new Date(now);
         date.setHours(18, 0, 0, 0);
         return date;
       }
 
       case "today": {
-        // Aujourd'hui → 18h aujourd'hui
         const date = new Date(now);
         date.setHours(18, 0, 0, 0);
         return date;
       }
 
       case "tomorrow": {
-        // Demain → 18h demain
         const tomorrow = new Date(now);
         tomorrow.setDate(tomorrow.getDate() + 1);
         tomorrow.setHours(18, 0, 0, 0);
@@ -284,8 +298,8 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
       }
 
       case "days": {
-        // Dans X jours → 18h
-        const days = parseInt(match[1]);
+        const days = parseInt(match[1], 10);
+        if (Number.isNaN(days)) return null;
         const date = new Date(now);
         date.setDate(date.getDate() + days);
         date.setHours(18, 0, 0, 0);
@@ -293,8 +307,8 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
       }
 
       case "weeks": {
-        // Dans X semaines → 18h
-        const weeks = parseInt(match[1]);
+        const weeks = parseInt(match[1], 10);
+        if (Number.isNaN(weeks)) return null;
         const date = new Date(now);
         date.setDate(date.getDate() + weeks * 7);
         date.setHours(18, 0, 0, 0);
@@ -302,11 +316,10 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
       }
 
       case "weekday": {
-        // Jour de la semaine spécifique → 18h
         const targetWeekday = WEEKDAY_NAMES[match[1].toLowerCase()];
         const currentWeekday = now.getDay();
         let daysToAdd = targetWeekday - currentWeekday;
-        if (daysToAdd <= 0) daysToAdd += 7; // Prochaine occurrence
+        if (daysToAdd <= 0) daysToAdd += 7;
         const date = new Date(now);
         date.setDate(date.getDate() + daysToAdd);
         date.setHours(18, 0, 0, 0);
@@ -314,26 +327,25 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
       }
 
       case "end_of_week": {
-        // Fin de semaine → Vendredi 18h
+        // Fin de semaine → Vendredi 18h (prochaine occurrence si déjà passé)
         const date = new Date(now);
-        const daysToFriday = 5 - now.getDay();
-        date.setDate(date.getDate() + (daysToFriday >= 0 ? daysToFriday : 7 + daysToFriday));
-        date.setHours(18, 0, 0, 0);
-        return date;
-      }
-
-      case "end_of_month": {
-        // Fin du mois → Dernier jour à 18h
-        const date = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        const current = now.getDay();
+        const friday = 5;
+        let daysToFriday = friday - current;
+        if (daysToFriday < 0) daysToFriday += 7;
+        date.setDate(date.getDate() + daysToFriday);
         date.setHours(18, 0, 0, 0);
         return date;
       }
 
       case "this_week": {
-        // Cette semaine → Vendredi 18h
+        // Cette semaine → Vendredi 18h ; si on est samedi/dimanche, on prend vendredi prochain
         const date = new Date(now);
-        const daysToFriday = 5 - now.getDay();
-        date.setDate(date.getDate() + (daysToFriday >= 0 ? daysToFriday : 0));
+        const current = now.getDay();
+        const friday = 5;
+        let daysToFriday = friday - current;
+        if (daysToFriday < 0) daysToFriday += 7;
+        date.setDate(date.getDate() + daysToFriday);
         date.setHours(18, 0, 0, 0);
         return date;
       }
@@ -341,34 +353,37 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
       case "next_week": {
         // Semaine prochaine → Lundi suivant 18h
         const date = new Date(now);
-        const daysToNextMonday = 8 - now.getDay();
+        const daysToNextMonday = (8 - now.getDay()) % 7 || 7;
         date.setDate(date.getDate() + daysToNextMonday);
         date.setHours(18, 0, 0, 0);
         return date;
       }
 
+      case "end_of_month": {
+        const date = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+        date.setHours(18, 0, 0, 0);
+        return date;
+      }
+
       case "this_month": {
-        // Ce mois → Fin du mois à 18h
         const date = new Date(now.getFullYear(), now.getMonth() + 1, 0);
         date.setHours(18, 0, 0, 0);
         return date;
       }
 
       case "absolute": {
-        // Date absolue (ex: "15 mars") → 18h
-        const day = parseInt(match[1]);
-        const monthName = match[0].match(/janvier|février|mars|avril|mai|juin|juillet|août|septembre|octobre|novembre|décembre/i)?.[0].toLowerCase();
-        if (!monthName) return null;
+        // match[1] = day, match[2] = monthName
+        const day = parseInt(match[1], 10);
+        const monthName = match[2]?.toLowerCase();
+        if (!monthName || Number.isNaN(day)) return null;
 
         const month = MONTH_NAMES[monthName];
         const year = now.getFullYear();
 
-        // Si le mois est passé cette année, prendre l'année suivante
         const date = new Date(year, month, day);
         if (date < now) {
           date.setFullYear(year + 1);
         }
-
         date.setHours(18, 0, 0, 0);
         return date;
       }
@@ -386,42 +401,101 @@ function parseDueDate(text: string, receivedAt: Date): Date | null {
  * Vérifie si un email doit être exclu de l'analyse
  */
 function shouldExcludeEmail(context: EmailContext): boolean {
-  // Vérifier l'expéditeur
   for (const pattern of EXCLUSION_PATTERNS.fromExclusions) {
-    if (pattern.test(context.from)) {
-      return true;
-    }
+    if (pattern.test(context.from)) return true;
   }
 
-  // Vérifier le sujet
   if (context.subject) {
     for (const pattern of EXCLUSION_PATTERNS.subjectExclusions) {
-      if (pattern.test(context.subject)) {
-        return true;
-      }
+      if (pattern.test(context.subject)) return true;
     }
   }
 
-  // Vérifier le contenu
   for (const pattern of EXCLUSION_PATTERNS.bodyExclusions) {
-    if (pattern.test(context.body)) {
-      return true;
-    }
+    if (pattern.test(context.body)) return true;
   }
 
   return false;
 }
 
 /**
- * Vérifie si la phrase contient une condition qui annule l'action
+ * Détecte un conditionnel faible.
+ * Règle : si conditionnel faible ET pas de deadline → on ignore la phrase.
  */
-function hasConditional(sentence: string): boolean {
-  for (const pattern of CONDITIONAL_PATTERNS) {
-    if (pattern.test(sentence)) {
-      return true;
-    }
+function hasWeakConditional(sentence: string): boolean {
+  for (const pattern of WEAK_CONDITIONAL_PATTERNS) {
+    if (pattern.test(sentence)) return true;
   }
   return false;
+}
+
+// ============================================================================
+// GATING ANTI-AMBIGUÏTÉ
+// ============================================================================
+
+/**
+ * Marqueurs "forts" par type : permettent d'accepter une action même sans objet capturé,
+ * uniquement si la phrase est suffisamment explicite et non vague.
+ */
+const STRONG_MARKERS: Record<ActionType, RegExp[]> = {
+  SEND: [
+    /devis/i,
+    /contrat/i,
+    /document/i,
+    /pi[eè]ce\s+jointe/i,
+    /fichier/i,
+    /pdf/i,
+    /rapport/i,
+  ],
+  CALL: [
+    /\b\d{2}\s?\d{2}\s?\d{2}\s?\d{2}\s?\d{2}\b/i, // téléphone FR simple
+    /visi?o/i,
+    /\bmeet\b/i,
+    /\bteams\b/i,
+    /\bzoom\b/i,
+    /rappeler/i,
+  ],
+  FOLLOW_UP: [
+    /client/i,
+    /devis/i,
+    /facture/i,
+    /dossier/i,
+    /commande/i,
+    /relancer/i,
+    /suivi/i,
+  ],
+  PAY: [
+    /facture/i,
+    /\bfa[-\s]?\d+/i,
+    /r[iè]glement/i,
+    /virement/i,
+    /iban/i,
+    /tva/i,
+  ],
+  VALIDATE: [
+    /contrat/i,
+    /devis/i,
+    /version/i,
+    /document/i,
+    /maquette/i,
+    /proposition/i,
+    /bon\s+pour\s+accord/i,
+  ],
+};
+
+/**
+ * Détermine si une phrase est suffisamment concrète pour créer une action
+ * quand l'objet capturé est vide.
+ *
+ * Règle MVP "spec-tight":
+ * - Si dueDate existe → on peut accepter plus facilement
+ * - Sinon, il faut un marqueur fort selon le type
+ */
+function isConcreteEnough(type: ActionType, sentence: string, dueDate: Date | null): boolean {
+  if (dueDate) return true;
+
+  const markers = STRONG_MARKERS[type] || [];
+  return markers.some((re) => re.test(sentence));
 }
 
 // ============================================================================
@@ -434,9 +508,7 @@ function hasConditional(sentence: string): boolean {
 function cleanSentence(sentence: string): string {
   return sentence
     .trim()
-    // Enlever les tirets au début
     .replace(/^[-•*]\s*/, "")
-    // Enlever les guillemets au début et à la fin
     .replace(/^["'"«»]\s*/, "")
     .replace(/\s*["'"«»]$/, "")
     .trim();
@@ -452,34 +524,43 @@ function extractActionsByType(
 ): ExtractedAction[] {
   const actions: ExtractedAction[] = [];
 
-  // Découper en phrases : par ponctuation ET par retours à la ligne
-  const lines = context.body.split(/\n/);
+  // Découper en lignes puis en "phrases" (ponctuation + fin de ligne)
+  const lines = context.body.split(/\r?\n/);
   const sentences: string[] = [];
 
   for (const line of lines) {
-    // Splitter chaque ligne par ponctuation aussi
-    const lineSentences = line.split(/[.!?]\s+/);
-    sentences.push(...lineSentences);
+    // Découpage robuste : ponctuation ou fin de ligne
+    const parts = line.split(/[.!?]+(?:\s+|$)/).filter(Boolean);
+    // On ajoute aussi des séparateurs utiles dans des emails (listes / consignes)
+    const expanded: string[] = [];
+    for (const part of parts) {
+      expanded.push(...part.split(/[;:]+(?:\s+|$)/).filter(Boolean));
+    }
+    sentences.push(...expanded);
   }
 
   for (let sentence of sentences) {
-    // Nettoyer la phrase
     sentence = cleanSentence(sentence);
 
-    // Ignorer les phrases trop courtes ou trop longues
     if (sentence.length < 10 || sentence.length > 500) continue;
 
-    // Vérifier si la phrase contient une condition
-    if (hasConditional(sentence)) continue;
+    // Détecter une échéance (utile pour lever certaines ambiguïtés)
+    const dueDate = parseDueDate(sentence, context.receivedAt);
+
+    // Conditionnels faibles : annuler seulement si pas de deadline
+    if (!dueDate && hasWeakConditional(sentence)) continue;
 
     for (const pattern of patterns) {
       const match = sentence.match(pattern);
       if (!match) continue;
 
-      // Extraire l'objet de l'action (groupe de capture)
       const object = match[1]?.trim() || "";
 
-      // Créer le titre de l'action
+      // Gating anti-ambiguïté: si pas d'objet, n'accepter que si la phrase est concrète
+      if (!object && !isConcreteEnough(type, sentence, dueDate)) {
+        break; // pattern matché, mais trop vague -> aucune action
+      }
+
       let title = "";
       switch (type) {
         case "SEND":
@@ -499,19 +580,10 @@ function extractActionsByType(
           break;
       }
 
-      // Limiter le titre à 100 caractères
-      if (title.length > 100) {
-        title = title.substring(0, 97) + "...";
-      }
+      if (title.length > 100) title = title.substring(0, 97) + "...";
 
-      // Extraire la phrase source (max 200 caractères)
       let sourceSentence = sentence.trim();
-      if (sourceSentence.length > 200) {
-        sourceSentence = sourceSentence.substring(0, 197) + "...";
-      }
-
-      // Extraire la date d'échéance
-      const dueDate = parseDueDate(sentence, context.receivedAt);
+      if (sourceSentence.length > 200) sourceSentence = sourceSentence.substring(0, 197) + "...";
 
       actions.push({
         title,
@@ -533,28 +605,21 @@ function extractActionsByType(
  * Règle : Si ambigu → aucune action
  */
 export function extractActionsFromEmail(context: EmailContext): ExtractedAction[] {
-  // Vérifier les exclusions
-  if (shouldExcludeEmail(context)) {
-    return [];
-  }
+  if (shouldExcludeEmail(context)) return [];
 
   const actions: ExtractedAction[] = [];
 
-  // Extraire chaque type d'action
   actions.push(...extractActionsByType("SEND", SEND_PATTERNS, context));
   actions.push(...extractActionsByType("CALL", CALL_PATTERNS, context));
   actions.push(...extractActionsByType("FOLLOW_UP", FOLLOW_UP_PATTERNS, context));
   actions.push(...extractActionsByType("PAY", PAY_PATTERNS, context));
   actions.push(...extractActionsByType("VALIDATE", VALIDATE_PATTERNS, context));
 
-  // Dédupliquer les actions similaires
-  const uniqueActions = deduplicateActions(actions);
-
-  return uniqueActions;
+  return deduplicateActions(actions);
 }
 
 /**
- * Déduplique les actions similaires (même titre et source)
+ * Déduplique les actions similaires (même type + titre + source)
  */
 function deduplicateActions(actions: ExtractedAction[]): ExtractedAction[] {
   const seen = new Set<string>();
