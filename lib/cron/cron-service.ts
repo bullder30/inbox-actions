@@ -44,31 +44,10 @@ export function startCronJobs() {
     console.log("[CRON SERVICE] ⏭️ Count-new-emails job disabled (FEATURE_EMAIL_COUNT=false)");
   }
 
-  // Daily-sync job: tous les jours à 8h00
-  if (!dailySyncTask) {
-    dailySyncTask = cron.schedule(
-      "18 16 * * *", // TEST: 15h43   
-      async () => {
-        console.log("[CRON SERVICE] ⏰ Daily-sync job triggered");
-        try {
-          await runDailySyncJob();
-        } catch (error) {
-          console.error("[CRON SERVICE] Error running daily-sync job:", error);
-        }
-      },
-      {
-        scheduled: true,
-        timezone: "Europe/Paris",
-      } as any
-    );
-
-    console.log("[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)");
-  }
-
-  // Cleanup job: tous les jours à 23h00
+  // Cleanup job: tous les jours à 3h00 (Paris)
   if (!cleanupTask) {
     cleanupTask = cron.schedule(
-      "15 16 * * *", // TEST: 15h40
+      "0 3 * * *", // 3h00 Paris
       async () => {
         console.log("[CRON SERVICE] ⏰ Cleanup job triggered");
         try {
@@ -83,7 +62,28 @@ export function startCronJobs() {
       } as any
     );
 
-    console.log("[CRON SERVICE] ✅ Cleanup job scheduled (every day at 11:00 PM)");
+    console.log("[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM Paris)");
+  }
+
+  // Daily-sync job: tous les jours à 7h00 (Paris)
+  if (!dailySyncTask) {
+    dailySyncTask = cron.schedule(
+      "0 7 * * *", // 7h00 Paris
+      async () => {
+        console.log("[CRON SERVICE] ⏰ Daily-sync job triggered");
+        try {
+          await runDailySyncJob();
+        } catch (error) {
+          console.error("[CRON SERVICE] Error running daily-sync job:", error);
+        }
+      },
+      {
+        scheduled: true,
+        timezone: "Europe/Paris",
+      } as any
+    );
+
+    console.log("[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)");
   }
 }
 

@@ -3,12 +3,12 @@
   "buildCommand": "prisma generate && prisma db push && next build",
   "crons": [
     {
-      "path": "/api/cron/daily-sync",
-      "schedule": "43 16 * * *"
+      "path": "/api/cron/cleanup-metadata",
+      "schedule": "0 2 * * *"
     },
     {
-      "path": "/api/cron/cleanup-metadata",
-      "schedule": "40 16 * * *"
+      "path": "/api/cron/daily-sync",
+      "schedule": "0 6 * * *"
     }
   ]
 }
