@@ -457,7 +457,12 @@ async function refreshGoogleToken(
     });
 
     if (!response.ok) {
-      console.error("Failed to refresh token:", await response.text());
+      const errorText = await response.text();
+      console.error("[Gmail] Failed to refresh token:", response.status, errorText);
+      // Si le refresh token est invalide (400/401), l'utilisateur doit reconnecter
+      if (response.status === 400 || response.status === 401) {
+        console.error("[Gmail] Refresh token is invalid or revoked - user must reconnect Gmail");
+      }
       return null;
     }
 
@@ -508,12 +513,15 @@ export async function createGmailService(
 
     let accessToken = account.access_token;
 
-    // Vérifier si le token est expiré
+    // Vérifier si le token est expiré ou va expirer bientôt (marge de 5 minutes)
     const now = Math.floor(Date.now() / 1000);
-    if (account.expires_at && account.expires_at < now) {
-      // Token expiré, essayer de le rafraîchir
+    const expirationMargin = 5 * 60; // 5 minutes en secondes
+    const shouldRefresh = !account.expires_at || account.expires_at < (now + expirationMargin);
+
+    if (shouldRefresh) {
+      // Token expiré ou expires_at non défini, essayer de le rafraîchir
       if (account.refresh_token) {
-        console.log("Access token expired, refreshing...");
+        console.log("[Gmail] Access token expired or missing expires_at, refreshing...");
         const newToken = await refreshGoogleToken(
           account.refresh_token,
           account.id
@@ -521,13 +529,13 @@ export async function createGmailService(
 
         if (newToken) {
           accessToken = newToken;
-          console.log("Token refreshed successfully");
+          console.log("[Gmail] Token refreshed successfully");
         } else {
-          console.error("Failed to refresh token");
+          console.error("[Gmail] Failed to refresh token - user may need to reconnect Gmail");
           return null; // Échec du rafraîchissement
         }
       } else {
-        console.error("No refresh token available");
+        console.error("[Gmail] No refresh token available - user needs to reconnect Gmail");
         return null; // Pas de refresh token
       }
     }
