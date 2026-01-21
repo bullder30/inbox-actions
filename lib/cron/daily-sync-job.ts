@@ -114,6 +114,7 @@ export async function runDailySyncJob() {
                   sourceSentence: action.sourceSentence,
                   emailFrom: emailMetadata.from,
                   emailReceivedAt: emailMetadata.receivedAt,
+                  gmailMessageId: emailMetadata.gmailMessageId, // Lien vers Gmail
                   dueDate: action.dueDate,
                   status: "TODO",
                 },
