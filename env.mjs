@@ -15,6 +15,8 @@ export const env = createEnv({
     STRIPE_API_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     CRON_SECRET: z.string().min(1).optional(),
+    // Cron provider: "node" (default) or "vercel"
+    CRON_PROVIDER: z.enum(["node", "vercel"]).optional().default("node"),
     // Feature flags
     FEATURE_EMAIL_COUNT: z.string().optional().default("false"),
   },
@@ -47,6 +49,7 @@ export const env = createEnv({
       process.env.NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID,
     // Cron
     CRON_SECRET: process.env.CRON_SECRET,
+    CRON_PROVIDER: process.env.CRON_PROVIDER,
     // Feature flags
     FEATURE_EMAIL_COUNT: process.env.FEATURE_EMAIL_COUNT,
   },
