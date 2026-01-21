@@ -47,7 +47,7 @@ export function startCronJobs() {
   // Daily-sync job: tous les jours à 8h00
   if (!dailySyncTask) {
     dailySyncTask = cron.schedule(
-      "0 8 * * *", // Tous les jours à 08h00 
+      "18 16 * * *", // TEST: 15h43   
       async () => {
         console.log("[CRON SERVICE] ⏰ Daily-sync job triggered");
         try {
@@ -68,7 +68,7 @@ export function startCronJobs() {
   // Cleanup job: tous les jours à 23h00
   if (!cleanupTask) {
     cleanupTask = cron.schedule(
-      "0 23 * * *", // Tous les jours à 23h00
+      "15 16 * * *", // TEST: 15h40
       async () => {
         console.log("[CRON SERVICE] ⏰ Cleanup job triggered");
         try {
