@@ -6,6 +6,73 @@
 import { google, gmail_v1 } from "googleapis";
 import { prisma } from "@/lib/db";
 
+// ============================================================================
+// FONCTIONS UTILITAIRES D'ENCODAGE
+// ============================================================================
+
+/**
+ * Décode une chaîne encodée en quoted-printable
+ * Convertit les séquences =XX en caractères UTF-8
+ * Exemple: "l=E2=80=99=C3=A9ch=C3=A9ancier" → "l'échéancier"
+ */
+function decodeQuotedPrintable(text: string): string {
+  // Remplacer les soft line breaks (=\r\n ou =\n)
+  let decoded = text.replace(/=\r?\n/g, "");
+
+  // Collecter tous les bytes encodés et décoder en UTF-8
+  const bytes: number[] = [];
+  let result = "";
+  let i = 0;
+
+  while (i < decoded.length) {
+    if (decoded[i] === "=" && i + 2 < decoded.length) {
+      const hex = decoded.substring(i + 1, i + 3);
+      if (/^[0-9A-Fa-f]{2}$/.test(hex)) {
+        bytes.push(parseInt(hex, 16));
+        i += 3;
+        continue;
+      }
+    }
+
+    // Si on a des bytes accumulés, les décoder en UTF-8
+    if (bytes.length > 0) {
+      try {
+        result += Buffer.from(bytes).toString("utf-8");
+      } catch {
+        // En cas d'erreur, garder les bytes bruts
+        result += bytes.map((b) => String.fromCharCode(b)).join("");
+      }
+      bytes.length = 0;
+    }
+
+    result += decoded[i];
+    i++;
+  }
+
+  // Décoder les bytes restants
+  if (bytes.length > 0) {
+    try {
+      result += Buffer.from(bytes).toString("utf-8");
+    } catch {
+      result += bytes.map((b) => String.fromCharCode(b)).join("");
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Normalise les apostrophes et guillemets typographiques
+ */
+function normalizeTypography(text: string): string {
+  return text
+    .replace(/'/g, "'")  // Apostrophe typographique → standard
+    .replace(/ʼ/g, "'")  // Autre variante apostrophe
+    .replace(/`/g, "'")  // Backtick → apostrophe
+    .replace(/[«»""„]/g, '"')  // Guillemets typographiques → standard
+    .replace(/[''‚]/g, "'");   // Guillemets simples typographiques → apostrophe
+}
+
 /**
  * Type pour les métadonnées d'email minimales (RGPD compliant)
  */
@@ -215,7 +282,7 @@ export class GmailService {
     };
 
     const from = getHeader("From");
-    const subject = getHeader("Subject");
+    const rawSubject = getHeader("Subject");
     const dateStr = getHeader("Date");
 
     if (!from) {
@@ -226,7 +293,12 @@ export class GmailService {
     const receivedAt = dateStr ? new Date(dateStr) : new Date();
 
     // Snippet (extrait court fourni par Gmail, max 200 caractères)
-    const snippet = message.snippet || "";
+    // Normaliser la typographie pour éviter les incohérences lors de l'analyse
+    const rawSnippet = message.snippet || "";
+    const snippet = normalizeTypography(decodeQuotedPrintable(rawSnippet));
+
+    // Normaliser le sujet également
+    const subject = rawSubject ? normalizeTypography(decodeQuotedPrintable(rawSubject)) : null;
 
     // Labels Gmail
     const labels = message.labelIds || [];
@@ -290,10 +362,33 @@ export class GmailService {
 
   /**
    * Extrait le corps textuel d'un message Gmail
+   * Décode automatiquement quoted-printable et normalise la typographie
    */
   private extractBody(message: gmail_v1.Schema$Message): string {
     const payload = message.payload;
     if (!payload) return "";
+
+    // Fonction pour vérifier si une partie utilise quoted-printable
+    const isQuotedPrintable = (part: gmail_v1.Schema$MessagePart): boolean => {
+      const headers = part.headers || [];
+      const cte = headers.find(
+        (h) => h.name?.toLowerCase() === "content-transfer-encoding"
+      );
+      return cte?.value?.toLowerCase() === "quoted-printable";
+    };
+
+    // Fonction pour décoder le texte selon l'encodage
+    const decodePartBody = (part: gmail_v1.Schema$MessagePart, data: string): string => {
+      let decoded = Buffer.from(data, "base64").toString("utf-8");
+
+      // Si quoted-printable, décoder les séquences =XX
+      if (isQuotedPrintable(part)) {
+        decoded = decodeQuotedPrintable(decoded);
+      }
+
+      // Normaliser la typographie (apostrophes, guillemets)
+      return normalizeTypography(decoded);
+    };
 
     // Fonction récursive pour extraire le texte des parties
     const extractFromParts = (parts: gmail_v1.Schema$MessagePart[]): string => {
@@ -301,8 +396,8 @@ export class GmailService {
 
       for (const part of parts) {
         if (part.mimeType === "text/plain" && part.body?.data) {
-          // Décoder le corps en base64
-          const decoded = Buffer.from(part.body.data, "base64").toString("utf-8");
+          // Décoder le corps avec gestion quoted-printable
+          const decoded = decodePartBody(part, part.body.data);
           text += decoded + "\n";
         } else if (part.parts) {
           // Récursion si multipart
@@ -315,7 +410,18 @@ export class GmailService {
 
     // Si le corps est directement dans payload.body
     if (payload.body?.data) {
-      return Buffer.from(payload.body.data, "base64").toString("utf-8");
+      let decoded = Buffer.from(payload.body.data, "base64").toString("utf-8");
+
+      // Vérifier quoted-printable au niveau payload
+      const headers = payload.headers || [];
+      const cte = headers.find(
+        (h) => h.name?.toLowerCase() === "content-transfer-encoding"
+      );
+      if (cte?.value?.toLowerCase() === "quoted-printable") {
+        decoded = decodeQuotedPrintable(decoded);
+      }
+
+      return normalizeTypography(decoded);
     }
 
     // Sinon, extraire des parties

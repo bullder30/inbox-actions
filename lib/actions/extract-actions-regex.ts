@@ -94,6 +94,10 @@ const PAY_PATTERNS = [
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:régler|payer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /(?:règle|réglez|paie|payez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
+  // Procéder au paiement/règlement
+  /(?:merci de|veuillez)\s+procéder\s+au\s+(?:paiement|règlement)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous)\s+procéder\s+au\s+(?:paiement|règlement)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici)/i,
+
   // Facture
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:régler|payer)\s+(?:la\s+)?facture(?:\s+(.{1,30}?))?(?:\.|$|avant|d'ici)/i,
   /il (?:faut|faudrait)\s+(?:régler|payer)\s+(.{1,50}?)(?:\.|$|avant)/i,
@@ -406,13 +410,17 @@ function shouldExcludeEmail(context: EmailContext): boolean {
   }
 
   if (context.subject) {
+    // Normaliser le sujet avant vérification
+    const normalizedSubject = normalizeText(context.subject);
     for (const pattern of EXCLUSION_PATTERNS.subjectExclusions) {
-      if (pattern.test(context.subject)) return true;
+      if (pattern.test(normalizedSubject)) return true;
     }
   }
 
+  // Normaliser le body avant vérification
+  const normalizedBody = normalizeText(context.body);
   for (const pattern of EXCLUSION_PATTERNS.bodyExclusions) {
-    if (pattern.test(context.body)) return true;
+    if (pattern.test(normalizedBody)) return true;
   }
 
   return false;
@@ -499,6 +507,37 @@ function isConcreteEnough(type: ActionType, sentence: string, dueDate: Date | nu
 }
 
 // ============================================================================
+// NORMALISATION DE TEXTE
+// ============================================================================
+
+/**
+ * Normalise les apostrophes typographiques en apostrophes standard
+ * Cela permet aux regex d'utiliser uniquement ' et de matcher les deux formes
+ */
+function normalizeApostrophes(text: string): string {
+  return text
+    .replace(/'/g, "'")  // Apostrophe typographique → standard
+    .replace(/ʼ/g, "'")  // Autre variante apostrophe
+    .replace(/`/g, "'"); // Backtick → apostrophe
+}
+
+/**
+ * Normalise les guillemets pour uniformiser le texte
+ */
+function normalizeQuotes(text: string): string {
+  return text
+    .replace(/[«»""„]/g, '"')  // Guillemets typographiques → standard
+    .replace(/[''‚]/g, "'");   // Apostrophes/guillemets simples → standard
+}
+
+/**
+ * Normalise un texte complet (apostrophes + guillemets)
+ */
+function normalizeText(text: string): string {
+  return normalizeQuotes(normalizeApostrophes(text));
+}
+
+// ============================================================================
 // EXTRACTION D'ACTIONS
 // ============================================================================
 
@@ -524,8 +563,11 @@ function extractActionsByType(
 ): ExtractedAction[] {
   const actions: ExtractedAction[] = [];
 
+  // Normaliser le texte (apostrophes, guillemets) pour uniformiser avant regex
+  const normalizedBody = normalizeText(context.body);
+
   // Découper en lignes puis en "phrases" (ponctuation + fin de ligne)
-  const lines = context.body.split(/\r?\n/);
+  const lines = normalizedBody.split(/\r?\n/);
   const sentences: string[] = [];
 
   for (const line of lines) {
