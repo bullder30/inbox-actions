@@ -206,7 +206,7 @@ const DEADLINE_PATTERNS = [
   { pattern: /ce\s+matin/i, type: "this_morning" },
   { pattern: /cet?\s+après[-\s]midi/i, type: "this_afternoon" },
   { pattern: /ce\s+soir/i, type: "this_evening" },
-  { pattern: /(?:en\s+)?fin\s+de\s+journée/i, type: "end_of_day" },
+  { pattern: /(?:en\s+)?fin\s+de\s+(?:la\s+)?journée/i, type: "end_of_day" },
 
   // Jours relatifs
   { pattern: /(?:aujourd['']hui|ce\s+jour)/i, type: "today" },

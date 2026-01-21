@@ -51,7 +51,11 @@
       "Bash(git push:*)",
       "Bash(git commit:*)",
       "Bash(curl:*)",
-      "Bash(timeout /t 5 /nobreak)"
+      "Bash(timeout /t 5 /nobreak)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(git config:*)",
+      "Bash(npx tsx:*)"
     ]
   }
 }
