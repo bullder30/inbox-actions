@@ -1,12 +1,17 @@
 import Link from "next/link";
 
+import { cn } from "@/lib/utils";
 import { siteConfig } from "@/config/site";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 import packageJson from "@/package.json";
 
-export function SiteFooter() {
+interface SiteFooterProps {
+  className?: string;
+}
+
+export function SiteFooter({ className }: SiteFooterProps) {
   return (
-    <footer className="border-t bg-background">
+    <footer className={cn("border-t bg-background", className)}>
       <div className="container flex flex-col items-center justify-between gap-4 py-6 md:flex-row">
         <div className="flex flex-col items-center gap-1 md:flex-row md:gap-2">
           <div className="flex items-center gap-2">

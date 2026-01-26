@@ -2,11 +2,13 @@ import { redirect } from "next/navigation";
 
 import { sidebarLinks } from "@/config/dashboard";
 import { getCurrentUser } from "@/lib/session";
+import { prisma } from "@/lib/db";
 // import { SearchCommand } from "@/components/dashboard/search-command";
 import {
   DashboardSidebar,
   MobileSheetSidebar,
 } from "@/components/layout/dashboard-sidebar";
+import { BottomNav } from "@/components/layout/bottom-nav";
 import { ModeToggle } from "@/components/layout/mode-toggle";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { UserAccountNav } from "@/components/layout/user-account-nav";
@@ -29,6 +31,14 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
     ),
   }));
 
+  // Récupérer le nombre d'actions TODO pour le badge du bottom nav
+  const todoCount = await prisma.action.count({
+    where: {
+      userId: user.id,
+      status: "TODO",
+    },
+  });
+
   return (
     <div className="relative flex min-h-screen w-full">
       <DashboardSidebar links={filteredLinks} />
@@ -36,7 +46,10 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
       <div className="flex flex-1 flex-col">
         <header className="sticky top-0 z-50 flex h-14 bg-background px-4 lg:h-[60px] xl:px-8">
           <MaxWidthWrapper className="flex max-w-7xl items-center gap-x-3 px-0">
-            <MobileSheetSidebar links={filteredLinks} />
+            {/* MobileSheetSidebar caché - remplacé par BottomNav sur mobile */}
+            <div className="hidden sm:block md:hidden">
+              <MobileSheetSidebar links={filteredLinks} />
+            </div>
 
             {/* SearchCommand caché - inutile avec seulement 3 pages */}
             {/* <div className="w-full flex-1">
@@ -49,15 +62,18 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
           </MaxWidthWrapper>
         </header>
 
-        <main className="flex-1 p-4 xl:px-8">
+        <main className="flex-1 p-4 pb-20 md:pb-4 xl:px-8">
           <MaxWidthWrapper className="flex h-full max-w-7xl flex-col gap-4 px-0 lg:gap-6">
             <ScanStatusHeader />
             {children}
           </MaxWidthWrapper>
         </main>
 
-        <SiteFooter />
+        <SiteFooter className="hidden md:block" />
       </div>
+
+      {/* Bottom navigation mobile */}
+      <BottomNav todoCount={todoCount} />
     </div>
   );
 }
