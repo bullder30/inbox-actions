@@ -3,7 +3,8 @@
  * Récupère les emails Gmail en lecture seule de manière sécurisée
  */
 
-import { google, gmail_v1 } from "googleapis";
+import { gmail_v1, google } from "googleapis";
+
 import { prisma } from "@/lib/db";
 
 // ============================================================================
@@ -121,11 +122,17 @@ function decodeHtmlEntities(text: string): string {
  */
 function normalizeTypography(text: string): string {
   return text
-    .replace(/'/g, "'")  // Apostrophe typographique → standard
-    .replace(/ʼ/g, "'")  // Autre variante apostrophe
-    .replace(/`/g, "'")  // Backtick → apostrophe
-    .replace(/[«»""„]/g, '"')  // Guillemets typographiques → standard
-    .replace(/[''‚]/g, "'");   // Guillemets simples typographiques → apostrophe
+    // Apostrophes → '
+    .replace(/\u2019/g, "'") // ’ (RIGHT SINGLE QUOTATION MARK) ← CRITIQUE
+    .replace(/\u2018/g, "'") // ‘
+    .replace(/\u02BC/g, "'") // ʼ
+    .replace(/`/g, "'")
+
+    // Guillemets → "
+    .replace(/[«»„“”]/g, '"')
+
+    // Espaces insécables
+    .replace(/\u00A0/g, " ");
 }
 
 /**
@@ -543,6 +550,10 @@ export class GmailService {
     const payload = message.payload;
     if (!payload) return "";
 
+    console.log("[extractBody] Payload mimeType:", payload.mimeType);
+    console.log("[extractBody] Has payload.body.data:", !!payload.body?.data);
+    console.log("[extractBody] Has payload.parts:", !!payload.parts, "count:", payload.parts?.length);
+
     // Fonction pour vérifier si une partie utilise quoted-printable
     const isQuotedPrintable = (part: gmail_v1.Schema$MessagePart): boolean => {
       const headers = part.headers || [];
@@ -554,7 +565,7 @@ export class GmailService {
 
     // Fonction pour décoder le texte selon l'encodage
     const decodePartBody = (part: gmail_v1.Schema$MessagePart, data: string): string => {
-      let decoded = Buffer.from(data, "base64").toString("utf-8");
+      let decoded = decodeBase64Url(data);
 
       // Si quoted-printable, décoder les séquences =XX
       if (isQuotedPrintable(part)) {
@@ -591,9 +602,11 @@ export class GmailService {
       let htmlText = "";
 
       for (const part of parts) {
+        console.log("[extractFromParts] Part mimeType:", part.mimeType, "hasData:", !!part.body?.data, "isQP:", isQuotedPrintable(part));
         if (part.mimeType === "text/plain" && part.body?.data) {
           // Décoder le corps avec gestion quoted-printable
           const decoded = decodePartBody(part, part.body.data);
+          console.log("[extractFromParts] text/plain decoded (first 200 chars):", decoded.substring(0, 200));
           plainText += decoded + "\n";
         } else if (part.mimeType === "text/html" && part.body?.data) {
           // Décoder le HTML et convertir en texte brut (fallback)
@@ -614,7 +627,7 @@ export class GmailService {
 
     // Si le corps est directement dans payload.body
     if (payload.body?.data) {
-      let decoded = Buffer.from(payload.body.data, "base64").toString("utf-8");
+      let decoded = decodeBase64Url(payload.body.data);
 
       // Vérifier quoted-printable au niveau payload
       const headers = payload.headers || [];
@@ -871,4 +884,11 @@ export async function createGmailService(
     console.error("Error creating Gmail service:", error);
     return null;
   }
+}
+
+function decodeBase64Url(data: string): string {
+  // Gmail API renvoie du base64url (RFC 4648 §5)
+  const base64 = data.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64 + "=".repeat((4 - (base64.length % 4)) % 4);
+  return Buffer.from(padded, "base64").toString("utf-8");
 }

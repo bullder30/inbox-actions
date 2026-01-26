@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+
 import { auth } from "@/auth";
 import { createGmailService } from "@/lib/gmail/gmail-service";
 import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
