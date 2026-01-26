@@ -1,9 +1,10 @@
 "use client";
 
+import { Inbox, LayoutDashboard, Settings } from "lucide-react";
+
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { LayoutDashboard, Inbox, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePathname } from "next/navigation";
 
 interface BottomNavProps {
   todoCount?: number;
@@ -54,7 +55,7 @@ export function BottomNav({ todoCount = 0 }: BottomNavProps) {
                 <Icon className="size-5" />
                 {item.showBadge && todoCount > 0 && (
                   <span className="absolute -right-2 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                    {todoCount > 9 ? "9+" : todoCount}
+                    {todoCount}
                   </span>
                 )}
               </div>
