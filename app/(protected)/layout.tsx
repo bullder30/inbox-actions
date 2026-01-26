@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { sidebarLinks } from "@/config/dashboard";
 import { getCurrentUser } from "@/lib/session";
-import { SearchCommand } from "@/components/dashboard/search-command";
+// import { SearchCommand } from "@/components/dashboard/search-command";
 import {
   DashboardSidebar,
   MobileSheetSidebar,
@@ -38,10 +38,12 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
           <MaxWidthWrapper className="flex max-w-7xl items-center gap-x-3 px-0">
             <MobileSheetSidebar links={filteredLinks} />
 
-            <div className="w-full flex-1">
+            {/* SearchCommand caché - inutile avec seulement 3 pages */}
+            {/* <div className="w-full flex-1">
               <SearchCommand links={filteredLinks} />
-            </div>
+            </div> */}
 
+            <div className="flex-1" /> {/* Spacer pour pousser les éléments à droite */}
             <ModeToggle />
             <UserAccountNav />
           </MaxWidthWrapper>
