@@ -62,6 +62,61 @@ function decodeQuotedPrintable(text: string): string {
 }
 
 /**
+ * Décode les entités HTML courantes en caractères normaux
+ * Gère les entités numériques (&#39;, &#x27;) et nommées (&amp;, &quot;, etc.)
+ */
+function decodeHtmlEntities(text: string): string {
+  // Décoder les entités numériques décimales (&#39; → ')
+  let result = text.replace(/&#(\d+);/g, (_, code) => {
+    const charCode = parseInt(code, 10);
+    return String.fromCharCode(charCode);
+  });
+
+  // Décoder les entités numériques hexadécimales (&#x27; → ')
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => {
+    const charCode = parseInt(code, 16);
+    return String.fromCharCode(charCode);
+  });
+
+  // Entités nommées courantes
+  const namedEntities: { [key: string]: string } = {
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&apos;": "'",
+    "&nbsp;": " ",
+    "&ndash;": "–",
+    "&mdash;": "—",
+    "&lsquo;": "'",
+    "&rsquo;": "'",
+    "&ldquo;": '"',
+    "&rdquo;": '"',
+    "&hellip;": "…",
+    "&euro;": "€",
+    "&copy;": "©",
+    "&reg;": "®",
+    "&deg;": "°",
+    "&agrave;": "à",
+    "&acirc;": "â",
+    "&egrave;": "è",
+    "&eacute;": "é",
+    "&ecirc;": "ê",
+    "&icirc;": "î",
+    "&ocirc;": "ô",
+    "&ugrave;": "ù",
+    "&ucirc;": "û",
+    "&ccedil;": "ç",
+  };
+
+  for (const [entity, char] of Object.entries(namedEntities)) {
+    result = result.replace(new RegExp(entity, "gi"), char);
+  }
+
+  return result;
+}
+
+/**
  * Normalise les apostrophes et guillemets typographiques
  */
 function normalizeTypography(text: string): string {
@@ -409,12 +464,12 @@ export class GmailService {
     const receivedAt = dateStr ? new Date(dateStr) : new Date();
 
     // Snippet (extrait court fourni par Gmail, max 200 caractères)
-    // Normaliser la typographie pour éviter les incohérences lors de l'analyse
+    // Décoder les entités HTML et normaliser la typographie pour éviter les incohérences lors de l'analyse
     const rawSnippet = message.snippet || "";
-    const snippet = normalizeTypography(decodeQuotedPrintable(rawSnippet));
+    const snippet = normalizeTypography(decodeHtmlEntities(decodeQuotedPrintable(rawSnippet)));
 
-    // Normaliser le sujet également
-    const subject = rawSubject ? normalizeTypography(decodeQuotedPrintable(rawSubject)) : null;
+    // Normaliser le sujet également (avec décodage HTML)
+    const subject = rawSubject ? normalizeTypography(decodeHtmlEntities(decodeQuotedPrintable(rawSubject))) : null;
 
     // Labels Gmail
     const labels = message.labelIds || [];
@@ -506,8 +561,8 @@ export class GmailService {
         decoded = decodeQuotedPrintable(decoded);
       }
 
-      // Normaliser la typographie (apostrophes, guillemets)
-      return normalizeTypography(decoded);
+      // Décoder les entités HTML et normaliser la typographie
+      return normalizeTypography(decodeHtmlEntities(decoded));
     };
 
     // Fonction récursive pour extraire le texte des parties
@@ -541,7 +596,8 @@ export class GmailService {
         decoded = decodeQuotedPrintable(decoded);
       }
 
-      return normalizeTypography(decoded);
+      // Décoder les entités HTML et normaliser la typographie
+      return normalizeTypography(decodeHtmlEntities(decoded));
     }
 
     // Sinon, extraire des parties
