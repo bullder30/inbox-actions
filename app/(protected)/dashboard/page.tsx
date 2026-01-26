@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, Clock, Info, XCircle } from "lucide-react";
@@ -5,6 +6,7 @@ import { CheckCircle2, Clock, Info, XCircle } from "lucide-react";
 import { ActionCard } from "@/components/actions/action-card";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/components/dashboard/header";
+import { WelcomeToast } from "@/components/dashboard/welcome-toast";
 import Link from "next/link";
 import packageJson from "@/package.json";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -43,11 +45,12 @@ export default async function DashboardPage() {
       prisma.action.count({
         where: { userId: user.id, status: "IGNORED" },
       }),
-      // Statut Gmail
+      // Statut Gmail + createdAt pour le message de bienvenue
       prisma.user.findUnique({
         where: { id: user.id },
         select: {
           lastGmailSync: true,
+          createdAt: true,
           _count: {
             select: {
               emailMetadata: true,
@@ -88,6 +91,11 @@ export default async function DashboardPage() {
 
   return (
     <div className="space-y-8">
+      {/* Toast de bienvenue pour les nouveaux utilisateurs */}
+      <Suspense fallback={null}>
+        <WelcomeToast userCreatedAt={gmailStatus?.createdAt || new Date()} />
+      </Suspense>
+
       <DashboardHeader
         heading="Tableau de bord"
         text="Bienvenue ! Voici un aperçu de vos actions extraites de vos emails."

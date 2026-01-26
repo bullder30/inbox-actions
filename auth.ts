@@ -63,6 +63,11 @@ export const {
             });
             console.log(`[Auth] Compte Google lié à l'utilisateur existant: ${user.email}`);
           }
+          // Marquer comme utilisateur existant pour le message post-login
+          (user as { isNewUser?: boolean }).isNewUser = false;
+        } else {
+          // Nouvel utilisateur
+          (user as { isNewUser?: boolean }).isNewUser = true;
         }
       }
       return true;

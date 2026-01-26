@@ -43,6 +43,15 @@ export default function LoginPage() {
         <Suspense>
           <UserAuthForm />
         </Suspense>
+        <p className="px-8 text-center text-sm text-muted-foreground">
+          Pas encore de compte ?{" "}
+          <Link
+            href="/register"
+            className="font-medium underline underline-offset-4 hover:text-primary"
+          >
+            Créer un compte
+          </Link>
+        </p>
         <p className="px-8 text-center text-xs text-muted-foreground">
           En continuant, vous acceptez nos{" "}
           <Link
