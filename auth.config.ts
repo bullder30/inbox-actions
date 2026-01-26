@@ -4,6 +4,10 @@ import Google from "next-auth/providers/google";
 import { env } from "@/env.mjs";
 
 export default {
+  pages: {
+    signIn: "/login",
+    error: "/login", // Redirige les erreurs OAuth (PKCE, etc.) vers login
+  },
   providers: [
     Google({
       clientId: env.GOOGLE_CLIENT_ID,
