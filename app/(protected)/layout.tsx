@@ -24,20 +24,25 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
 
   if (!user) redirect("/login");
 
-  const filteredLinks = sidebarLinks.map((section) => ({
-    ...section,
-    items: section.items.filter(
-      ({ authorizeOnly }) => !authorizeOnly || authorizeOnly === user.role,
-    ),
-  }));
-
-  // Récupérer le nombre d'actions TODO pour le badge du bottom nav
+  // Récupérer le nombre d'actions TODO pour le badge
   const todoCount = await prisma.action.count({
     where: {
       userId: user.id,
       status: "TODO",
     },
   });
+
+  // Filtrer les liens par rôle et ajouter le badge TODO sur "Actions"
+  const filteredLinks = sidebarLinks.map((section) => ({
+    ...section,
+    items: section.items
+      .filter(({ authorizeOnly }) => !authorizeOnly || authorizeOnly === user.role)
+      .map((item) => ({
+        ...item,
+        // Ajouter le badge sur le lien Actions si todoCount > 0
+        badge: item.href === "/actions" && todoCount > 0 ? todoCount : item.badge,
+      })),
+  }));
 
   return (
     <div className="relative flex min-h-screen w-full overflow-x-hidden">

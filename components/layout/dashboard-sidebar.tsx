@@ -157,13 +157,19 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                                         "cursor-not-allowed opacity-80 hover:bg-transparent hover:text-muted-foreground",
                                     )}
                                   >
-                                    <span className="flex size-full items-center justify-center">
+                                    <span className="relative flex size-full items-center justify-center">
                                       <Icon className="size-5" />
+                                      {item.badge && (
+                                        <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                                          {item.badge > 9 ? "9+" : item.badge}
+                                        </span>
+                                      )}
                                     </span>
                                   </Link>
                                 </TooltipTrigger>
                                 <TooltipContent side="right">
                                   {item.title}
+                                  {item.badge && ` (${item.badge})`}
                                 </TooltipContent>
                               </Tooltip>
                             )}
