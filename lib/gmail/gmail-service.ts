@@ -565,22 +565,51 @@ export class GmailService {
       return normalizeTypography(decodeHtmlEntities(decoded));
     };
 
+    // Fonction pour convertir HTML en texte brut
+    const htmlToText = (html: string): string => {
+      return html
+        // Supprimer les balises script et style avec leur contenu
+        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+        // Convertir les sauts de ligne HTML en \n
+        .replace(/<br\s*\/?>/gi, "\n")
+        .replace(/<\/p>/gi, "\n\n")
+        .replace(/<\/div>/gi, "\n")
+        .replace(/<\/tr>/gi, "\n")
+        .replace(/<\/li>/gi, "\n")
+        // Supprimer toutes les autres balises HTML
+        .replace(/<[^>]+>/g, "")
+        // Nettoyer les espaces multiples
+        .replace(/\n\s*\n\s*\n/g, "\n\n")
+        .replace(/[ \t]+/g, " ")
+        .trim();
+    };
+
     // Fonction récursive pour extraire le texte des parties
     const extractFromParts = (parts: gmail_v1.Schema$MessagePart[]): string => {
-      let text = "";
+      let plainText = "";
+      let htmlText = "";
 
       for (const part of parts) {
         if (part.mimeType === "text/plain" && part.body?.data) {
           // Décoder le corps avec gestion quoted-printable
           const decoded = decodePartBody(part, part.body.data);
-          text += decoded + "\n";
+          plainText += decoded + "\n";
+        } else if (part.mimeType === "text/html" && part.body?.data) {
+          // Décoder le HTML et convertir en texte brut (fallback)
+          const decoded = decodePartBody(part, part.body.data);
+          htmlText += htmlToText(decoded) + "\n";
         } else if (part.parts) {
           // Récursion si multipart
-          text += extractFromParts(part.parts);
+          const nested = extractFromParts(part.parts);
+          if (nested) {
+            plainText += nested;
+          }
         }
       }
 
-      return text;
+      // Préférer text/plain, sinon utiliser text/html converti
+      return plainText || htmlText;
     };
 
     // Si le corps est directement dans payload.body
@@ -597,7 +626,14 @@ export class GmailService {
       }
 
       // Décoder les entités HTML et normaliser la typographie
-      return normalizeTypography(decodeHtmlEntities(decoded));
+      decoded = normalizeTypography(decodeHtmlEntities(decoded));
+
+      // Si le contenu est HTML, le convertir en texte brut
+      if (payload.mimeType === "text/html") {
+        return htmlToText(decoded);
+      }
+
+      return decoded;
     }
 
     // Sinon, extraire des parties
