@@ -105,14 +105,14 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
   if (variant === "compact") {
     return (
       <Card className={cn(
-        "transition-all hover:shadow-md",
+        "overflow-hidden transition-all hover:shadow-md",
         isOverdue && "border-red-300 bg-red-50/50",
         isUrgent && !isOverdue && "border-orange-300 bg-orange-50/50"
       )}>
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-            <div className="flex-1 space-y-1">
-              <CardTitle className="text-sm sm:text-base">{action.title}</CardTitle>
+            <div className="min-w-0 flex-1 space-y-1">
+              <CardTitle className="break-words text-sm sm:text-base">{action.title}</CardTitle>
               <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
                 <Mail className="h-3 w-3 shrink-0" />
                 <span className="max-w-[200px] truncate">{action.emailFrom}</span>
@@ -162,14 +162,14 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
 
   return (
     <Card className={cn(
-      "transition-all hover:shadow-lg",
+      "overflow-hidden transition-all hover:shadow-lg",
       isOverdue && "border-red-300 bg-red-50/50",
       isUrgent && !isOverdue && "border-orange-300 bg-orange-50/50"
     )}>
       <CardHeader className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="flex-1 space-y-1">
-            <CardTitle className="text-lg sm:text-xl">{action.title}</CardTitle>
+          <div className="min-w-0 flex-1 space-y-1">
+            <CardTitle className="break-words text-lg sm:text-xl">{action.title}</CardTitle>
             <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
               <span className="flex items-center gap-1">
                 <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -197,9 +197,9 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
 
       <CardContent className="space-y-4">
         {/* Phrase source - toujours visible */}
-        <blockquote className="rounded-lg border-l-4 bg-muted/50 p-4">
-          <div className="flex items-start justify-between gap-4">
-            <p className="flex-1 text-sm italic">
+        <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-4">
+          <div className="flex items-start justify-between gap-2">
+            <p className="min-w-0 flex-1 break-words text-sm italic">
               &ldquo;{action.sourceSentence}&rdquo;
             </p>
             {action.gmailMessageId && (
@@ -242,8 +242,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         )}
 
         {/* Métadonnées */}
-        <div className="flex flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-4">
-          <span className="truncate">De : {action.emailFrom}</span>
+        <div className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-4">
+          <span className="min-w-0 truncate">De : {action.emailFrom}</span>
           <span className="hidden sm:inline">•</span>
           <span>
             {new Date(action.emailReceivedAt).toLocaleDateString("fr-FR", {
