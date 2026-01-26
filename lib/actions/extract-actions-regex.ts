@@ -511,6 +511,101 @@ function isConcreteEnough(type: ActionType, sentence: string, dueDate: Date | nu
 // ============================================================================
 
 /**
+ * Décode les entités HTML courantes en caractères normaux
+ * Gère les entités nommées et numériques (décimales et hexadécimales)
+ */
+function decodeHtmlEntities(text: string): string {
+  // Entités nommées courantes
+  const namedEntities: { [key: string]: string } = {
+    "&amp;": "&",
+    "&lt;": "<",
+    "&gt;": ">",
+    "&quot;": '"',
+    "&apos;": "'",
+    "&nbsp;": " ",
+    "&copy;": "©",
+    "&reg;": "®",
+    "&euro;": "€",
+    "&pound;": "£",
+    "&yen;": "¥",
+    "&cent;": "¢",
+    "&deg;": "°",
+    "&plusmn;": "±",
+    "&times;": "×",
+    "&divide;": "÷",
+    "&frac12;": "½",
+    "&frac14;": "¼",
+    "&frac34;": "¾",
+    "&ndash;": "–",
+    "&mdash;": "—",
+    "&lsquo;": "\u2018",
+    "&rsquo;": "\u2019",
+    "&ldquo;": "\u201c",
+    "&rdquo;": "\u201d",
+    "&bull;": "•",
+    "&hellip;": "…",
+    "&trade;": "™",
+    "&agrave;": "à",
+    "&acirc;": "â",
+    "&auml;": "ä",
+    "&egrave;": "è",
+    "&eacute;": "é",
+    "&ecirc;": "ê",
+    "&euml;": "ë",
+    "&igrave;": "ì",
+    "&icirc;": "î",
+    "&iuml;": "ï",
+    "&ograve;": "ò",
+    "&ocirc;": "ô",
+    "&ouml;": "ö",
+    "&ugrave;": "ù",
+    "&ucirc;": "û",
+    "&uuml;": "ü",
+    "&ccedil;": "ç",
+    "&ntilde;": "ñ",
+    "&Agrave;": "À",
+    "&Acirc;": "Â",
+    "&Auml;": "Ä",
+    "&Egrave;": "È",
+    "&Eacute;": "É",
+    "&Ecirc;": "Ê",
+    "&Euml;": "Ë",
+    "&Igrave;": "Ì",
+    "&Icirc;": "Î",
+    "&Iuml;": "Ï",
+    "&Ograve;": "Ò",
+    "&Ocirc;": "Ô",
+    "&Ouml;": "Ö",
+    "&Ugrave;": "Ù",
+    "&Ucirc;": "Û",
+    "&Uuml;": "Ü",
+    "&Ccedil;": "Ç",
+    "&Ntilde;": "Ñ",
+  };
+
+  let result = text;
+
+  // Décoder les entités numériques décimales (&#39; → ')
+  result = result.replace(/&#(\d+);/g, (_, code) => {
+    const charCode = parseInt(code, 10);
+    return String.fromCharCode(charCode);
+  });
+
+  // Décoder les entités numériques hexadécimales (&#x27; → ')
+  result = result.replace(/&#x([0-9a-fA-F]+);/g, (_, code) => {
+    const charCode = parseInt(code, 16);
+    return String.fromCharCode(charCode);
+  });
+
+  // Décoder les entités nommées
+  for (const [entity, char] of Object.entries(namedEntities)) {
+    result = result.replace(new RegExp(entity, "gi"), char);
+  }
+
+  return result;
+}
+
+/**
  * Normalise les apostrophes typographiques en apostrophes standard
  * Cela permet aux regex d'utiliser uniquement ' et de matcher les deux formes
  */
@@ -531,10 +626,13 @@ function normalizeQuotes(text: string): string {
 }
 
 /**
- * Normalise un texte complet (apostrophes + guillemets)
+ * Normalise un texte complet (entités HTML + apostrophes + guillemets)
  */
 function normalizeText(text: string): string {
-  return normalizeQuotes(normalizeApostrophes(text));
+  // 1. Décoder les entités HTML (&#39; → ', &amp; → &, etc.)
+  // 2. Normaliser les apostrophes typographiques
+  // 3. Normaliser les guillemets
+  return normalizeQuotes(normalizeApostrophes(decodeHtmlEntities(text)));
 }
 
 // ============================================================================

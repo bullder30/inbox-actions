@@ -29,7 +29,7 @@ import {
   Loader2,
   MailOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
 
 const actionTypeLabels = {
@@ -161,7 +161,7 @@ export default function ActionDetailPage({
         <CardHeader>
           <div className="flex items-start justify-between gap-4">
             <div className="flex-1 space-y-1">
-              <CardTitle className="text-2xl">{action.title}</CardTitle>
+              <CardTitle className="text-2xl">{decodeHtmlEntities(action.title)}</CardTitle>
               <CardDescription className="flex flex-wrap items-center gap-2 text-base">
                 <Mail className="h-4 w-4" />
                 <span>{action.emailFrom}</span>
@@ -195,7 +195,7 @@ export default function ActionDetailPage({
             </h3>
             <div className="rounded-lg border bg-muted/50 p-4">
               <div className="flex items-start justify-between gap-4">
-                <p className="flex-1 text-sm italic">&ldquo;{action.sourceSentence}&rdquo;</p>
+                <p className="flex-1 text-sm italic">&ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;</p>
                 {action.gmailMessageId && (
                   <a
                     href={`https://mail.google.com/mail/u/0/#inbox/${action.gmailMessageId}`}

@@ -26,7 +26,7 @@ import {
   Clock,
   MailOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
 import { markActionAsDone, markActionAsIgnored } from "@/lib/api/actions";
 
@@ -112,7 +112,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1 space-y-1">
-              <CardTitle className="break-words text-sm sm:text-base">{action.title}</CardTitle>
+              <CardTitle className="break-words text-sm sm:text-base">{decodeHtmlEntities(action.title)}</CardTitle>
               <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
                 <Mail className="h-3 w-3 shrink-0" />
                 <span className="max-w-[200px] truncate">{action.emailFrom}</span>
@@ -169,7 +169,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
       <CardHeader className="space-y-3">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
           <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className="break-words text-lg sm:text-xl">{action.title}</CardTitle>
+            <CardTitle className="break-words text-lg sm:text-xl">{decodeHtmlEntities(action.title)}</CardTitle>
             <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
               <span className="flex items-center gap-1">
                 <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -200,7 +200,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-4">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 flex-1 break-words text-sm italic">
-              &ldquo;{action.sourceSentence}&rdquo;
+              &ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;
             </p>
             {action.gmailMessageId && (
               <a
