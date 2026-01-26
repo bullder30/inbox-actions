@@ -97,23 +97,135 @@ export type FetchEmailsOptions = {
 
 /**
  * Classe GmailService pour interagir avec Gmail API
+ * Gère automatiquement le rafraîchissement du token OAuth
  */
 export class GmailService {
   private gmail: gmail_v1.Gmail;
+  private oauth2Client: InstanceType<typeof google.auth.OAuth2>;
   private userId: string;
+  private accountId: string;
+  private refreshToken: string | null;
+  private accessToken: string;
 
-  constructor(accessToken: string, userId: string) {
-    const oauth2Client = new google.auth.OAuth2();
-    oauth2Client.setCredentials({
+  constructor(
+    accessToken: string,
+    userId: string,
+    accountId: string,
+    refreshToken: string | null
+  ) {
+    this.oauth2Client = new google.auth.OAuth2(
+      process.env.GOOGLE_CLIENT_ID,
+      process.env.GOOGLE_CLIENT_SECRET
+    );
+    this.oauth2Client.setCredentials({
       access_token: accessToken,
+      refresh_token: refreshToken,
     });
 
     this.gmail = google.gmail({
       version: "v1",
-      auth: oauth2Client,
+      auth: this.oauth2Client,
     });
 
     this.userId = userId;
+    this.accountId = accountId;
+    this.refreshToken = refreshToken;
+    this.accessToken = accessToken;
+  }
+
+  /**
+   * Rafraîchit le token d'accès et met à jour les credentials
+   * Retourne true si le rafraîchissement a réussi
+   */
+  private async refreshAccessToken(): Promise<boolean> {
+    if (!this.refreshToken) {
+      console.error("[Gmail] No refresh token available - user needs to reconnect Gmail");
+      return false;
+    }
+
+    try {
+      console.log("[Gmail] Refreshing access token...");
+      const response = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+        },
+        body: new URLSearchParams({
+          client_id: process.env.GOOGLE_CLIENT_ID!,
+          client_secret: process.env.GOOGLE_CLIENT_SECRET!,
+          grant_type: "refresh_token",
+          refresh_token: this.refreshToken,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Gmail] Failed to refresh token:", response.status, errorText);
+        if (response.status === 400 || response.status === 401) {
+          console.error("[Gmail] Refresh token is invalid or revoked - user must reconnect Gmail");
+        }
+        return false;
+      }
+
+      const data = await response.json();
+      this.accessToken = data.access_token;
+
+      // Mettre à jour les credentials du client OAuth
+      this.oauth2Client.setCredentials({
+        access_token: data.access_token,
+        refresh_token: this.refreshToken,
+      });
+
+      // Mettre à jour le token en base de données
+      await prisma.account.update({
+        where: { id: this.accountId },
+        data: {
+          access_token: data.access_token,
+          expires_at: Math.floor(Date.now() / 1000) + data.expires_in,
+        },
+      });
+
+      console.log("[Gmail] Token refreshed successfully");
+      return true;
+    } catch (error) {
+      console.error("[Gmail] Error refreshing token:", error);
+      return false;
+    }
+  }
+
+  /**
+   * Exécute une opération Gmail avec retry automatique sur erreur 401
+   * Tente de rafraîchir le token et réessaie une fois en cas d'échec d'authentification
+   */
+  private async withRetryOn401<T>(operation: () => Promise<T>): Promise<T> {
+    try {
+      return await operation();
+    } catch (error: unknown) {
+      // Vérifier si c'est une erreur 401
+      const is401Error =
+        error instanceof Error &&
+        (error.message.includes("401") ||
+          error.message.includes("invalid authentication") ||
+          error.message.includes("Invalid Credentials") ||
+          (error as { code?: number }).code === 401);
+
+      if (is401Error) {
+        console.log("[Gmail] Got 401 error, attempting to refresh token and retry...");
+        const refreshed = await this.refreshAccessToken();
+
+        if (refreshed) {
+          console.log("[Gmail] Retrying operation after token refresh...");
+          return await operation();
+        } else {
+          throw new Error(
+            "Token refresh failed - user must reconnect Gmail. Original error: " +
+              (error instanceof Error ? error.message : String(error))
+          );
+        }
+      }
+
+      throw error;
+    }
   }
 
   /**
@@ -168,13 +280,15 @@ export class GmailService {
       const pageSize = maxResults || 500; // Gmail API max = 500
 
       do {
-        const listResponse = await this.gmail.users.messages.list({
-          userId: "me",
-          maxResults: pageSize,
-          q: gmailQuery,
-          labelIds,
-          pageToken,
-        });
+        const listResponse = await this.withRetryOn401(() =>
+          this.gmail.users.messages.list({
+            userId: "me",
+            maxResults: pageSize,
+            q: gmailQuery,
+            labelIds,
+            pageToken,
+          })
+        );
 
         lastResponse = listResponse.data;
         const messages = listResponse.data.messages || [];
@@ -216,12 +330,14 @@ export class GmailService {
         }
 
         // Récupérer les métadonnées UNIQUEMENT (pas le corps complet)
-        const messageData = await this.gmail.users.messages.get({
-          userId: "me",
-          id: message.id,
-          format: "metadata", // IMPORTANT: metadata only, pas le corps complet
-          metadataHeaders: ["From", "Subject", "Date"], // Headers nécessaires
-        });
+        const messageData = await this.withRetryOn401(() =>
+          this.gmail.users.messages.get({
+            userId: "me",
+            id: message.id!, // Safe: vérifié au-dessus avec if (!message.id) continue
+            format: "metadata", // IMPORTANT: metadata only, pas le corps complet
+            metadataHeaders: ["From", "Subject", "Date"], // Headers nécessaires
+          })
+        );
 
         const metadata = this.extractMetadata(messageData.data);
         if (metadata) {
@@ -320,12 +436,14 @@ export class GmailService {
    */
   async getEmailById(gmailMessageId: string): Promise<EmailMetadataType | null> {
     try {
-      const messageData = await this.gmail.users.messages.get({
-        userId: "me",
-        id: gmailMessageId,
-        format: "metadata",
-        metadataHeaders: ["From", "Subject", "Date"],
-      });
+      const messageData = await this.withRetryOn401(() =>
+        this.gmail.users.messages.get({
+          userId: "me",
+          id: gmailMessageId,
+          format: "metadata",
+          metadataHeaders: ["From", "Subject", "Date"],
+        })
+      );
 
       return this.extractMetadata(messageData.data);
     } catch (error) {
@@ -341,11 +459,13 @@ export class GmailService {
    */
   async getEmailBodyForAnalysis(gmailMessageId: string): Promise<string | null> {
     try {
-      const messageData = await this.gmail.users.messages.get({
-        userId: "me",
-        id: gmailMessageId,
-        format: "full", // Full pour accéder au corps
-      });
+      const messageData = await this.withRetryOn401(() =>
+        this.gmail.users.messages.get({
+          userId: "me",
+          id: gmailMessageId,
+          format: "full", // Full pour accéder au corps
+        })
+      );
 
       // Extraire le texte du corps
       const body = this.extractBody(messageData.data);
@@ -507,12 +627,14 @@ export class GmailService {
       const gmailQuery = `after:${afterTimestamp}`;
 
       // Récupérer la liste des IDs des messages dans INBOX depuis la date
-      const listResponse = await this.gmail.users.messages.list({
-        userId: "me",
-        labelIds: ["INBOX"],
-        q: gmailQuery,
-        maxResults: 500, // Limiter pour éviter les timeouts
-      });
+      const listResponse = await this.withRetryOn401(() =>
+        this.gmail.users.messages.list({
+          userId: "me",
+          labelIds: ["INBOX"],
+          q: gmailQuery,
+          maxResults: 500, // Limiter pour éviter les timeouts
+        })
+      );
 
       const gmailMessageIds = (listResponse.data.messages || [])
         .map((msg) => msg.id)
@@ -542,13 +664,15 @@ export class GmailService {
 }
 
 /**
- * Rafraîchit le token d'accès Google en utilisant le refresh token
+ * Rafraîchit le token d'accès Google en utilisant le refresh token (fonction statique)
+ * Utilisé par createGmailService pour le rafraîchissement initial
  */
-async function refreshGoogleToken(
+async function refreshGoogleTokenStatic(
   refreshToken: string,
   accountId: string
 ): Promise<string | null> {
   try {
+    console.log("[Gmail] Refreshing access token (static)...");
     const response = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       headers: {
@@ -583,6 +707,7 @@ async function refreshGoogleToken(
       },
     });
 
+    console.log("[Gmail] Token refreshed successfully (static)");
     return data.access_token;
   } catch (error) {
     console.error("Error refreshing token:", error);
@@ -594,6 +719,7 @@ async function refreshGoogleToken(
  * Factory function pour créer une instance de GmailService
  * Récupère automatiquement le token d'accès depuis la base de données
  * Rafraîchit automatiquement le token s'il est expiré
+ * Le service créé peut rafraîchir son token dynamiquement pendant les opérations
  */
 export async function createGmailService(
   userId: string
@@ -614,7 +740,14 @@ export async function createGmailService(
     });
 
     if (!account || !account.access_token) {
+      console.log("[Gmail] No Google account found or no access token for user:", userId);
       return null; // Utilisateur n'a pas connecté Gmail
+    }
+
+    if (!account.refresh_token) {
+      console.error("[Gmail] No refresh token available for user:", userId);
+      console.error("[Gmail] User needs to reconnect Gmail with offline access");
+      return null;
     }
 
     let accessToken = account.access_token;
@@ -626,27 +759,22 @@ export async function createGmailService(
 
     if (shouldRefresh) {
       // Token expiré ou expires_at non défini, essayer de le rafraîchir
-      if (account.refresh_token) {
-        console.log("[Gmail] Access token expired or missing expires_at, refreshing...");
-        const newToken = await refreshGoogleToken(
-          account.refresh_token,
-          account.id
-        );
+      console.log("[Gmail] Access token expired or missing expires_at, refreshing before creating service...");
+      const newToken = await refreshGoogleTokenStatic(
+        account.refresh_token,
+        account.id
+      );
 
-        if (newToken) {
-          accessToken = newToken;
-          console.log("[Gmail] Token refreshed successfully");
-        } else {
-          console.error("[Gmail] Failed to refresh token - user may need to reconnect Gmail");
-          return null; // Échec du rafraîchissement
-        }
+      if (newToken) {
+        accessToken = newToken;
       } else {
-        console.error("[Gmail] No refresh token available - user needs to reconnect Gmail");
-        return null; // Pas de refresh token
+        console.error("[Gmail] Failed to refresh token during service creation - user may need to reconnect Gmail");
+        return null; // Échec du rafraîchissement
       }
     }
 
-    return new GmailService(accessToken, userId);
+    // Créer le service avec la capacité de rafraîchir le token dynamiquement
+    return new GmailService(accessToken, userId, account.id, account.refresh_token);
   } catch (error) {
     console.error("Error creating Gmail service:", error);
     return null;
