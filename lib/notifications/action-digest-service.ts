@@ -1,4 +1,5 @@
 import ActionDigestEmail from "@/emails/action-digest-email";
+import { render } from "@react-email/render";
 import { Resend } from "resend";
 import { prisma } from "@/lib/db";
 
@@ -61,18 +62,23 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
     // Utiliser l'adresse from correcte selon l'environnement
     const fromAddress = process.env.EMAIL_FROM || "onboarding@resend.dev";
 
-    const { data, error } = await resend.emails.send({
-      from: fromAddress,
-      to: user.email,
-      subject: `${stats.totalTodo} action${stats.totalTodo > 1 ? "s" : ""} en attente`,
-      react: ActionDigestEmail({
+    // Pré-rendre l'email en HTML pour éviter les erreurs sur Vercel serverless
+    const emailHtml = await render(
+      ActionDigestEmail({
         userName: user.name || "Utilisateur",
         totalTodo: stats.totalTodo,
         urgentCount: stats.urgentCount,
         overdueCount: stats.overdueCount,
         dashboardUrl,
         unsubscribeUrl,
-      }),
+      })
+    );
+
+    const { data, error } = await resend.emails.send({
+      from: fromAddress,
+      to: user.email,
+      subject: `${stats.totalTodo} action${stats.totalTodo > 1 ? "s" : ""} en attente`,
+      html: emailHtml,
     });
 
     if (error) {
