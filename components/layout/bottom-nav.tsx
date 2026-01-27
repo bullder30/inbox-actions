@@ -1,6 +1,6 @@
 "use client";
 
-import { Inbox, LayoutDashboard, Settings } from "lucide-react";
+import { Home, Inbox, Settings } from "lucide-react";
 
 import Link from "next/link";
 import { cn } from "@/lib/utils";
@@ -13,8 +13,8 @@ interface BottomNavProps {
 const navItems = [
   {
     href: "/dashboard",
-    icon: LayoutDashboard,
-    label: "Tableau",
+    icon: Home,
+    label: "Accueil",
   },
   {
     href: "/actions",
