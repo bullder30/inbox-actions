@@ -550,10 +550,6 @@ export class GmailService {
     const payload = message.payload;
     if (!payload) return "";
 
-    console.log("[extractBody] Payload mimeType:", payload.mimeType);
-    console.log("[extractBody] Has payload.body.data:", !!payload.body?.data);
-    console.log("[extractBody] Has payload.parts:", !!payload.parts, "count:", payload.parts?.length);
-
     // Fonction pour vérifier si une partie utilise quoted-printable
     const isQuotedPrintable = (part: gmail_v1.Schema$MessagePart): boolean => {
       const headers = part.headers || [];
@@ -602,11 +598,9 @@ export class GmailService {
       let htmlText = "";
 
       for (const part of parts) {
-        console.log("[extractFromParts] Part mimeType:", part.mimeType, "hasData:", !!part.body?.data, "isQP:", isQuotedPrintable(part));
         if (part.mimeType === "text/plain" && part.body?.data) {
           // Décoder le corps avec gestion quoted-printable
           const decoded = decodePartBody(part, part.body.data);
-          console.log("[extractFromParts] text/plain decoded (first 200 chars):", decoded.substring(0, 200));
           plainText += decoded + "\n";
         } else if (part.mimeType === "text/html" && part.body?.data) {
           // Décoder le HTML et convertir en texte brut (fallback)
