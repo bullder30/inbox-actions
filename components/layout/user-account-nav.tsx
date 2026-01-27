@@ -7,7 +7,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { LayoutDashboard, LogOut, Settings } from "lucide-react";
+import { Home, Inbox, LogOut, Settings } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
 import { Drawer } from "vaul";
@@ -69,8 +69,8 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <LayoutDashboard className="size-4" />
-                  <p className="text-sm">Tableau de bord</p>
+                  <Home className="size-4" />
+                  <p className="text-sm">Accueil</p>
                 </Link>
               </li>
 
@@ -80,7 +80,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <LayoutDashboard className="size-4" />
+                  <Inbox className="size-4" />
                   <p className="text-sm">Actions</p>
                 </Link>
               </li>
@@ -141,14 +141,14 @@ export function UserAccountNav() {
 
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="flex items-center space-x-2.5">
-            <LayoutDashboard className="size-4" />
-            <p className="text-sm">Tableau de bord</p>
+            <Home className="size-4" />
+            <p className="text-sm">Accueil</p>
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/actions" className="flex items-center space-x-2.5">
-            <LayoutDashboard className="size-4" />
+            <Inbox className="size-4" />
             <p className="text-sm">Actions</p>
           </Link>
         </DropdownMenuItem>
