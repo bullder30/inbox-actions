@@ -13,7 +13,7 @@ import { ModeToggle } from "@/components/layout/mode-toggle";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { UserAccountNav } from "@/components/layout/user-account-nav";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
-import { InboxActionsLogo } from "@/components/shared/inbox-actions-logo";
+import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 import { ScanStatusHeader } from "@/components/shared/scan-status-header";
 
 interface ProtectedLayoutProps {
@@ -53,8 +53,9 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
         <header className="sticky top-0 z-50 flex h-14 bg-background px-4 lg:h-[60px] xl:px-8">
           <MaxWidthWrapper className="flex max-w-7xl items-center gap-x-3 px-0">
             {/* Logo et titre de l'app sur mobile */}
-            <div className="md:hidden">
-              <InboxActionsLogo size="sm" showText />
+            <div className="flex items-center gap-2 md:hidden">
+              <InboxActionsIcon size="md" />
+              <span className="text-xl font-bold">Inbox Actions</span>
             </div>
 
             {/* MobileSheetSidebar caché - remplacé par BottomNav sur mobile */}
