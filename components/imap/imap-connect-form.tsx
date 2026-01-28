@@ -5,7 +5,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { toast } from "sonner";
-import { Loader2, Mail, Lock, Server, Folder, Info } from "lucide-react";
+import { Loader2, Mail, Lock, Server, Folder, Info, ExternalLink } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -140,18 +140,26 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
       <CardContent>
         <Alert className="mb-6">
           <Info className="size-4" />
-          <AlertTitle>App Password requis pour Gmail</AlertTitle>
-          <AlertDescription>
-            Si vous utilisez Gmail, vous devez créer un{" "}
+          <AlertTitle>Comment connecter votre compte Gmail ?</AlertTitle>
+          <AlertDescription className="mt-2 space-y-3">
+            <p>
+              Pour des raisons de sécurité, Gmail nécessite un <strong>App Password</strong> (mot de passe d&apos;application) :
+            </p>
+            <ol className="list-inside list-decimal space-y-1 text-sm">
+              <li>Activez la <a href="https://myaccount.google.com/signinoptions/two-step-verification" target="_blank" rel="noopener noreferrer" className="font-medium underline">validation en 2 étapes</a> si ce n&apos;est pas déjà fait</li>
+              <li>Créez un App Password via le lien ci-dessous</li>
+              <li>Copiez le mot de passe généré (16 caractères)</li>
+              <li>Collez-le dans le champ &quot;Mot de passe&quot; ci-dessous</li>
+            </ol>
             <a
               href="https://myaccount.google.com/apppasswords"
               target="_blank"
               rel="noopener noreferrer"
-              className="font-medium underline"
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground hover:bg-primary/90"
             >
-              App Password
-            </a>{" "}
-            (nécessite la validation en 2 étapes activée).
+              Créer un App Password
+              <ExternalLink className="size-3" />
+            </a>
           </AlertDescription>
         </Alert>
 
