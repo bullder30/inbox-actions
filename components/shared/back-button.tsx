@@ -4,7 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 interface BackButtonProps {
@@ -28,17 +28,17 @@ export function BackButton({
   // If href is provided, use a Link for direct navigation
   if (href) {
     return (
-      <Button
-        variant="ghost"
-        size="sm"
-        asChild
-        className={cn("gap-2", className)}
+      <Link
+        href={href}
+        className={cn(
+          buttonVariants({ variant: "ghost", size: "sm" }),
+          "gap-2",
+          className
+        )}
       >
-        <Link href={href} className="inline-flex items-center gap-2">
-          <ArrowLeft className="size-4" />
-          {label}
-        </Link>
-      </Button>
+        <ArrowLeft className="size-4" />
+        {label}
+      </Link>
     );
   }
 
