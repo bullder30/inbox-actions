@@ -61,14 +61,20 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
 
   return (
     <TooltipProvider delayDuration={0}>
-      <div className="sticky top-0 h-full">
-        <ScrollArea className="h-full overflow-y-auto border-r">
-          <aside
-            className={cn(
-              isSidebarExpanded ? "w-[220px] xl:w-[260px]" : "w-[68px]",
-              "hidden h-screen md:block",
-            )}
-          >
+      <div
+        className={cn(
+          "hidden border-r transition-[width] duration-200 md:block",
+          isSidebarExpanded ? "w-[220px] xl:w-[260px]" : "w-[68px]",
+        )}
+      >
+        <div className="sticky top-0 h-screen">
+          <ScrollArea className="h-full overflow-y-auto">
+            <aside
+              className={cn(
+                "h-full",
+                isSidebarExpanded ? "w-[220px] xl:w-[260px]" : "w-[68px]",
+              )}
+            >
             <div className="flex h-full max-h-screen flex-1 flex-col gap-2">
               <div className="flex h-14 items-center p-4 lg:h-[60px]">
                 {isSidebarExpanded ? (
@@ -137,7 +143,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                                 <Icon className="size-5" />
                                 {item.title}
                                 {item.badge && (
-                                  <Badge className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full">
+                                  <Badge variant="gradient" className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full">
                                     {item.badge}
                                   </Badge>
                                 )}
@@ -160,7 +166,10 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                                     <span className="relative flex size-full items-center justify-center">
                                       <Icon className="size-5" />
                                       {item.badge && (
-                                        <span className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                                        <span
+                                          className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                                          style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                                        >
                                           {item.badge > 9 ? "9+" : item.badge}
                                         </span>
                                       )}
@@ -183,6 +192,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
             </div>
           </aside>
         </ScrollArea>
+        </div>
       </div>
     </TooltipProvider>
   );
@@ -252,7 +262,7 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
                               <Icon className="size-5" />
                               {item.title}
                               {item.badge && (
-                                <Badge className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full">
+                                <Badge variant="gradient" className="ml-auto flex size-5 shrink-0 items-center justify-center rounded-full">
                                   {item.badge}
                                 </Badge>
                               )}

@@ -9,12 +9,11 @@ import {
   MobileSheetSidebar,
 } from "@/components/layout/dashboard-sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
-import { ModeToggle } from "@/components/layout/mode-toggle";
+import { ScrollToTop } from "@/components/shared/scroll-to-top";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { UserAccountNav } from "@/components/layout/user-account-nav";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
-import { ScanStatusHeader } from "@/components/shared/scan-status-header";
 
 interface ProtectedLayoutProps {
   children: React.ReactNode;
@@ -64,14 +63,12 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
             </div>
 
             <div className="flex-1" /> {/* Spacer pour pousser les éléments à droite */}
-            <ModeToggle />
             <UserAccountNav />
           </MaxWidthWrapper>
         </header>
 
         <main className="mt-14 flex-1 overflow-x-hidden p-4 pb-20 md:mt-0 md:pb-4 xl:px-8">
           <MaxWidthWrapper className="flex h-full max-w-7xl flex-col gap-4 px-0 lg:gap-6">
-            <ScanStatusHeader />
             {children}
           </MaxWidthWrapper>
         </main>
@@ -81,6 +78,9 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
 
       {/* Bottom navigation mobile */}
       <BottomNav todoCount={todoCount} />
+
+      {/* Scroll to top button */}
+      <ScrollToTop />
     </div>
   );
 }

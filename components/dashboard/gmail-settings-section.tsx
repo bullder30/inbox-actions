@@ -45,7 +45,7 @@ export function GmailSettingsSection() {
                 <h3 className="text-lg font-semibold">Gmail</h3>
               </div>
               <Badge
-                variant={status.connected ? "default" : "secondary"}
+                variant={status.connected ? "gradient" : "secondary"}
                 className="gap-1"
               >
                 {status.connected ? (

@@ -20,7 +20,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
-  ArrowLeft,
   Check,
   X,
   Calendar,
@@ -29,6 +28,7 @@ import {
   Loader2,
   MailOpen,
 } from "lucide-react";
+import { BackButton } from "@/components/shared/back-button";
 import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -141,14 +141,7 @@ export default function ActionDetailPage({
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/actions")}
-          className="gap-2"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          Retour aux actions
-        </Button>
+        <BackButton label="Retour aux actions" fallbackUrl="/actions" />
       </div>
 
       {/* Main Card */}

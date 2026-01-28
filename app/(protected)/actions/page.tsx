@@ -45,7 +45,7 @@ export default function ActionsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
       <div>
         <h1 className="font-heading text-2xl font-semibold">Actions à faire aujourd&apos;hui</h1>
       </div>
@@ -57,7 +57,7 @@ export default function ActionsPage() {
       ) : (
         <ActionList actions={actions} onUpdate={handleUpdate} />
       )}
-    </div>
+    </>
   );
 }
 

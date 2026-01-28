@@ -54,14 +54,20 @@ export function BottomNav({ todoCount = 0 }: BottomNavProps) {
               <div className="relative">
                 <Icon className="size-5" />
                 {item.showBadge && todoCount > 0 && (
-                  <span className="absolute -right-2 -top-1 flex size-4 items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
+                  <span
+                    className="absolute -right-2 -top-1 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                    style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                  >
                     {todoCount}
                   </span>
                 )}
               </div>
               <span className="text-[10px] font-medium">{item.label}</span>
               {isActive && (
-                <div className="absolute bottom-1 h-0.5 w-8 rounded-full bg-primary" />
+                <div
+                  className="absolute bottom-1 h-0.5 w-8 rounded-full"
+                  style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                />
               )}
             </Link>
           );

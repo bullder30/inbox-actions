@@ -7,6 +7,7 @@ import { ActionCard } from "@/components/actions/action-card";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { WelcomeToast } from "@/components/dashboard/welcome-toast";
+import { ScanStatusHeader } from "@/components/shared/scan-status-header";
 import Link from "next/link";
 import packageJson from "@/package.json";
 import { StatsCard } from "@/components/dashboard/stats-card";
@@ -108,6 +109,9 @@ export default async function DashboardPage() {
           <strong>Version {packageJson.version} (MVP)</strong> — Cette version analyse uniquement les emails rédigés en français.
         </AlertDescription>
       </Alert>
+
+      {/* Scan Status */}
+      <ScanStatusHeader />
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

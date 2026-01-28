@@ -4,10 +4,11 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Home, Inbox, LogOut, Settings } from "lucide-react";
+import { ExternalLink, FileText, Home, Inbox, LogOut, Mail, Settings, Shield } from "lucide-react";
 import { signOut, useSession } from "next-auth/react";
 
 import { Drawer } from "vaul";
@@ -96,6 +97,60 @@ export function UserAccountNav() {
                 </Link>
               </li>
 
+              <li className="my-2 border-t" />
+
+              <li className="rounded-lg text-foreground hover:bg-muted">
+                <Link
+                  href="/contact"
+                  onClick={closeDrawer}
+                  className="flex w-full items-center gap-3 px-2.5 py-2"
+                >
+                  <Mail className="size-4" />
+                  <p className="text-sm">Contact</p>
+                </Link>
+              </li>
+
+              <li className="px-2.5 py-2 text-xs font-medium text-muted-foreground">
+                Informations légales
+              </li>
+
+              <li className="rounded-lg text-foreground hover:bg-muted">
+                <Link
+                  href="/terms"
+                  onClick={closeDrawer}
+                  className="flex w-full items-center gap-3 px-2.5 py-2"
+                >
+                  <FileText className="size-4" />
+                  <p className="text-sm">CGU</p>
+                </Link>
+              </li>
+
+              <li className="rounded-lg text-foreground hover:bg-muted">
+                <Link
+                  href="/privacy"
+                  onClick={closeDrawer}
+                  className="flex w-full items-center gap-3 px-2.5 py-2"
+                >
+                  <Shield className="size-4" />
+                  <p className="text-sm">Confidentialité</p>
+                </Link>
+              </li>
+
+              <li className="rounded-lg text-foreground hover:bg-muted">
+                <Link
+                  href="https://github.com/bullder30/inbox-actions"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={closeDrawer}
+                  className="flex w-full items-center gap-3 px-2.5 py-2"
+                >
+                  <ExternalLink className="size-4" />
+                  <p className="text-sm">Licence AGPL-3.0</p>
+                </Link>
+              </li>
+
+              <li className="my-2 border-t" />
+
               <li
                 className="rounded-lg text-foreground hover:bg-muted"
                 onClick={(event) => {
@@ -162,6 +217,45 @@ export function UserAccountNav() {
             <p className="text-sm">Paramètres</p>
           </Link>
         </DropdownMenuItem>
+        <DropdownMenuSeparator />
+
+        <DropdownMenuItem asChild>
+          <Link href="/contact" className="flex items-center space-x-2.5">
+            <Mail className="size-4" />
+            <p className="text-sm">Contact</p>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuLabel className="text-xs font-medium text-muted-foreground">
+          Informations légales
+        </DropdownMenuLabel>
+
+        <DropdownMenuItem asChild>
+          <Link href="/terms" className="flex items-center space-x-2.5">
+            <FileText className="size-4" />
+            <p className="text-sm">CGU</p>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link href="/privacy" className="flex items-center space-x-2.5">
+            <Shield className="size-4" />
+            <p className="text-sm">Confidentialité</p>
+          </Link>
+        </DropdownMenuItem>
+
+        <DropdownMenuItem asChild>
+          <Link
+            href="https://github.com/bullder30/inbox-actions"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center space-x-2.5"
+          >
+            <ExternalLink className="size-4" />
+            <p className="text-sm">Licence AGPL-3.0</p>
+          </Link>
+        </DropdownMenuItem>
+
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="cursor-pointer"

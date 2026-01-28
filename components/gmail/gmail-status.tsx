@@ -77,7 +77,7 @@ export function GmailStatus() {
         <div className="flex items-center justify-between">
           <span className="text-sm font-medium">Connexion</span>
           <Badge
-            variant={status.connected ? "default" : "secondary"}
+            variant={status.connected ? "gradient" : "secondary"}
             className="gap-1"
           >
             {status.connected ? (
@@ -100,7 +100,7 @@ export function GmailStatus() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Accès Gmail</span>
               <Badge
-                variant={status.hasGmailScope ? "default" : "destructive"}
+                variant={status.hasGmailScope ? "gradient" : "destructive"}
                 className="gap-1"
               >
                 {status.hasGmailScope ? (

@@ -1,11 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
-import { ArrowLeft, Loader2, Mail, Send } from "lucide-react";
+import { Loader2, Mail, Send } from "lucide-react";
 
-import { cn } from "@/lib/utils";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { BackButton } from "@/components/shared/back-button";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -62,16 +61,10 @@ export default function ContactPage() {
   return (
     <div className="flex min-h-screen flex-col">
       <div className="container flex flex-1 flex-col items-center justify-center py-10">
-      <Link
-        href="/"
-        className={cn(
-          buttonVariants({ variant: "outline", size: "sm" }),
-          "absolute left-4 top-4 md:left-8 md:top-8",
-        )}
-      >
-        <ArrowLeft className="mr-2 size-4" />
-        Retour
-      </Link>
+      <BackButton
+        fallbackUrl="/"
+        className="absolute left-4 top-4 md:left-8 md:top-8"
+      />
 
       <div className="mx-auto w-full max-w-lg">
         <div className="mb-8 flex flex-col items-center space-y-2 text-center">

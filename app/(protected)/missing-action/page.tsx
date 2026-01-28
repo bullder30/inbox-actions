@@ -1,6 +1,7 @@
 "use client";
 
-import { ArrowLeft, Clock, Loader2, Mail, MailOpen, Plus } from "lucide-react";
+import { Clock, Loader2, Mail, MailOpen, Plus } from "lucide-react";
+import { BackButton } from "@/components/shared/back-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -119,17 +120,10 @@ export default function MissingActionPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <>
       {/* Header */}
       <div>
-        <Button
-          variant="ghost"
-          onClick={() => router.push("/actions")}
-          className="gap-2"
-        >
-          <ArrowLeft className="size-4" />
-          Retour aux actions
-        </Button>
+        <BackButton label="Retour aux actions" fallbackUrl="/actions" />
       </div>
 
       <div>
@@ -163,7 +157,7 @@ export default function MissingActionPage() {
                         {email.subject || "(sans objet)"}
                       </CardTitle>
                       <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                        <Badge variant="outline" className="px-1.5 text-[10px] sm:px-2 sm:text-xs">
+                        <Badge variant="gradient" className="px-1.5 text-[10px] sm:px-2 sm:text-xs">
                           {email.reason}
                         </Badge>
                         <a
@@ -331,6 +325,6 @@ export default function MissingActionPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   );
 }

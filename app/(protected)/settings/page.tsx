@@ -1,8 +1,9 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail } from "lucide-react";
+import { Loader2, Mail, Moon, Sun, Monitor } from "lucide-react";
 import { useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -10,15 +11,23 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [gmailConnected, setGmailConnected] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     loadSettings();
@@ -171,6 +180,21 @@ export default function SettingsPage() {
               <Skeleton className="h-9 w-52" />
             </CardContent>
           </Card>
+
+          {/* Skeleton 4 - Apparence */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-32" />
+              <Skeleton className="mt-2 h-4 w-64" />
+            </CardHeader>
+            <CardContent>
+              <div className="flex gap-2">
+                <Skeleton className="h-9 w-20" />
+                <Skeleton className="h-9 w-24" />
+                <Skeleton className="h-9 w-24" />
+              </div>
+            </CardContent>
+          </Card>
         </div>
       ) : (
         <div className="space-y-4">
@@ -272,6 +296,64 @@ export default function SettingsPage() {
                 <p className="text-sm text-muted-foreground">
                   Gmail n&apos;est pas actuellement connecté
                 </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Option 4: Thème */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Apparence</CardTitle>
+              <CardDescription>
+                Choisissez le thème de l&apos;application
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {mounted ? (
+                <div className="flex flex-wrap gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTheme("light")}
+                    className={cn(
+                      "gap-2",
+                      theme === "light" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <Sun className="size-4" />
+                    Clair
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTheme("dark")}
+                    className={cn(
+                      "gap-2",
+                      theme === "dark" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <Moon className="size-4" />
+                    Sombre
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setTheme("system")}
+                    className={cn(
+                      "gap-2",
+                      theme === "system" && "border-primary bg-primary/10"
+                    )}
+                  >
+                    <Monitor className="size-4" />
+                    Système
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex gap-2">
+                  <Skeleton className="h-9 w-20" />
+                  <Skeleton className="h-9 w-24" />
+                  <Skeleton className="h-9 w-24" />
+                </div>
               )}
             </CardContent>
           </Card>
