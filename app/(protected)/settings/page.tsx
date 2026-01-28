@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, Moon, Sun, Monitor } from "lucide-react";
+import { Loader2, Mail, Moon, Sun, Monitor, Server } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
@@ -12,6 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { IMAPConnectForm, IMAPStatus } from "@/components/imap";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -23,6 +24,11 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [syncEnabled, setSyncEnabled] = useState(true);
   const [disconnecting, setDisconnecting] = useState(false);
+
+  // IMAP state
+  const [emailProvider, setEmailProvider] = useState<"GMAIL" | "IMAP">("GMAIL");
+  const [imapConfigured, setImapConfigured] = useState(false);
+  const [showImapForm, setShowImapForm] = useState(false);
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -43,12 +49,20 @@ export default function SettingsPage() {
         setGmailConnected(gmailData.connected);
       }
 
+      // Charger le statut IMAP
+      const imapResponse = await fetch("/api/imap/status");
+      if (imapResponse.ok) {
+        const imapData = await imapResponse.json();
+        setImapConfigured(imapData.configured ?? false);
+      }
+
       // Charger les préférences utilisateur
       const prefsResponse = await fetch("/api/user/preferences");
       if (prefsResponse.ok) {
         const prefsData = await prefsResponse.json();
         setEmailNotifications(prefsData.emailNotifications ?? true);
         setSyncEnabled(prefsData.syncEnabled ?? true);
+        setEmailProvider(prefsData.emailProvider ?? "GMAIL");
       }
     } catch (error) {
       console.error("Error loading settings:", error);
@@ -262,40 +276,116 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Option 3: Révoquer accès Gmail */}
+          {/* Option 3: Provider Email */}
           <Card>
             <CardHeader>
-              <CardTitle>Accès Gmail</CardTitle>
+              <CardTitle>Connexion Email</CardTitle>
               <CardDescription>
-                {gmailConnected
-                  ? "Révoquer l'accès à votre compte Gmail"
-                  : "Gmail n'est pas connecté"}
+                Choisissez comment synchroniser vos emails
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {gmailConnected ? (
+            <CardContent className="space-y-4">
+              {/* Provider selector */}
+              <div className="flex flex-wrap gap-2">
                 <Button
-                  onClick={handleDisconnectGmail}
-                  disabled={disconnecting}
-                  variant="destructive"
+                  variant="outline"
                   size="sm"
-                >
-                  {disconnecting ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      Déconnexion...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="mr-2 size-4" />
-                      Révoquer l&apos;accès Gmail
-                    </>
+                  onClick={() => {
+                    setEmailProvider("GMAIL");
+                    setShowImapForm(false);
+                  }}
+                  className={cn(
+                    "gap-2",
+                    emailProvider === "GMAIL" && "border-primary bg-primary/10"
                   )}
+                >
+                  <Mail className="size-4" />
+                  Gmail (OAuth)
                 </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Gmail n&apos;est pas actuellement connecté
-                </p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setEmailProvider("IMAP");
+                    if (!imapConfigured) {
+                      setShowImapForm(true);
+                    }
+                  }}
+                  className={cn(
+                    "gap-2",
+                    emailProvider === "IMAP" && "border-primary bg-primary/10"
+                  )}
+                >
+                  <Server className="size-4" />
+                  IMAP
+                </Button>
+              </div>
+
+              {/* Gmail section */}
+              {emailProvider === "GMAIL" && (
+                <div className="mt-4 rounded-lg border p-4">
+                  <h4 className="mb-2 font-medium">Gmail OAuth</h4>
+                  {gmailConnected ? (
+                    <div className="space-y-3">
+                      <p className="text-sm text-muted-foreground">
+                        Gmail est connecté via OAuth. La synchronisation est automatique.
+                      </p>
+                      <Button
+                        onClick={handleDisconnectGmail}
+                        disabled={disconnecting}
+                        variant="destructive"
+                        size="sm"
+                      >
+                        {disconnecting ? (
+                          <>
+                            <Loader2 className="mr-2 size-4 animate-spin" />
+                            Déconnexion...
+                          </>
+                        ) : (
+                          <>
+                            <Mail className="mr-2 size-4" />
+                            Révoquer l&apos;accès Gmail
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">
+                      Gmail n&apos;est pas connecté. Reconnectez-vous pour utiliser OAuth.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              {/* IMAP section */}
+              {emailProvider === "IMAP" && (
+                <div className="mt-4">
+                  {imapConfigured && !showImapForm ? (
+                    <div className="space-y-4">
+                      <IMAPStatus
+                        onDisconnect={() => {
+                          setImapConfigured(false);
+                          setShowImapForm(true);
+                        }}
+                      />
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowImapForm(true)}
+                      >
+                        Modifier la configuration
+                      </Button>
+                    </div>
+                  ) : (
+                    <IMAPConnectForm
+                      onSuccess={() => {
+                        setImapConfigured(true);
+                        setShowImapForm(false);
+                        loadSettings();
+                      }}
+                    />
+                  )}
+                </div>
               )}
             </CardContent>
           </Card>
