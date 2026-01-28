@@ -114,7 +114,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             <div className="min-w-0 flex-1 space-y-1">
               <CardTitle className="break-words text-sm sm:text-base">{decodeHtmlEntities(action.title)}</CardTitle>
               <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-                <Mail className="h-3 w-3 shrink-0" />
+                <Mail className="size-3 shrink-0" />
                 <span className="max-w-[200px] truncate">{action.emailFrom}</span>
               </div>
             </div>
@@ -139,7 +139,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
                   ? "font-medium text-orange-700"
                   : "text-muted-foreground"
               )}>
-                <Calendar className="h-3 w-3 shrink-0" />
+                <Calendar className="size-3 shrink-0" />
                 <span>
                   {isOverdue ? "⚠️ En retard" : isUrgent ? "⏰ Urgent" : "Échéance"}{" "}
                   {formatDistanceToNow(new Date(action.dueDate), { locale: fr, addSuffix: true })}
@@ -149,7 +149,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             <div className="flex gap-2 sm:ml-auto">
               <Link href={`/actions/${action.id}`} className="w-full sm:w-auto">
                 <Button variant="ghost" size="sm" className="w-full sm:w-auto">
-                  <ExternalLink className="mr-2 h-4 w-4 sm:mr-0" />
+                  <ExternalLink className="mr-2 size-4 sm:mr-0" />
                   <span className="sm:hidden">Voir</span>
                 </Button>
               </Link>
@@ -172,12 +172,12 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             <CardTitle className="break-words text-lg sm:text-xl">{decodeHtmlEntities(action.title)}</CardTitle>
             <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
               <span className="flex items-center gap-1">
-                <Mail className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Mail className="size-3 sm:size-4" />
                 <span className="max-w-[180px] truncate sm:max-w-none">{action.emailFrom}</span>
               </span>
               <span className="hidden sm:inline">•</span>
               <span className="flex items-center gap-1">
-                <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                <Clock className="size-3 sm:size-4" />
                 <span>
                   Reçu {formatDistanceToNow(new Date(action.emailReceivedAt), { locale: fr, addSuffix: true })}
                 </span>
@@ -209,8 +209,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
               >
-                <Button variant="ghost" size="sm" className="h-7 w-7 shrink-0 p-0">
-                  <MailOpen className="h-3.5 w-3.5" />
+                <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                  <MailOpen className="size-3.5" />
                 </Button>
               </a>
             )}
@@ -229,7 +229,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
                 : "border-slate-200 bg-slate-50 text-slate-800"
             )}
           >
-            <Calendar className="h-4 w-4" />
+            <Calendar className="size-4" />
             <span className="text-sm font-medium">
               {isOverdue ? "⚠️ En retard" : isUrgent ? "⏰ Urgent" : "Échéance"}{" "}
               {new Date(action.dueDate).toLocaleDateString("fr-FR", {
@@ -264,7 +264,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               size="sm"
               className="w-full sm:w-auto"
             >
-              <Check className="mr-2 h-4 w-4" />
+              <Check className="mr-2 size-4" />
               Fait
             </Button>
             <Button
@@ -274,14 +274,14 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               size="sm"
               className="w-full sm:w-auto"
             >
-              <X className="mr-2 h-4 w-4" />
+              <X className="mr-2 size-4" />
               Ignorer
             </Button>
           </>
         ) : (
           <Link href={`/actions/${action.id}`} className="w-full">
             <Button variant="outline" className="w-full">
-              <ExternalLink className="mr-2 h-4 w-4" />
+              <ExternalLink className="mr-2 size-4" />
               Voir les détails
             </Button>
           </Link>

@@ -115,7 +115,7 @@ export default function ActionDetailPage({
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="size-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -156,10 +156,10 @@ export default function ActionDetailPage({
             <div className="flex-1 space-y-1">
               <CardTitle className="text-2xl">{decodeHtmlEntities(action.title)}</CardTitle>
               <CardDescription className="flex flex-wrap items-center gap-2 text-base">
-                <Mail className="h-4 w-4" />
+                <Mail className="size-4" />
                 <span>{action.emailFrom}</span>
                 <span>•</span>
-                <Clock className="h-4 w-4" />
+                <Clock className="size-4" />
                 <span>
                   Reçu{" "}
                   {formatDistanceToNow(new Date(action.emailReceivedAt), {
@@ -196,7 +196,7 @@ export default function ActionDetailPage({
                     rel="noopener noreferrer"
                   >
                     <Button variant="ghost" size="sm" className="gap-2">
-                      <MailOpen className="h-4 w-4" />
+                      <MailOpen className="size-4" />
                       Voir email
                     </Button>
                   </a>
@@ -221,7 +221,7 @@ export default function ActionDetailPage({
                     : "border-slate-300 bg-slate-50 text-slate-800"
                 )}
               >
-                <Calendar className="h-4 w-4" />
+                <Calendar className="size-4" />
                 <span className="text-sm font-medium">
                   {isOverdue ? "⚠️ En retard" : isUrgent ? "⏰ Urgent" : ""}{" "}
                   {new Date(action.dueDate).toLocaleDateString("fr-FR", {
@@ -287,7 +287,7 @@ export default function ActionDetailPage({
                 disabled={actionLoading}
                 className="flex-1"
               >
-                <Check className="mr-2 h-4 w-4" />
+                <Check className="mr-2 size-4" />
                 Marquer comme fait
               </Button>
               <Button
@@ -296,7 +296,7 @@ export default function ActionDetailPage({
                 variant="outline"
                 className="flex-1"
               >
-                <X className="mr-2 h-4 w-4" />
+                <X className="mr-2 size-4" />
                 Ignorer
               </Button>
             </>

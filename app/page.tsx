@@ -64,7 +64,7 @@ export default async function HomePage() {
               </span>
             </div>
             <div className="mb-6 inline-flex items-center rounded-full border px-4 py-1.5 text-sm font-medium">
-              <Eye className="mr-2 h-4 w-4 text-blue-500" />
+              <Eye className="mr-2 size-4 text-blue-500" />
               Zéro stress • Zéro doute • Toujours explicable
             </div>
 
@@ -81,7 +81,7 @@ export default async function HomePage() {
             <div className="mt-10 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto">
-                  <Mail className="mr-2 h-5 w-5" />
+                  <Mail className="mr-2 size-5" />
                   Connecter Gmail gratuitement
                 </Button>
               </Link>
@@ -94,7 +94,7 @@ export default async function HomePage() {
 
             <div className="mt-8 flex flex-col items-center gap-2 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <ShieldCheck className="h-5 w-5 text-green-600" />
+                <ShieldCheck className="size-5 text-green-600" />
                 <span>Gmail lecture seule • RGPD • Chiffrement</span>
               </div>
               <p className="text-xs">
@@ -117,15 +117,15 @@ export default async function HomePage() {
             </p>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
               <div className="rounded-lg border bg-card p-4">
-                <CheckCircle2 className="mx-auto h-8 w-8 text-green-600" />
+                <CheckCircle2 className="mx-auto size-8 text-green-600" />
                 <p className="mt-2 font-medium">Quand le dernier scan a eu lieu</p>
               </div>
               <div className="rounded-lg border bg-card p-4">
-                <CheckCircle2 className="mx-auto h-8 w-8 text-green-600" />
+                <CheckCircle2 className="mx-auto size-8 text-green-600" />
                 <p className="mt-2 font-medium">Combien d&apos;emails ont été analysés</p>
               </div>
               <div className="rounded-lg border bg-card p-4">
-                <CheckCircle2 className="mx-auto h-8 w-8 text-green-600" />
+                <CheckCircle2 className="mx-auto size-8 text-green-600" />
                 <p className="mt-2 font-medium">Pourquoi certains ont été ignorés</p>
               </div>
             </div>
@@ -145,8 +145,8 @@ export default async function HomePage() {
           <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
             {/* Feature 1 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
-                <Eye className="h-6 w-6 text-blue-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
+                <Eye className="size-6 text-blue-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Détection déterministe</h3>
               <p className="text-muted-foreground">
@@ -157,8 +157,8 @@ export default async function HomePage() {
 
             {/* Feature 2 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/10">
-                <AlertCircle className="h-6 w-6 text-purple-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-purple-500/10">
+                <AlertCircle className="size-6 text-purple-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Corrigez immédiatement</h3>
               <p className="text-muted-foreground">
@@ -169,8 +169,8 @@ export default async function HomePage() {
 
             {/* Feature 3 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-                <CheckCircle2 className="h-6 w-6 text-green-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-green-500/10">
+                <CheckCircle2 className="size-6 text-green-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Phrase source visible</h3>
               <p className="text-muted-foreground">
@@ -181,8 +181,8 @@ export default async function HomePage() {
 
             {/* Feature 4 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-orange-500/10">
-                <Clock className="h-6 w-6 text-orange-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-orange-500/10">
+                <Clock className="size-6 text-orange-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Synchronisation à la demande</h3>
               <p className="text-muted-foreground">
@@ -193,8 +193,8 @@ export default async function HomePage() {
 
             {/* Feature 4b - Urgency indicators */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10">
-                <Bell className="h-6 w-6 text-red-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                <Bell className="size-6 text-red-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Urgence visuelle immédiate</h3>
               <p className="text-muted-foreground">
@@ -206,8 +206,8 @@ export default async function HomePage() {
 
             {/* Feature 5 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="h-6 w-6 text-red-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                <XCircle className="size-6 text-red-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Actions ignorées expliquées</h3>
               <p className="text-muted-foreground">
@@ -218,8 +218,8 @@ export default async function HomePage() {
 
             {/* Feature 6 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-indigo-500/10">
-                <ShieldCheck className="h-6 w-6 text-indigo-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-indigo-500/10">
+                <ShieldCheck className="size-6 text-indigo-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Gmail = référence optionnelle</h3>
               <p className="text-muted-foreground">
@@ -243,7 +243,7 @@ export default async function HomePage() {
           <div className="mt-16 space-y-8">
             {/* Step 1 */}
             <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
                 1
               </div>
               <div>
@@ -257,7 +257,7 @@ export default async function HomePage() {
 
             {/* Step 2 */}
             <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
                 2
               </div>
               <div>
@@ -272,7 +272,7 @@ export default async function HomePage() {
 
             {/* Step 3 */}
             <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
                 3
               </div>
               <div>
@@ -286,7 +286,7 @@ export default async function HomePage() {
 
             {/* Step 4 */}
             <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
                 4
               </div>
               <div>
@@ -314,7 +314,7 @@ export default async function HomePage() {
             {/* Example 1 - Détecté */}
             <div className="rounded-lg border-2 border-green-500/20 bg-green-50/50 p-6 dark:bg-green-950/20">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="size-4" />
                 DÉTECTÉ (Type : SEND)
               </div>
               <div className="mb-4">
@@ -331,7 +331,7 @@ export default async function HomePage() {
                     <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Envoyer</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2 rounded bg-orange-100 px-2 py-1 text-sm font-medium text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-                    <Clock className="h-4 w-4" />
+                    <Clock className="size-4" />
                     ⏰ Urgent : Vendredi
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">De : client@example.com</p>
@@ -348,7 +348,7 @@ export default async function HomePage() {
             {/* Example 2 - Non détecté (conditionnel) */}
             <div className="rounded-lg border-2 border-orange-500/20 bg-orange-50/50 p-6 dark:bg-orange-950/20">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                <XCircle className="h-4 w-4" />
+                <XCircle className="size-4" />
                 NON DÉTECTÉ (Conditionnel)
               </div>
               <div className="mb-4">
@@ -373,7 +373,7 @@ export default async function HomePage() {
             {/* Example 3 - Détecté avec CALL */}
             <div className="rounded-lg border-2 border-green-500/20 bg-green-50/50 p-6 dark:bg-green-950/20">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                <CheckCircle2 className="h-4 w-4" />
+                <CheckCircle2 className="size-4" />
                 DÉTECTÉ (Type : CALL)
               </div>
               <div className="mb-4">
@@ -390,7 +390,7 @@ export default async function HomePage() {
                     <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">Appeler</span>
                   </div>
                   <div className="mt-2 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                    <Clock className="h-4 w-4" />
+                    <Clock className="size-4" />
                     Échéance : Demain matin
                   </div>
                   <p className="mt-2 text-sm text-muted-foreground">De : partenaire@example.com</p>
@@ -407,7 +407,7 @@ export default async function HomePage() {
             {/* Example 4 - Non détecté (newsletter) */}
             <div className="rounded-lg border-2 border-red-500/20 bg-red-50/50 p-6 dark:bg-red-950/20">
               <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                <XCircle className="h-4 w-4" />
+                <XCircle className="size-4" />
                 EXCLU AUTOMATIQUEMENT (Newsletter)
               </div>
               <div className="mb-4">
@@ -433,7 +433,7 @@ export default async function HomePage() {
 
           <div className="mt-12 rounded-lg border border-blue-200 bg-blue-50/50 p-6 dark:border-blue-800 dark:bg-blue-950/20">
             <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
-              <AlertCircle className="h-5 w-5" />
+              <AlertCircle className="size-5" />
               Notre philosophie
             </h3>
             <p className="text-sm text-blue-800 dark:text-blue-200">
@@ -455,8 +455,8 @@ export default async function HomePage() {
 
           <div className="mt-16 grid gap-6 md:grid-cols-2">
             <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="h-6 w-6 text-red-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                <XCircle className="size-6 text-red-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Pas d&apos;IA &ldquo;intelligente&rdquo;</h3>
               <p className="text-muted-foreground">
@@ -466,8 +466,8 @@ export default async function HomePage() {
             </div>
 
             <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="h-6 w-6 text-red-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                <XCircle className="size-6 text-red-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Pas de prioritisation automatique</h3>
               <p className="text-muted-foreground">
@@ -476,8 +476,8 @@ export default async function HomePage() {
             </div>
 
             <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="h-6 w-6 text-red-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                <XCircle className="size-6 text-red-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Pas de stockage du contenu des emails</h3>
               <p className="text-muted-foreground">
@@ -487,8 +487,8 @@ export default async function HomePage() {
             </div>
 
             <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="h-6 w-6 text-red-500" />
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                <XCircle className="size-6 text-red-500" />
               </div>
               <h3 className="mb-2 text-xl font-semibold">Pas de &ldquo;synchronisation parfaite&rdquo;</h3>
               <p className="text-muted-foreground">
@@ -512,7 +512,7 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto">
-                  <Mail className="mr-2 h-5 w-5" />
+                  <Mail className="mr-2 size-5" />
                   Connecter Gmail maintenant
                 </Button>
               </Link>
@@ -545,7 +545,7 @@ export default async function HomePage() {
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 hover:text-foreground"
               >
-                <Github className="h-4 w-4" />
+                <Github className="size-4" />
                 AGPL-3.0
               </Link>
               <Link href="/contact" className="hover:text-foreground">

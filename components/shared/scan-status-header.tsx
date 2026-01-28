@@ -1,11 +1,12 @@
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, CheckCircle2, Mail, XCircle } from "lucide-react";
+
 import Link from "next/link";
+import { MissingActionButton } from "./missing-action-button";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { CheckCircle2, AlertTriangle, XCircle, Mail } from "lucide-react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
-import { MissingActionButton } from "./missing-action-button";
 
 export async function ScanStatusHeader() {
   const user = await getCurrentUser();
@@ -63,7 +64,7 @@ export async function ScanStatusHeader() {
 
   // Déterminer l'état du scan
   let scanStatus: "ok" | "old" | "never" = "never";
-  let statusIcon = <XCircle className="h-4 w-4" />;
+  let statusIcon = <XCircle className="size-4" />;
   let statusText = "Aucun scan effectué";
   let statusVariant: "default" | "destructive" = "destructive";
 
@@ -72,12 +73,12 @@ export async function ScanStatusHeader() {
 
     if (hoursSinceSync > 24) {
       scanStatus = "old";
-      statusIcon = <AlertTriangle className="h-4 w-4 text-orange-600" />;
+      statusIcon = <AlertTriangle className="size-4 text-orange-600" />;
       statusText = "Scan ancien";
       statusVariant = "default";
     } else {
       scanStatus = "ok";
-      statusIcon = <CheckCircle2 className="h-4 w-4 text-green-600" />;
+      statusIcon = <CheckCircle2 className="size-4 text-green-600" />;
       statusText = "Scan à jour";
       statusVariant = "default";
     }
@@ -118,7 +119,7 @@ export async function ScanStatusHeader() {
               </div>
               <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 <span>
-                  <Mail className="mr-1 inline h-3 w-3" />
+                  <Mail className="mr-1 inline size-3" />
                   {totalEmails} email{totalEmails > 1 ? "s" : ""} analysé
                   {totalEmails > 1 ? "s" : ""}
                 </span>

@@ -220,7 +220,7 @@ export default function SettingsPage() {
               <Button onClick={handleSaveSyncEnabled} disabled={saving} size="sm">
                 {saving ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 size-4 animate-spin" />
                     Enregistrement...
                   </>
                 ) : (
@@ -252,7 +252,7 @@ export default function SettingsPage() {
               <Button onClick={handleSaveNotifications} disabled={saving} size="sm">
                 {saving ? (
                   <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 size-4 animate-spin" />
                     Enregistrement...
                   </>
                 ) : (
@@ -282,12 +282,12 @@ export default function SettingsPage() {
                 >
                   {disconnecting ? (
                     <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      <Loader2 className="mr-2 size-4 animate-spin" />
                       Déconnexion...
                     </>
                   ) : (
                     <>
-                      <Mail className="mr-2 h-4 w-4" />
+                      <Mail className="mr-2 size-4" />
                       Révoquer l&apos;accès Gmail
                     </>
                   )}
