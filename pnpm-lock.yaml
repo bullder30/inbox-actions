@@ -118,6 +118,9 @@ dependencies:
   '@vercel/analytics':
     specifier: ^1.6.1
     version: 1.6.1(next@14.2.35)(react@18.3.1)
+  bcryptjs:
+    specifier: ^3.0.3
+    version: 3.0.3
   class-variance-authority:
     specifier: ^0.7.0
     version: 0.7.0
@@ -228,6 +231,9 @@ devDependencies:
   '@testing-library/react':
     specifier: ^16.3.1
     version: 16.3.1(@testing-library/dom@10.4.1)(@types/react-dom@18.3.0)(@types/react@18.3.3)(react-dom@18.3.1)(react@18.3.1)
+  '@types/bcryptjs':
+    specifier: ^3.0.0
+    version: 3.0.0
   '@types/mailparser':
     specifier: ^3.4.6
     version: 3.4.6
@@ -4432,6 +4438,13 @@ packages:
       '@babel/types': 7.28.5
     dev: true
 
+  /@types/bcryptjs@3.0.0:
+    resolution: {integrity: sha512-WRZOuCuaz8UcZZE4R5HXTco2goQSI2XxjGY3hbM/xDvwmqFWd4ivooImsMx65OKM6CtNKbnZ5YL+YwAwK7c1dg==}
+    deprecated: This is a stub types definition. bcryptjs provides its own type definitions, so you do not need this installed.
+    dependencies:
+      bcryptjs: 3.0.3
+    dev: true
+
   /@types/chai@5.2.3:
     resolution: {integrity: sha512-Mw558oeA9fFbv65/y4mHtXDs9bPnFMZAL/jxdPFUpOHHIXX91mcgEHbS5Lahr+pwZFR8A7GQleRWeI6cGFC2UA==}
     dependencies:
@@ -5385,6 +5398,10 @@ packages:
 
   /baseline-browser-mapping@2.9.11:
     resolution: {integrity: sha512-Sg0xJUNDU1sJNGdfGWhVHX0kkZ+HWcvmVymJbj6NSgZZmW/8S9Y2HQ5euytnIgakgxN6papOAWiwDo1ctFDcoQ==}
+    hasBin: true
+
+  /bcryptjs@3.0.3:
+    resolution: {integrity: sha512-GlF5wPWnSa/X5LKM1o0wz0suXIINz1iHRLvTS+sLyi7XPbe5ycmYI3DlZqVGZZtDgl4DmasFg7gOB3JYbphV5g==}
     hasBin: true
 
   /bignumber.js@9.3.1:

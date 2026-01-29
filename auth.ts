@@ -31,8 +31,8 @@ export const {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Si c'est une connexion OAuth (Google)
-      if (account?.provider === "google") {
+      // Si c'est une connexion OAuth (Google ou Microsoft)
+      if (account?.provider === "google" || account?.provider === "microsoft-entra-id") {
         // Vérifier si un utilisateur existe déjà avec cet email
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email! },
@@ -40,13 +40,13 @@ export const {
         });
 
         if (existingUser) {
-          // Vérifier si le compte Google est déjà lié
-          const googleAccount = existingUser.accounts.find(
-            (acc) => acc.provider === "google"
+          // Vérifier si le compte OAuth est déjà lié
+          const existingAccount = existingUser.accounts.find(
+            (acc) => acc.provider === account.provider
           );
 
-          if (!googleAccount) {
-            // Lier le compte Google à l'utilisateur existant
+          if (!existingAccount) {
+            // Lier le compte OAuth à l'utilisateur existant
             await prisma.account.create({
               data: {
                 userId: existingUser.id,
@@ -61,7 +61,7 @@ export const {
                 id_token: account.id_token,
               },
             });
-            console.log(`[Auth] Compte Google lié à l'utilisateur existant: ${user.email}`);
+            console.log(`[Auth] Compte ${account.provider} lié à l'utilisateur existant: ${user.email}`);
           }
         }
       }

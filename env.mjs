@@ -9,6 +9,9 @@ export const env = createEnv({
     AUTH_SECRET: z.string().min(1),
     GOOGLE_CLIENT_ID: z.string().min(1),
     GOOGLE_CLIENT_SECRET: z.string().min(1),
+    // Microsoft OAuth (optional)
+    MICROSOFT_CLIENT_ID: z.string().min(1).optional(),
+    MICROSOFT_CLIENT_SECRET: z.string().min(1).optional(),
     DATABASE_URL: z.string().min(1),
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1).optional(),
@@ -32,6 +35,8 @@ export const env = createEnv({
     AUTH_SECRET: process.env.AUTH_SECRET,
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
     GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+    MICROSOFT_CLIENT_ID: process.env.MICROSOFT_CLIENT_ID,
+    MICROSOFT_CLIENT_SECRET: process.env.MICROSOFT_CLIENT_SECRET,
     DATABASE_URL: process.env.DATABASE_URL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,

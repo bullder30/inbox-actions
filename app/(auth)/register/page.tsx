@@ -3,7 +3,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 import { BackButton } from "@/components/shared/back-button";
-import { RegisterAuthForm } from "@/components/forms/register-auth-form";
+import { UserAuthForm } from "@/components/forms/user-auth-form";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 
@@ -27,11 +27,11 @@ export default function RegisterPage() {
               Créer un compte
             </h1>
             <p className="text-sm text-muted-foreground">
-              Connectez-vous avec Google pour créer votre compte et accéder à vos emails
+              Créez votre compte pour commencer à utiliser Inbox Actions
             </p>
           </div>
           <Suspense>
-            <RegisterAuthForm />
+            <UserAuthForm mode="register" />
           </Suspense>
           <p className="px-8 text-center text-sm text-muted-foreground">
             Vous avez déjà un compte ?{" "}
