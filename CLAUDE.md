@@ -13,7 +13,7 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - Track due dates and completion status
 - Receive email digests with pending actions
 
-**MVP Limitation:** This version (0.1.0) only analyzes emails written in **French**. The regex patterns are designed for French language detection. Multi-language support is planned for future releases.
+**MVP Limitation:** This version (0.2.0) only analyzes emails written in **French**. The regex patterns are designed for French language detection. Multi-language support is planned for future releases.
 
 ## Technology Stack
 

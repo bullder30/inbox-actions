@@ -6,7 +6,7 @@ Transform your Gmail emails into clear, actionable tasks. No magic, no guessing 
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC)
-![Version](https://img.shields.io/badge/version-0.1.0--MVP-orange)
+![Version](https://img.shields.io/badge/version-0.2.0--MVP-orange)
 ![Language](https://img.shields.io/badge/emails-French%20only-blue)
 
 > **MVP Notice:** This version only analyzes emails written in **French**. Multi-language support is planned for future releases.
