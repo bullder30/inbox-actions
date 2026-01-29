@@ -256,6 +256,8 @@ export class IMAPService {
         select: { lastUID: true, lastIMAPSync: true },
       });
 
+      console.log("[IMAP] Credential lastUID:", credential?.lastUID?.toString(), "lastSync:", credential?.lastIMAPSync);
+
       // Ouvrir le dossier
       const mailbox = await client.getMailboxLock(folder);
 
@@ -294,14 +296,18 @@ export class IMAPService {
 
         let lastProcessedUID: bigint | null = null;
 
+        console.log(`[IMAP] Processing emails for userId: ${this.userId}`);
+        console.log(`[IMAP] UIDs to fetch:`, uidsToFetch);
+
         // Récupérer les métadonnées de chaque message
+        // Note: Le 3ème paramètre { uid: true } indique qu'on utilise des UIDs (pas des sequence numbers)
         for await (const message of client.fetch(uidsToFetch, {
-          uid: true,
           envelope: true,
           internalDate: true,
           flags: true,
-        })) {
+        }, { uid: true })) {
           const uid = BigInt(message.uid);
+          console.log(`[IMAP] Processing UID: ${uid}`);
 
           // Vérifier si l'email existe déjà en base
           const existing = await prisma.emailMetadata.findUnique({
@@ -314,12 +320,16 @@ export class IMAPService {
           });
 
           if (existing) {
+            console.log(`[IMAP] UID ${uid} already exists for userId ${this.userId}, skipping`);
             continue;
           }
 
           // Extraire les métadonnées
           const envelope = message.envelope;
-          if (!envelope) continue;
+          if (!envelope) {
+            console.log(`[IMAP] UID ${uid} has no envelope, skipping`);
+            continue;
+          }
 
           const from = envelope.from?.[0]
             ? `${envelope.from[0].name || ""} <${envelope.from[0].address || ""}>`
@@ -357,19 +367,27 @@ export class IMAPService {
           emailsMetadata.push(metadata);
 
           // Stocker en base de données
-          await prisma.emailMetadata.create({
-            data: {
-              userId: this.userId,
-              emailProvider: "IMAP",
-              imapUID: uid,
-              imapMessageId: messageId,
-              from: metadata.from,
-              subject: metadata.subject,
-              snippet: metadata.snippet,
-              receivedAt: metadata.receivedAt,
-              labels: metadata.labels,
-            },
-          });
+          try {
+            await prisma.emailMetadata.create({
+              data: {
+                userId: this.userId,
+                emailProvider: "IMAP",
+                imapUID: uid,
+                imapMessageId: messageId,
+                from: metadata.from,
+                subject: metadata.subject,
+                snippet: metadata.snippet,
+                receivedAt: metadata.receivedAt,
+                labels: metadata.labels,
+              },
+            });
+            console.log(`[IMAP] UID ${uid} saved to database for userId ${this.userId}`);
+          } catch (createError) {
+            console.error(`[IMAP] Failed to save UID ${uid}:`, createError);
+            // Remove from metadata array since it wasn't saved
+            emailsMetadata.pop();
+            continue;
+          }
 
           lastProcessedUID = uid;
         }
@@ -600,6 +618,8 @@ export async function createIMAPService(
   userId: string
 ): Promise<IMAPService | null> {
   try {
+    console.log("[IMAP] Creating service for userId:", userId);
+
     // Récupérer les credentials IMAP de l'utilisateur
     const credential = await prisma.iMAPCredential.findFirst({
       where: { userId },
@@ -618,6 +638,8 @@ export async function createIMAPService(
       console.log("[IMAP] No IMAP credential found for user:", userId);
       return null;
     }
+
+    console.log("[IMAP] Found credential:", credential.id, "for host:", credential.imapHost);
 
     // Déchiffrer le mot de passe
     let password: string;
