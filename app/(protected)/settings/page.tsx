@@ -116,6 +116,31 @@ export default function SettingsPage() {
     }
   }
 
+  async function handleChangeEmailProvider(provider: "GMAIL" | "IMAP") {
+    // Mettre à jour l'UI immédiatement
+    setEmailProvider(provider);
+
+    // Persister en base de données
+    try {
+      const response = await fetch("/api/user/preferences", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ emailProvider: provider }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Erreur lors du changement de provider");
+      }
+
+      toast.success(`Provider email changé vers ${provider}`);
+    } catch (error) {
+      // Rollback UI en cas d'erreur
+      setEmailProvider(provider === "GMAIL" ? "IMAP" : "GMAIL");
+      toast.error("Erreur lors du changement de provider");
+      console.error(error);
+    }
+  }
+
   async function handleDisconnectGmail() {
     if (!confirm("Voulez-vous vraiment révoquer l'accès Gmail ? Vos actions seront conservées mais vous ne pourrez plus synchroniser de nouveaux emails.")) {
       return;
@@ -289,7 +314,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setEmailProvider("GMAIL")}
+                  onClick={() => handleChangeEmailProvider("GMAIL")}
                   className={cn(
                     "gap-2",
                     emailProvider === "GMAIL" && "border-primary bg-primary/10"
@@ -301,7 +326,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setEmailProvider("IMAP")}
+                  onClick={() => handleChangeEmailProvider("IMAP")}
                   className={cn(
                     "gap-2",
                     emailProvider === "IMAP" && "border-primary bg-primary/10"
