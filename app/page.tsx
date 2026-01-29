@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus } from "lucide-react";
+import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
@@ -69,7 +69,7 @@ export default async function HomePage() {
             </div>
 
             <h1 className="font-heading text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Vos emails Gmail transformés en{" "}
+              Vos emails transformés en{" "}
               <span className="text-gradient_indigo-purple">actions claires</span>
             </h1>
 
@@ -82,7 +82,7 @@ export default async function HomePage() {
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto">
                   <Mail className="mr-2 size-5" />
-                  Connecter Gmail gratuitement
+                  Commencer gratuitement
                 </Button>
               </Link>
               <Link href="#features">
@@ -92,10 +92,20 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="mt-8 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+            <div className="mt-8 flex flex-col items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Mail className="size-4 text-blue-500" />
+                  <span>Gmail OAuth</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Server className="size-4 text-purple-500" />
+                  <span>IMAP (tous providers)</span>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-green-600" />
-                <span>Gmail lecture seule • RGPD • Chiffrement</span>
+                <span>Lecture seule • RGPD • Chiffrement</span>
               </div>
               <p className="text-xs">
                 Préfère manquer une action que vous stresser avec un doute
@@ -218,13 +228,25 @@ export default async function HomePage() {
 
             {/* Feature 6 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-purple-500/10">
+                <Server className="size-6 text-purple-500" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold">Gmail, Outlook, ou IMAP</h3>
+              <p className="text-muted-foreground">
+                Connectez-vous via Gmail OAuth ou configurez n&apos;importe quel serveur IMAP.
+                <strong className="mt-2 block">Compatible : Gmail, Outlook, Yahoo, iCloud, Fastmail, ProtonMail...</strong>
+              </p>
+            </div>
+
+            {/* Feature 7 */}
+            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
               <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-indigo-500/10">
                 <ShieldCheck className="size-6 text-indigo-500" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold">Gmail = référence optionnelle</h3>
+              <h3 className="mb-2 text-xl font-semibold">Email = référence optionnelle</h3>
               <p className="text-muted-foreground">
-                Toutes vos actions sont gérables ici. Gmail n&apos;est qu&apos;une option pour vérifier le contexte.
-                Vous ne retournez jamais dans Gmail pour travailler.
+                Toutes vos actions sont gérables ici. Votre boîte mail n&apos;est qu&apos;une option pour vérifier le contexte.
+                Vous ne retournez jamais dans votre boîte mail pour travailler.
               </p>
             </div>
           </div>
@@ -247,10 +269,13 @@ export default async function HomePage() {
                 1
               </div>
               <div>
-                <h3 className="mb-2 text-xl font-semibold">Connexion Gmail (lecture seule)</h3>
+                <h3 className="mb-2 text-xl font-semibold">Connexion email (2 options)</h3>
                 <p className="text-muted-foreground">
-                  Vous autorisez l&apos;accès en lecture seule à Gmail. Nous ne stockons jamais le contenu complet des emails.
-                  Seulement : expéditeur, sujet, extrait court (200 caractères max).
+                  <strong>Gmail OAuth :</strong> Connexion sécurisée en 1 clic, lecture seule.
+                  <br />
+                  <strong>IMAP :</strong> Compatible Gmail, Outlook, Yahoo, iCloud et tout provider IMAP.
+                  <br />
+                  <span className="mt-2 block text-sm">Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).</span>
                 </p>
               </div>
             </div>
@@ -507,13 +532,13 @@ export default async function HomePage() {
               Réduisez votre stress email dès aujourd&apos;hui
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Gratuit. Sans carte bancaire. Connexion Gmail en 30 secondes.
+              Gratuit. Sans carte bancaire. Gmail OAuth ou IMAP en quelques clics.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto">
                   <Mail className="mr-2 size-5" />
-                  Connecter Gmail maintenant
+                  Commencer maintenant
                 </Button>
               </Link>
               <Link href="/login">

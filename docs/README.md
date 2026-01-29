@@ -23,9 +23,15 @@ Bienvenue dans la documentation complète d'Inbox Actions.
   - Règles d'exclusion et conditionnels
   - Liens vers Gmail depuis les actions
 
-### 📬 Intégration Gmail
+### 📬 Intégration Email (Gmail + IMAP)
 
-- **[GMAIL_INTEGRATION.md](./GMAIL_INTEGRATION.md)** - Intégration complète avec Gmail API
+- **[IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)** ⭐ **NOUVEAU** - Intégration IMAP
+  - Alternative à Gmail OAuth
+  - Compatible tous providers (Gmail, Outlook, Yahoo, iCloud...)
+  - Chiffrement AES-256 des credentials
+  - Factory pattern dual-provider
+
+- **[GMAIL_INTEGRATION.md](./GMAIL_INTEGRATION.md)** - Intégration Gmail API (OAuth)
   - Architecture du service Gmail
   - Extraction des métadonnées
   - Gestion des tokens OAuth
