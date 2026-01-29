@@ -9,6 +9,7 @@ import { simpleParser, ParsedMail } from "mailparser";
 
 import { prisma } from "@/lib/db";
 import { decryptPassword } from "./imap-credentials";
+import { getOAuthAccessToken } from "./oauth-token";
 import type {
   IMAPConfig,
   FetchEmailsOptions,
@@ -144,14 +145,40 @@ export class IMAPService {
       return this.client;
     }
 
+    // Determine authentication method
+    let auth: { user: string; pass?: string; accessToken?: string };
+
+    if (this.config.useOAuth2 && this.config.oauthProvider) {
+      // Use OAuth2 XOAUTH2 authentication
+      const accessToken = await getOAuthAccessToken(
+        this.userId,
+        this.config.oauthProvider
+      );
+
+      if (!accessToken) {
+        throw new Error(
+          `Failed to get OAuth2 access token for ${this.config.oauthProvider}`
+        );
+      }
+
+      auth = {
+        user: this.config.username,
+        accessToken: accessToken,
+      };
+      console.log(`[IMAP] Using OAuth2 authentication for ${this.config.oauthProvider}`);
+    } else {
+      // Use basic authentication
+      auth = {
+        user: this.config.username,
+        pass: this.config.password,
+      };
+    }
+
     this.client = new ImapFlow({
       host: this.config.host,
       port: this.config.port,
       secure: this.config.useTLS !== false,
-      auth: {
-        user: this.config.username,
-        pass: this.config.password,
-      },
+      auth,
       logger: false, // Désactiver les logs verbeux
     });
 
@@ -631,6 +658,8 @@ export async function createIMAPService(
         imapPassword: true,
         imapFolder: true,
         useTLS: true,
+        useOAuth2: true,
+        oauthProvider: true,
       },
     });
 
@@ -641,13 +670,15 @@ export async function createIMAPService(
 
     console.debug("[IMAP] Found credential:", credential.id, "for host:", credential.imapHost);
 
-    // Déchiffrer le mot de passe
-    let password: string;
-    try {
-      password = decryptPassword(credential.imapPassword);
-    } catch (error) {
-      console.error("[IMAP] Failed to decrypt password for user:", userId);
-      return null;
+    // Déchiffrer le mot de passe (sauf si OAuth2)
+    let password: string = "";
+    if (!credential.useOAuth2) {
+      try {
+        password = decryptPassword(credential.imapPassword);
+      } catch (error) {
+        console.error("[IMAP] Failed to decrypt password for user:", userId);
+        return null;
+      }
     }
 
     const config: IMAPConfig = {
@@ -657,6 +688,8 @@ export async function createIMAPService(
       password,
       folder: credential.imapFolder,
       useTLS: credential.useTLS,
+      useOAuth2: credential.useOAuth2,
+      oauthProvider: credential.oauthProvider || undefined,
     };
 
     return new IMAPService(config, userId, credential.id);

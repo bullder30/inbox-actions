@@ -7,9 +7,12 @@ export interface IMAPConfig {
   host: string;
   port: number;
   username: string;
-  password: string; // Plain text (decrypted)
+  password: string; // Plain text (decrypted) - empty if using OAuth2
   folder?: string;
   useTLS?: boolean;
+  // OAuth2 configuration
+  useOAuth2?: boolean;
+  oauthProvider?: string; // "microsoft-entra-id", "google", etc.
 }
 
 /**

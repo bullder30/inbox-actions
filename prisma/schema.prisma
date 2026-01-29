@@ -197,7 +197,11 @@ model IMAPCredential {
   imapHost        String   @map(name: "imap_host")     // ex: "imap.gmail.com"
   imapPort        Int      @default(993) @map(name: "imap_port")
   imapUsername    String   @map(name: "imap_username") // Email ou username IMAP
-  imapPassword    String   @db.Text @map(name: "imap_password") // Chiffré AES-256
+  imapPassword    String   @db.Text @map(name: "imap_password") // Chiffré AES-256 (ou vide si OAuth2)
+
+  // OAuth2 authentication (for Microsoft 365, etc.)
+  useOAuth2       Boolean  @default(false) @map(name: "use_oauth2")
+  oauthProvider   String?  @map(name: "oauth_provider") // "microsoft-entra-id", "google", etc.
 
   // Configuration
   imapFolder      String   @default("INBOX") @map(name: "imap_folder")

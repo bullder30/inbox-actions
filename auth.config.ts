@@ -42,12 +42,25 @@ export default {
         ]
       : []),
     // Microsoft OAuth (optional - only enabled if credentials are set)
-    ...(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
+    // Requires MICROSOFT_TENANT_ID to be set (not "common" - use your actual tenant ID)
+    ...(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET && env.MICROSOFT_TENANT_ID
       ? [
           MicrosoftEntraID({
             clientId: env.MICROSOFT_CLIENT_ID,
             clientSecret: env.MICROSOFT_CLIENT_SECRET,
+            issuer: `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/v2.0`,
             allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                scope: [
+                  "openid",
+                  "email",
+                  "profile",
+                  "offline_access", // Required for refresh token
+                  "https://outlook.office.com/IMAP.AccessAsUser.All", // IMAP access
+                ].join(" "),
+              },
+            },
           }),
         ]
       : []),
