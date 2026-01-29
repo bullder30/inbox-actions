@@ -1,226 +1,411 @@
 # Documentation Inbox Actions
 
-Bienvenue dans la documentation complète d'Inbox Actions.
+## 📋 Présentation du projet
+
+**Inbox Actions** est une application Next.js 14 qui extrait automatiquement les tâches actionnables de vos emails. L'application analyse le contenu de vos emails et identifie les demandes explicites nécessitant une action de votre part.
+
+### Philosophie
+
+> **"Mieux vaut manquer une action que vous stresser avec un faux positif"**
+
+- **Déterministe** : Règles d'extraction simples et explicables (regex)
+- **Transparent** : Chaque action affiche la phrase source exacte
+- **Non-intrusif** : Lecture seule, aucune modification de vos emails
+- **RGPD compliant** : Seules les métadonnées minimales sont stockées
+
+### Fonctionnalités principales
+
+| Fonctionnalité | Description |
+|----------------|-------------|
+| **Multi-provider** | Gmail OAuth, Microsoft OAuth, IMAP (tous providers) |
+| **Extraction d'actions** | 5 types : SEND, CALL, FOLLOW_UP, PAY, VALIDATE |
+| **Détection de deadlines** | Dates absolues, relatives, heures spécifiques |
+| **Temps réel** | Mises à jour via SSE (Server-Sent Events) |
+| **Sync automatique** | Cron jobs quotidiens + sync manuelle |
+
+---
+
+## 🏗️ Architecture technique
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                              FRONTEND                                    │
+│  Next.js 14 (App Router) + React 18 + Tailwind CSS + shadcn/ui         │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌────────────────────┐ │
+│  │ Dashboard  │  │  Actions   │  │  Settings  │  │ Auth (Login/Reg)   │ │
+│  └────────────┘  └────────────┘  └────────────┘  └────────────────────┘ │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                              BACKEND                                     │
+│  Next.js API Routes + Auth.js v5 + Prisma ORM                           │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                          │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                    Email Provider Factory                        │    │
+│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │    │
+│  │  │ Gmail API   │  │ IMAP Basic  │  │ IMAP OAuth2 (XOAUTH2)   │  │    │
+│  │  │ (OAuth)     │  │ (Password)  │  │ (Microsoft 365)         │  │    │
+│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+│  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
+│  │ Action Extractor│  │ Cron Service    │  │ Notification Service    │  │
+│  │ (Regex-based)   │  │ (node-cron)     │  │ (Resend)                │  │
+│  └─────────────────┘  └─────────────────┘  └─────────────────────────┘  │
+│                                                                          │
+├─────────────────────────────────────────────────────────────────────────┤
+│                              DATABASE                                    │
+│  PostgreSQL + Prisma (User, Account, Action, EmailMetadata, IMAP...)    │
+└─────────────────────────────────────────────────────────────────────────┘
+```
+
+### Stack technique
+
+| Couche | Technologies |
+|--------|--------------|
+| **Frontend** | Next.js 14, React 18, TypeScript, Tailwind CSS, shadcn/ui |
+| **Backend** | Next.js API Routes, Auth.js v5, Prisma |
+| **Database** | PostgreSQL (Neon DB) |
+| **Email** | Gmail API, IMAP (imapflow), OAuth2 XOAUTH2 |
+| **Auth** | Google OAuth, Microsoft OAuth, Credentials (bcrypt) |
+| **Notifications** | Resend (email digests) |
+| **Cron** | node-cron (in-process) |
+| **State** | Zustand (client), Server Components (server) |
 
 ---
 
 ## 📚 Index de la documentation
 
-### 🏗️ Architecture et Modèles
+### 🔐 Authentification
 
-- **[DATABASE_MODEL.md](./DATABASE_MODEL.md)** - Modèle de données Prisma complet
-  - Schéma des actions
-  - Relations utilisateurs
-  - Index de performance
-  - Nouveau : champ `gmailMessageId` pour les liens vers Gmail
+| Document | Description |
+|----------|-------------|
+| **[AUTH_SETUP.md](./AUTH_SETUP.md)** | **Guide complet d'authentification** |
+| | • Email/Mot de passe (credentials) |
+| | • Google OAuth (Gmail API automatique) |
+| | • Microsoft OAuth (IMAP OAuth2 automatique) |
+| | • Variables d'environnement |
+| | • Dépannage des erreurs courantes |
 
-### 🔍 Extraction et Analyse
+### 📬 Intégration Email
 
-- **[REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)** - Système d'extraction d'actions par regex
-  - Patterns détaillés par type d'action (SEND, CALL, FOLLOW_UP, PAY, VALIDATE)
-  - **Nouveau** : Heures spécifiques pour les deadlines (12h, 18h, 20h)
-  - **Nouveau** : Nettoyage des phrases (tirets, guillemets, listes à puces)
-  - Règles d'exclusion et conditionnels
-  - Liens vers Gmail depuis les actions
+| Document | Description |
+|----------|-------------|
+| **[IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)** | **Intégration IMAP complète** |
+| | • Factory pattern dual-provider |
+| | • IMAP OAuth2 (XOAUTH2) pour Microsoft 365 |
+| | • Gestion automatique des tokens |
+| | • Chiffrement AES-256 des credentials |
+| | • Presets pour tous providers |
+| [GMAIL_INTEGRATION.md](./GMAIL_INTEGRATION.md) | Architecture Gmail API |
+| [GMAIL_OAUTH_SETUP.md](./GMAIL_OAUTH_SETUP.md) | Configuration Google Cloud Console |
+| [GMAIL_SECURITY_GDPR.md](./GMAIL_SECURITY_GDPR.md) | Sécurité et conformité RGPD |
+| [GMAIL_TROUBLESHOOTING.md](./GMAIL_TROUBLESHOOTING.md) | Résolution de problèmes Gmail |
 
-### 📬 Intégration Email (Gmail + IMAP)
+### 🔍 Extraction d'actions
 
-- **[IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)** ⭐ **NOUVEAU** - Intégration IMAP
-  - Alternative à Gmail OAuth
-  - Compatible tous providers (Gmail, Outlook, Yahoo, iCloud...)
-  - Chiffrement AES-256 des credentials
-  - Factory pattern dual-provider
+| Document | Description |
+|----------|-------------|
+| **[REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)** | **Système d'extraction regex** |
+| | • Patterns par type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE) |
+| | • Détection de deadlines (dates, heures) |
+| | • Règles d'exclusion (newsletters, no-reply) |
+| | • Conditions ignorées ("si tu peux", "éventuellement") |
 
-- **[GMAIL_INTEGRATION.md](./GMAIL_INTEGRATION.md)** - Intégration Gmail API (OAuth)
-  - Architecture du service Gmail
-  - Extraction des métadonnées
-  - Gestion des tokens OAuth
+### 🏗️ Base de données
 
-- **[GMAIL_OAUTH_SETUP.md](./GMAIL_OAUTH_SETUP.md)** - Configuration OAuth 2.0
-  - Setup Google Cloud Console
-  - Configuration des scopes
-  - Gestion des credentials
-
-- **[GMAIL_SECURITY_GDPR.md](./GMAIL_SECURITY_GDPR.md)** - Sécurité et conformité RGPD
-  - Stockage minimal des données
-  - Compliance RGPD
-  - Bonnes pratiques de sécurité
-
-- **[GMAIL_USAGE_EXAMPLE.md](./GMAIL_USAGE_EXAMPLE.md)** - Exemples d'utilisation
-  - Cas d'usage réels
-  - Code samples
-
-- **[GMAIL_TROUBLESHOOTING.md](./GMAIL_TROUBLESHOOTING.md)** - Résolution de problèmes
-  - Erreurs courantes
-  - Solutions et diagnostics
+| Document | Description |
+|----------|-------------|
+| **[DATABASE_MODEL.md](./DATABASE_MODEL.md)** | **Modèle Prisma complet** |
+| | • User, Account, Session (Auth.js) |
+| | • Action (avec gmailMessageId, imapUID) |
+| | • EmailMetadata (dual-provider) |
+| | • IMAPCredential (avec OAuth2) |
+| [EMAIL_STATUS_MIGRATION.md](./EMAIL_STATUS_MIGRATION.md) | Migration EXTRACTED → ANALYZED |
 
 ### ⚙️ Automatisation
 
-- **[CRON.md](./CRON.md)** - Système de tâches planifiées (node-cron)
-  - Count new emails (toutes les 2 min)
-  - Daily sync (8h00)
-  - Cleanup (23h00)
-  - **Nouveau** : Référence au système SSE
+| Document | Description |
+|----------|-------------|
+| **[CRON.md](./CRON.md)** | **Tâches planifiées** |
+| | • Daily sync (8h00) |
+| | • Cleanup metadata (23h00) |
+| | • Count new emails (optionnel) |
+| [cron-setup.md](./cron-setup.md) | Configuration détaillée node-cron |
+| [REALTIME_UPDATES.md](./REALTIME_UPDATES.md) | SSE + Zustand pour temps réel |
 
-- **[REALTIME_UPDATES.md](./REALTIME_UPDATES.md)** ⭐ **NOUVEAU**
-  - Architecture SSE + Zustand
-  - Mises à jour en temps réel sans polling
-  - Flux complet client/serveur
-  - Comparaison avec le polling
+### 🛠️ API
 
-- **[cron-setup.md](./cron-setup.md)** - Configuration détaillée des crons
-  - Setup node-cron
-  - Instrumentation Next.js
+| Document | Description |
+|----------|-------------|
+| [API_ACTIONS.md](./API_ACTIONS.md) | Endpoints CRUD actions |
+| [API_USAGE_EXAMPLES.md](./API_USAGE_EXAMPLES.md) | Exemples de requêtes |
 
-- **[EMAIL_STATUS_MIGRATION.md](./EMAIL_STATUS_MIGRATION.md)** - Migration du statut des emails
-  - EXTRACTED → ANALYZED
-  - Scripts de migration
+### 🎨 Interface utilisateur
 
-### 🛠️ API et Développement
-
-- **[API_ACTIONS.md](./API_ACTIONS.md)** - API des actions
-  - Endpoints CRUD
-  - Types et schémas
-
-- **[API_USAGE_EXAMPLES.md](./API_USAGE_EXAMPLES.md)** - Exemples d'utilisation API
-  - Requêtes courantes
-  - Code samples
-
-### 🎨 Interface Utilisateur
-
-- **[UX_DESIGN.md](./UX_DESIGN.md)** - Design et expérience utilisateur
-  - Composants UI
-  - **Nouveau** : Bouton "Voir email" pour accès direct à Gmail
-  - **Nouveau** : Affichage "Date du mail" et "Traité le"
-  - **Nouveau** : Indicateurs visuels d'urgence (rouge/orange)
-  - Flux utilisateur
-
-### 🔐 Authentification
-
-- **[AUTH_SETUP.md](./AUTH_SETUP.md)** - Configuration de l'authentification
-  - NextAuth.js setup
-  - OAuth Google
-  - Gestion des sessions
+| Document | Description |
+|----------|-------------|
+| [UX_DESIGN.md](./UX_DESIGN.md) | Design et composants UI |
+| [GMAIL_USAGE_EXAMPLE.md](./GMAIL_USAGE_EXAMPLE.md) | Exemples d'utilisation |
 
 ### 🧪 Tests
 
-- **[TESTS.md](./TESTS.md)** - Tests et qualité
-  - Tests unitaires
-  - Tests d'intégration
-  - Stratégie de test
+| Document | Description |
+|----------|-------------|
+| [TESTS.md](./TESTS.md) | Stratégie et configuration tests |
 
 ---
 
-## 🚀 Démarrage rapide
+## 🚀 Guide de démarrage
 
-### Pour les développeurs
+### Prérequis
 
-1. **Architecture** : Commencez par [DATABASE_MODEL.md](./DATABASE_MODEL.md)
-2. **Gmail** : Lisez [GMAIL_INTEGRATION.md](./GMAIL_INTEGRATION.md)
-3. **Extraction** : Explorez [REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)
-4. **Temps réel** : Découvrez [REALTIME_UPDATES.md](./REALTIME_UPDATES.md)
+- Node.js 18+
+- PostgreSQL 14+
+- pnpm (recommandé)
 
-### Pour la configuration
+### Installation
 
-1. **OAuth** : [GMAIL_OAUTH_SETUP.md](./GMAIL_OAUTH_SETUP.md)
-2. **Authentification** : [AUTH_SETUP.md](./AUTH_SETUP.md)
-3. **Crons** : [CRON.md](./CRON.md)
+```bash
+# Cloner le repo
+git clone https://github.com/bullder30/inbox-actions.git
+cd inbox-actions
 
-### Pour les utilisateurs
+# Installer les dépendances
+pnpm install
 
-1. **Usage** : [GMAIL_USAGE_EXAMPLE.md](./GMAIL_USAGE_EXAMPLE.md)
-2. **UX** : [UX_DESIGN.md](./UX_DESIGN.md)
-3. **Troubleshooting** : [GMAIL_TROUBLESHOOTING.md](./GMAIL_TROUBLESHOOTING.md)
+# Configurer l'environnement
+cp .env.example .env.local
+# Éditer .env.local avec vos valeurs
 
----
+# Générer le client Prisma
+npx prisma generate
 
-## ✨ Nouvelles fonctionnalités (Janvier 2026)
+# Appliquer le schéma
+npx prisma db push
 
-### Extraction améliorée
+# Lancer le serveur
+pnpm dev
+```
 
-- ✅ **Heures spécifiques** pour toutes les deadlines (12h, 18h, 20h)
-- ✅ **Nettoyage automatique** des phrases (tirets, guillemets, listes)
-- ✅ **Découpage amélioré** par lignes ET ponctuation
-- ✅ **Nouveaux patterns** : "avant midi", "ce matin", "cet après-midi", "ce soir"
+### Configuration minimale
 
-### Mises à jour en temps réel
+```env
+# Obligatoire
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+AUTH_SECRET=<générer avec: openssl rand -base64 32>
+DATABASE_URL=postgresql://user:pass@localhost:5432/inbox_actions
 
-- ✅ **SSE (Server-Sent Events)** pour push serveur → client
-- ✅ **Zustand** pour gestion d'état global réactive
-- ✅ **Plus de polling** côté client
-- ✅ **Compteur toujours à jour** (max 30s de latence)
+# Au moins un provider email
+GOOGLE_CLIENT_ID=...
+GOOGLE_CLIENT_SECRET=...
+NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true
 
-### Lien vers Gmail
+# Pour IMAP (chiffrement)
+IMAP_MASTER_KEY=<générer avec: openssl rand -hex 32>
+```
 
-- ✅ **Nouveau champ** `gmailMessageId` dans les actions
-- ✅ **Bouton "Voir email"** dans l'UI
-- ✅ **Accès direct** au mail source dans Gmail
-- ✅ **Compatible** avec anciennes actions (optionnel)
+### Parcours recommandé
 
-### UI améliorée
-
-- ✅ **"Date du mail"** dans les détails d'action
-- ✅ **"Traité le"** visible uniquement pour actions terminées
-- ✅ **Bouton Gmail** intégré dans la phrase source
-- ✅ **Indicateurs visuels d'urgence** : rouge (en retard), orange (< 24h)
-- ✅ **Badges colorés** par type d'action (bleu, vert, jaune, violet, orange)
-- ✅ **Cohérence** entre liste et détail des actions
-
----
-
-## 📝 Conventions
-
-### Fichiers de documentation
-
-- Tous les fichiers sont en **Markdown** (`.md`)
-- Utilisation de **titres hiérarchiques** (`#`, `##`, `###`)
-- **Code blocks** avec langage spécifié (` ```typescript`)
-- **Exemples** clairs et commentés
-- **Emojis** pour navigation visuelle
-
-### Structure type
-
-```markdown
-# Titre Principal
-
-Description courte
+| Objectif | Documents à lire |
+|----------|------------------|
+| **Comprendre l'architecture** | [DATABASE_MODEL.md](./DATABASE_MODEL.md) → [REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md) |
+| **Configurer l'auth** | [AUTH_SETUP.md](./AUTH_SETUP.md) |
+| **Ajouter Gmail** | [GMAIL_OAUTH_SETUP.md](./GMAIL_OAUTH_SETUP.md) |
+| **Ajouter Microsoft** | [AUTH_SETUP.md](./AUTH_SETUP.md#microsoft-oauth) → [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md#imap-oauth2-xoauth2) |
+| **Configurer les crons** | [CRON.md](./CRON.md) → [cron-setup.md](./cron-setup.md) |
 
 ---
 
-## Section 1
+## 🔧 Points techniques clés
 
-Contenu...
+### 1. Authentification multi-provider
 
-### Sous-section
+```
+┌─────────────────────────────────────────────────────────────┐
+│                 Méthodes d'authentification                  │
+├───────────────┬───────────────┬─────────────────────────────┤
+│ Credentials   │ Google OAuth  │ Microsoft OAuth             │
+│ (email/mdp)   │               │                             │
+├───────────────┼───────────────┼─────────────────────────────┤
+│ Compte local  │ Gmail API     │ IMAP OAuth2 (XOAUTH2)       │
+│ + IMAP manuel │ automatique   │ automatique                 │
+└───────────────┴───────────────┴─────────────────────────────┘
+```
 
-Détails...
+**Détails** : [AUTH_SETUP.md](./AUTH_SETUP.md)
+
+### 2. Factory Pattern Email
+
+Le système utilise un factory pour abstraire le provider email :
+
+```typescript
+const provider = await createEmailProvider(userId);
+// Retourne GmailProvider ou IMAPProvider selon User.emailProvider
+
+await provider.fetchNewEmails();
+await provider.getEmailBodyForAnalysis(messageId);
+```
+
+**Détails** : [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)
+
+### 3. IMAP OAuth2 (XOAUTH2)
+
+Pour Microsoft 365 (basic auth désactivé), le système utilise OAuth2 XOAUTH2 :
+
+```
+1. Connexion Microsoft OAuth → access_token + refresh_token
+2. POST /api/imap/setup-oauth → Création IMAPCredential
+3. Sync IMAP → getOAuthAccessToken() → XOAUTH2 auth
+4. Token expiré → Refresh automatique
+```
+
+**Détails** : [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md#imap-oauth2-xoauth2)
+
+### 4. Extraction d'actions (Regex)
+
+L'extraction utilise des patterns regex déterministes :
+
+| Type | Exemple de pattern |
+|------|-------------------|
+| SEND | `peux-tu envoyer`, `merci d'envoyer` |
+| CALL | `rappelle-moi`, `appelle` |
+| FOLLOW_UP | `relance`, `n'oublie pas` |
+| PAY | `payer la facture`, `virement` |
+| VALIDATE | `valider`, `approuver` |
+
+**Règles d'exclusion** :
+- Newsletters, no-reply, notifications
+- Phrases conditionnelles ("si tu peux", "quand tu as le temps")
+
+**Détails** : [REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)
+
+### 5. Sécurité et chiffrement
+
+| Donnée | Protection |
+|--------|------------|
+| Mots de passe utilisateur | bcrypt (12 rounds) |
+| Mots de passe IMAP | AES-256-CBC + IMAP_MASTER_KEY |
+| Tokens OAuth | Stockés en DB (table Account) |
+| Sessions | JWT (AUTH_SECRET) |
+
+**Détails** : [GMAIL_SECURITY_GDPR.md](./GMAIL_SECURITY_GDPR.md)
+
+### 6. Temps réel (SSE + Zustand)
+
+```
+Server (Cron) ──SSE──► Client (Zustand Store) ──► UI Components
+    │                        │
+    └── EventSource ────────┘
+        /api/email/pending-stream
+```
+
+**Détails** : [REALTIME_UPDATES.md](./REALTIME_UPDATES.md)
 
 ---
 
-## Ressources
+## 📝 Variables d'environnement
 
-- Liens
-- Références
+### Référence complète
+
+```env
+# ═══════════════════════════════════════════════════════════════
+# APPLICATION
+# ═══════════════════════════════════════════════════════════════
+NEXT_PUBLIC_APP_URL=http://localhost:3000
+AUTH_URL=http://localhost:3000
+
+# ═══════════════════════════════════════════════════════════════
+# AUTHENTIFICATION
+# ═══════════════════════════════════════════════════════════════
+AUTH_SECRET=                              # openssl rand -base64 32
+
+# Google OAuth (optionnel)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=false
+
+# Microsoft OAuth (optionnel)
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+MICROSOFT_TENANT_ID=                      # GUID, pas "common"
+NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=false
+
+# ═══════════════════════════════════════════════════════════════
+# BASE DE DONNÉES
+# ═══════════════════════════════════════════════════════════════
+DATABASE_URL=postgresql://user:pass@host:5432/db
+
+# ═══════════════════════════════════════════════════════════════
+# IMAP
+# ═══════════════════════════════════════════════════════════════
+IMAP_MASTER_KEY=                          # openssl rand -hex 32
+
+# ═══════════════════════════════════════════════════════════════
+# NOTIFICATIONS (Resend)
+# ═══════════════════════════════════════════════════════════════
+RESEND_API_KEY=
+EMAIL_FROM="Inbox Actions <noreply@domain.com>"
+
+# ═══════════════════════════════════════════════════════════════
+# CRON
+# ═══════════════════════════════════════════════════════════════
+CRON_SECRET=                              # Pour endpoints externes
+CRON_PROVIDER=node                        # "node" ou "vercel"
+FEATURE_EMAIL_COUNT=false                 # Compteur temps réel
+
+# ═══════════════════════════════════════════════════════════════
+# STRIPE (optionnel)
+# ═══════════════════════════════════════════════════════════════
+STRIPE_API_KEY=
+STRIPE_WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID=
+NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID=
+NEXT_PUBLIC_STRIPE_BUSINESS_MONTHLY_PLAN_ID=
+NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID=
 ```
 
 ---
 
-## 🔗 Liens externes utiles
+## 🔗 Ressources externes
 
-- [Next.js Documentation](https://nextjs.org/docs)
-- [Prisma Documentation](https://www.prisma.io/docs)
-- [NextAuth.js](https://next-auth.js.org/)
-- [Gmail API Reference](https://developers.google.com/gmail/api)
-- [Server-Sent Events (MDN)](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events)
-- [Zustand](https://zustand-demo.pmnd.rs/)
-- [node-cron](https://www.npmjs.com/package/node-cron)
+### Documentation officielle
+
+- [Next.js 14](https://nextjs.org/docs)
+- [Auth.js (NextAuth v5)](https://authjs.dev/)
+- [Prisma ORM](https://www.prisma.io/docs)
+- [Gmail API](https://developers.google.com/gmail/api)
+- [Microsoft Graph](https://learn.microsoft.com/en-us/graph/)
+
+### Outils et bibliothèques
+
+- [imapflow](https://imapflow.com/) - Client IMAP
+- [Zustand](https://zustand-demo.pmnd.rs/) - State management
+- [shadcn/ui](https://ui.shadcn.com/) - Composants UI
+- [Resend](https://resend.com/docs) - Email transactionnel
+
+### Portails de configuration
+
+- [Google Cloud Console](https://console.cloud.google.com)
+- [Azure Portal](https://portal.azure.com)
 
 ---
 
 ## 📧 Support
 
-Pour toute question ou suggestion concernant la documentation, n'hésitez pas à créer une issue ou à contribuer directement.
+Pour toute question :
+- Créer une [issue GitHub](https://github.com/bullder30/inbox-actions/issues)
+- Consulter le [troubleshooting](./GMAIL_TROUBLESHOOTING.md)
 
 ---
 
-Dernière mise à jour : 14 janvier 2026
+## 📜 Licence
+
+Ce projet est sous licence **AGPL-3.0**. Voir [LICENSE](../LICENSE.md).
+
+---
+
+**Dernière mise à jour** : 29 janvier 2026
+**Version** : 0.2.0 MVP
