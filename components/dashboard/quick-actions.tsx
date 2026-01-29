@@ -13,7 +13,7 @@ export function QuickActions() {
   async function handleSync() {
     try {
       setSyncing(true);
-      const response = await fetch("/api/gmail/sync");
+      const response = await fetch("/api/email/sync");
       const data = await response.json();
 
       if (!response.ok) {
@@ -36,7 +36,7 @@ export function QuickActions() {
   async function handleAnalyze() {
     try {
       setAnalyzing(true);
-      const response = await fetch("/api/gmail/analyze", {
+      const response = await fetch("/api/email/analyze", {
         method: "POST",
       });
       const data = await response.json();

@@ -5,7 +5,7 @@ import { createEmailProvider } from "@/lib/email-provider/factory";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/gmail/pending-count
+ * GET /api/email/pending-count
  * Récupère le nombre de nouveaux emails non synchronisés (Gmail ou IMAP)
  */
 export async function GET() {

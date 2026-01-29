@@ -2,7 +2,7 @@
 
 import { ArrowRight, CheckCircle2, Loader2, Mail, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
-import { GmailStatus as GmailStatusType, getGmailStatus } from "@/lib/api/gmail";
+import { GmailStatus as GmailStatusType, getGmailStatus } from "@/lib/api/email";
 import { useEffect, useState } from "react";
 
 import { Badge } from "@/components/ui/badge";

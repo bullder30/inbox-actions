@@ -4,7 +4,7 @@ import { createEmailProvider } from "@/lib/email-provider/factory";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/gmail/pending-stream
+ * GET /api/email/pending-stream
  * Server-Sent Events (SSE) endpoint pour streamer le count d'emails en attente en temps réel
  *
  * Envoie un événement toutes les 30 secondes avec le count actuel

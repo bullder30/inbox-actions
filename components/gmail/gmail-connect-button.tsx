@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, LogOut, Mail, RefreshCw } from "lucide-react";
-import { disconnectGmail, syncGmail } from "@/lib/api/gmail";
+import { disconnectGmail, syncGmail } from "@/lib/api/email";
 
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";

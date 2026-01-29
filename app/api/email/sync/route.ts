@@ -5,7 +5,7 @@ import { createEmailProvider } from "@/lib/email-provider/factory";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/gmail/sync
+ * GET /api/email/sync
  * Synchronise les emails depuis le dernier scan (Gmail ou IMAP)
  * Stocke uniquement les métadonnées (RGPD compliant)
  */

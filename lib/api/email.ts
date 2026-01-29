@@ -46,7 +46,7 @@ export type GmailAnalyzeResponse = {
  * Vérifie le statut de connexion Gmail
  */
 export async function getGmailStatus(): Promise<GmailStatus> {
-  const response = await fetch("/api/gmail/status");
+  const response = await fetch("/api/email/status");
 
   if (!response.ok) {
     const error = await response.json();
@@ -73,7 +73,7 @@ export async function syncGmail(options?: {
     searchParams.append("query", options.query);
   }
 
-  const url = `/api/gmail/sync${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
+  const url = `/api/email/sync${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;
 
   const response = await fetch(url);
 
@@ -89,7 +89,7 @@ export async function syncGmail(options?: {
  * Déconnecte Gmail et supprime toutes les données
  */
 export async function disconnectGmail(): Promise<GmailDisconnectResponse> {
-  const response = await fetch("/api/gmail/disconnect", {
+  const response = await fetch("/api/email/disconnect", {
     method: "POST",
   });
 
@@ -108,7 +108,7 @@ export async function disconnectGmail(): Promise<GmailDisconnectResponse> {
 export async function analyzeGmail(options?: {
   maxEmails?: number;
 }): Promise<GmailAnalyzeResponse> {
-  const response = await fetch("/api/gmail/analyze", {
+  const response = await fetch("/api/email/analyze", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",

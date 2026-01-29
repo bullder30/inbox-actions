@@ -42,7 +42,7 @@ export default function SettingsPage() {
     try {
       setLoading(true);
       // Charger le statut Gmail
-      const gmailResponse = await fetch("/api/gmail/status");
+      const gmailResponse = await fetch("/api/email/status");
       if (gmailResponse.ok) {
         const gmailData = await gmailResponse.json();
         setGmailConnected(gmailData.connected);
@@ -148,7 +148,7 @@ export default function SettingsPage() {
 
     try {
       setDisconnecting(true);
-      const response = await fetch("/api/gmail/disconnect", {
+      const response = await fetch("/api/email/disconnect", {
         method: "POST",
       });
 

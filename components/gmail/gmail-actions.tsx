@@ -11,7 +11,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Loader2, LogOut, RefreshCw, Search } from "lucide-react";
-import { analyzeGmail, disconnectGmail, syncGmail } from "@/lib/api/gmail";
+import { analyzeGmail, disconnectGmail, syncGmail } from "@/lib/api/email";
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";

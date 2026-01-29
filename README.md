@@ -220,9 +220,9 @@ pnpm email        # Start React Email dev server
 - `POST /api/actions/[id]/ignore` — Ignore action
 
 ### Gmail
-- `POST /api/gmail/sync` — Sync new emails
-- `POST /api/gmail/analyze` — Extract actions
-- `GET /api/gmail/status` — Connection status
+- `POST /api/email/sync` — Sync new emails
+- `POST /api/email/analyze` — Extract actions
+- `GET /api/email/status` — Connection status
 
 ## Security & Privacy
 

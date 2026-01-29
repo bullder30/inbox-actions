@@ -22,7 +22,7 @@ export default function ActionsPage() {
       setActions(data.actions);
 
       // Récupérer le nombre d'emails analysés
-      const statsResponse = await fetch("/api/gmail/stats");
+      const statsResponse = await fetch("/api/email/stats");
       if (statsResponse.ok) {
         const statsData = await statsResponse.json();
         setEmailsAnalyzed(statsData.analyzedCount || 0);

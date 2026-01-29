@@ -161,10 +161,10 @@ async function badExample(gmailMessageId: string) {
 
 ## Usage in an API Route
 
-### GET /api/gmail/sync
+### GET /api/email/sync
 
 ```typescript
-// app/api/gmail/sync/route.ts
+// app/api/email/sync/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createGmailService } from "@/lib/gmail/gmail-service";
@@ -315,7 +315,7 @@ export async function syncAllUsersGmail() {
 ### Scenario: Manual Email Processing
 
 ```typescript
-// app/api/gmail/process/route.ts
+// app/api/email/process/route.ts
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createGmailService } from "@/lib/gmail/gmail-service";

@@ -12,7 +12,7 @@ export function PendingEmailsProvider({ children }: { children: React.ReactNode 
 
   useEffect(() => {
     // Créer la connexion EventSource pour SSE
-    const eventSource = new EventSource("/api/gmail/pending-stream");
+    const eventSource = new EventSource("/api/email/pending-stream");
 
     eventSource.onmessage = (event) => {
       try {

@@ -5,7 +5,7 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 /**
- * GET /api/gmail/status
+ * GET /api/email/status
  * Vérifie si l'utilisateur a connecté un email (Gmail ou IMAP) et le statut de la synchronisation
  */
 export async function GET() {

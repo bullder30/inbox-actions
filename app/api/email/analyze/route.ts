@@ -18,7 +18,7 @@ function getMessageId(email: { gmailMessageId?: string | null; imapUID?: bigint 
 }
 
 /**
- * POST /api/gmail/analyze
+ * POST /api/email/analyze
  * Analyse les emails non traités et extrait les actions par REGEX
  * IMPORTANT: Ne stocke JAMAIS le corps complet des emails (RGPD)
  * Méthode : Regex déterministes uniquement, pas d'IA opaque

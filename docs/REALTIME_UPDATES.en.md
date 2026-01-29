@@ -21,7 +21,7 @@ Count new Gmail emails
     ↓
 [Stored in temporary memory]
     ↓
-SSE Endpoint (/api/gmail/pending-stream)
+SSE Endpoint (/api/email/pending-stream)
     ↓ (stream every 30 sec)
 Client (EventSource)
     ↓
@@ -67,7 +67,7 @@ export const usePendingEmailsStore = create<PendingEmailsState>((set) => ({
 
 ### 2. SSE Endpoint
 
-**File**: `app/api/gmail/pending-stream/route.ts`
+**File**: `app/api/email/pending-stream/route.ts`
 
 Endpoint that streams the count in real-time via Server-Sent Events.
 
@@ -169,7 +169,7 @@ export function PendingEmailsProvider({
 
   useEffect(() => {
     // Create EventSource connection
-    const eventSource = new EventSource("/api/gmail/pending-stream");
+    const eventSource = new EventSource("/api/email/pending-stream");
 
     eventSource.onmessage = (event) => {
       try {
@@ -358,7 +358,7 @@ export async function runCountNewEmailsJob() {
 ```
 1. App starts
 2. PendingEmailsProvider mounts
-3. EventSource connects to /api/gmail/pending-stream
+3. EventSource connects to /api/email/pending-stream
 4. SSE immediately sends current count
 5. Zustand store updated
 6. UI displays count
@@ -422,7 +422,7 @@ export async function runCountNewEmailsJob() {
 1. Open DevTools
 2. Network tab
 3. Filter "EventStream"
-4. See `/api/gmail/pending-stream`
+4. See `/api/email/pending-stream`
 5. Observe messages in "EventStream" tab
 
 ### Server-side logs
@@ -449,7 +449,7 @@ console.error("[SSE] EventSource error:", error);
 // ❌ HTTP request every 30 seconds
 useEffect(() => {
   const interval = setInterval(async () => {
-    const response = await fetch("/api/gmail/pending-count");
+    const response = await fetch("/api/email/pending-count");
     const data = await response.json();
     setCount(data.count);
   }, 30 * 1000);

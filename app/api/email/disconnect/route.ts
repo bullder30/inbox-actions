@@ -6,7 +6,7 @@ import { google } from "googleapis";
 export const dynamic = "force-dynamic";
 
 /**
- * POST /api/gmail/disconnect
+ * POST /api/email/disconnect
  * Déconnecte l'email (Gmail ou IMAP) et supprime toutes les données associées (RGPD compliant)
  */
 export async function POST() {

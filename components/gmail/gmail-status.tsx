@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { GmailStatus as GmailStatusType } from "@/lib/api/gmail";
-import { getGmailStatus } from "@/lib/api/gmail";
+import { GmailStatus as GmailStatusType } from "@/lib/api/email";
+import { getGmailStatus } from "@/lib/api/email";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, CheckCircle2, XCircle, AlertCircle, Mail, Calendar } from "lucide-react";

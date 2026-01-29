@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import { GmailStatus } from "@/components/gmail/gmail-status";
 import { GmailActions } from "@/components/gmail/gmail-actions";
-import { GmailStatus as GmailStatusType } from "@/lib/api/gmail";
-import { getGmailStatus } from "@/lib/api/gmail";
+import { GmailStatus as GmailStatusType } from "@/lib/api/email";
+import { getGmailStatus } from "@/lib/api/email";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, Info } from "lucide-react";
 

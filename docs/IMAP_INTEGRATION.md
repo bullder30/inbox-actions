@@ -259,13 +259,13 @@ Les endpoints suivants fonctionnent pour **Gmail ET IMAP** :
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/gmail/sync` | Synchroniser les emails |
-| `POST /api/gmail/analyze` | Analyser et extraire les actions |
-| `GET /api/gmail/status` | Statut de connexion |
-| `POST /api/gmail/disconnect` | Déconnecter (Gmail ou IMAP) |
-| `GET /api/gmail/pending-count` | Compter les emails en attente |
+| `GET /api/email/sync` | Synchroniser les emails |
+| `POST /api/email/analyze` | Analyser et extraire les actions |
+| `GET /api/email/status` | Statut de connexion |
+| `POST /api/email/disconnect` | Déconnecter (Gmail ou IMAP) |
+| `GET /api/email/pending-count` | Compter les emails en attente |
 
-> **Note** : Le préfixe `/api/gmail/` est conservé pour compatibilité, mais ces endpoints supportent les deux providers via le factory pattern.
+> **Note** : Le préfixe `/api/email/` est conservé pour compatibilité, mais ces endpoints supportent les deux providers via le factory pattern.
 
 ---
 
