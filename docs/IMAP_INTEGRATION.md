@@ -6,12 +6,13 @@ Cette documentation décrit l'intégration IMAP comme alternative à Gmail OAuth
 
 ## Vue d'ensemble
 
-Inbox Actions supporte désormais deux méthodes de connexion email :
+Inbox Actions supporte plusieurs méthodes de connexion email :
 
-| Méthode | Avantages | Inconvénients |
-|---------|-----------|---------------|
-| **Gmail OAuth** | Connexion en 1 clic, pas de mot de passe à gérer | Uniquement Gmail |
-| **IMAP** | Compatible tous providers (Gmail, Outlook, Yahoo, iCloud...) | Nécessite un App Password |
+| Méthode | Provider | Avantages | Inconvénients |
+|---------|----------|-----------|---------------|
+| **Gmail OAuth** | Gmail uniquement | Connexion 1 clic, Gmail API | Uniquement Gmail |
+| **Microsoft OAuth + IMAP OAuth2** | Microsoft 365 | Connexion 1 clic, IMAP automatique | Nécessite configuration Azure |
+| **IMAP App Password** | Tous providers | Universel | Nécessite un App Password |
 
 ---
 
@@ -130,6 +131,113 @@ Pour Gmail et les providers avec 2FA, utilisez un **App Password** :
 
 ---
 
+## IMAP OAuth2 (XOAUTH2)
+
+### Vue d'ensemble
+
+Pour Microsoft 365, l'authentification basique (username/password) est souvent désactivée. Inbox Actions supporte **IMAP OAuth2 (XOAUTH2)** qui utilise le token OAuth pour s'authentifier au serveur IMAP.
+
+### Flux d'authentification
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  Connexion Microsoft OAuth                                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  1. Utilisateur clique "Se connecter avec Microsoft"             │
+│                          │                                       │
+│                          ▼                                       │
+│  2. Microsoft retourne access_token + refresh_token              │
+│     (stockés dans table Account)                                 │
+│                          │                                       │
+│                          ▼                                       │
+│  3. POST /api/imap/setup-oauth { provider: "microsoft-entra-id" }│
+│                          │                                       │
+│                          ▼                                       │
+│  4. Création IMAPCredential avec useOAuth2: true                 │
+│     - Host: outlook.office365.com                                │
+│     - Port: 993                                                  │
+│     - oauthProvider: "microsoft-entra-id"                        │
+│                          │                                       │
+│                          ▼                                       │
+│  5. Lors de la sync, le service IMAP:                            │
+│     - Récupère le access_token depuis Account                    │
+│     - Rafraîchit si expiré (via refresh_token)                   │
+│     - S'authentifie avec XOAUTH2                                 │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Configuration automatique
+
+Après connexion Microsoft OAuth :
+
+```bash
+POST /api/imap/setup-oauth
+Content-Type: application/json
+
+{
+  "provider": "microsoft-entra-id"
+}
+```
+
+**Réponse :**
+```json
+{
+  "success": true,
+  "message": "Configuration IMAP OAuth2 créée",
+  "credentialId": "clu...",
+  "config": {
+    "host": "outlook.office365.com",
+    "port": 993,
+    "username": "user@domain.com",
+    "useOAuth2": true,
+    "provider": "microsoft-entra-id"
+  }
+}
+```
+
+### Gestion des tokens
+
+Le module `lib/imap/oauth-token.ts` gère :
+
+1. **Récupération du token** depuis la table `Account`
+2. **Vérification d'expiration** (avec buffer de 5 minutes)
+3. **Rafraîchissement automatique** via l'endpoint Microsoft/Google
+4. **Mise à jour en base** du nouveau token
+
+```typescript
+// Exemple d'utilisation interne
+const accessToken = await getOAuthAccessToken(userId, "microsoft-entra-id");
+// Si expiré, le token est automatiquement rafraîchi
+```
+
+### Prérequis Azure
+
+Pour que IMAP OAuth2 fonctionne, l'application Azure doit avoir :
+
+1. **Scopes dans auth.config.ts** :
+   - `offline_access` (pour le refresh token)
+   - `https://outlook.office.com/IMAP.AccessAsUser.All` (pour IMAP)
+
+2. **Permissions API dans Azure Portal** :
+   - Microsoft Graph : `openid`, `email`, `profile`, `offline_access`
+   - Office 365 Exchange Online : `IMAP.AccessAsUser.All`
+
+3. **Admin consent** si nécessaire (pour les apps multi-tenant)
+
+### Différence avec App Password
+
+| Aspect | App Password | OAuth2 XOAUTH2 |
+|--------|-------------|----------------|
+| Stockage | Mot de passe chiffré en DB | Token OAuth dans Account |
+| Expiration | Jamais (sauf révocation) | ~1h, refresh automatique |
+| Sécurité | Moins sécurisé | Plus sécurisé |
+| Configuration | Manuelle | Automatique |
+| Microsoft 365 | Souvent bloqué | Supporté |
+
+---
+
 ## Modèle de données
 
 ### Table IMAPCredential
@@ -143,7 +251,11 @@ model IMAPCredential {
   imapHost        String   // ex: "imap.gmail.com"
   imapPort        Int      @default(993)
   imapUsername    String   // Email ou username
-  imapPassword    String   @db.Text // Chiffré AES-256
+  imapPassword    String   @db.Text // Chiffré AES-256 (vide si OAuth2)
+
+  // OAuth2 authentication
+  useOAuth2       Boolean  @default(false)
+  oauthProvider   String?  // "microsoft-entra-id", "google"
 
   // Configuration
   imapFolder      String   @default("INBOX")
@@ -359,6 +471,29 @@ Générer et configurer la clé de chiffrement :
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 # Ajouter à .env.local
 ```
+
+### Erreur "Failed to get OAuth2 access token"
+
+Pour IMAP OAuth2 :
+
+1. Vérifier que le scope `IMAP.AccessAsUser.All` est configuré dans Azure
+2. Vérifier que `offline_access` est demandé (pour le refresh token)
+3. Vérifier les logs : `[OAuth] Token refresh failed`
+4. Reconnectez-vous avec Microsoft pour obtenir un nouveau token
+
+### Erreur "Token refresh failed"
+
+1. Le refresh token a peut-être expiré (rare)
+2. L'application Azure a peut-être été modifiée
+3. Solution : déconnecter et reconnecter avec Microsoft OAuth
+
+### Microsoft 365 : "Basic authentication is disabled"
+
+C'est pour cela que IMAP OAuth2 existe :
+
+1. Connectez-vous avec Microsoft OAuth
+2. Appelez `POST /api/imap/setup-oauth { "provider": "microsoft-entra-id" }`
+3. L'authentification utilisera XOAUTH2 au lieu du mot de passe
 
 ---
 
