@@ -30,6 +30,11 @@ interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   mode?: "login" | "register";
 }
 
+// Check which OAuth providers are enabled
+const isGoogleEnabled = process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
+const isMicrosoftEnabled = process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
+const hasOAuthProviders = isGoogleEnabled || isMicrosoftEnabled;
+
 export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFormProps) {
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = React.useState(false);
@@ -158,53 +163,62 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
         </Button>
       </form>
 
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <span className="w-full border-t" />
-        </div>
-        <div className="relative flex justify-center text-xs uppercase">
-          <span className="bg-background px-2 text-muted-foreground">
-            Ou continuer avec
-          </span>
-        </div>
-      </div>
+      {/* OAuth Section - only shown if at least one provider is enabled */}
+      {hasOAuthProviders && (
+        <>
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <span className="w-full border-t" />
+            </div>
+            <div className="relative flex justify-center text-xs uppercase">
+              <span className="bg-background px-2 text-muted-foreground">
+                Ou continuer avec
+              </span>
+            </div>
+          </div>
 
-      {/* OAuth Buttons */}
-      <div className="grid gap-2">
-        <button
-          type="button"
-          className={cn(buttonVariants({ variant: "outline" }))}
-          onClick={() => {
-            setIsGoogleLoading(true);
-            signIn("google");
-          }}
-          disabled={isGoogleLoading || isMicrosoftLoading}
-        >
-          {isGoogleLoading ? (
-            <Icons.spinner className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Icons.google className="mr-2 size-4" />
-          )}
-          Google
-        </button>
+          {/* OAuth Buttons */}
+          <div className="grid gap-2">
+            {isGoogleEnabled && (
+              <button
+                type="button"
+                className={cn(buttonVariants({ variant: "outline" }))}
+                onClick={() => {
+                  setIsGoogleLoading(true);
+                  signIn("google");
+                }}
+                disabled={isGoogleLoading || isMicrosoftLoading}
+              >
+                {isGoogleLoading ? (
+                  <Icons.spinner className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Icons.google className="mr-2 size-4" />
+                )}
+                Google
+              </button>
+            )}
 
-        <button
-          type="button"
-          className={cn(buttonVariants({ variant: "outline" }))}
-          onClick={() => {
-            setIsMicrosoftLoading(true);
-            signIn("microsoft-entra-id");
-          }}
-          disabled={isGoogleLoading || isMicrosoftLoading}
-        >
-          {isMicrosoftLoading ? (
-            <Icons.spinner className="mr-2 size-4 animate-spin" />
-          ) : (
-            <Icons.microsoft className="mr-2 size-4" />
-          )}
-          Microsoft
-        </button>
-      </div>
+            {isMicrosoftEnabled && (
+              <button
+                type="button"
+                className={cn(buttonVariants({ variant: "outline" }))}
+                onClick={() => {
+                  setIsMicrosoftLoading(true);
+                  signIn("microsoft-entra-id");
+                }}
+                disabled={isGoogleLoading || isMicrosoftLoading}
+              >
+                {isMicrosoftLoading ? (
+                  <Icons.spinner className="mr-2 size-4 animate-spin" />
+                ) : (
+                  <Icons.microsoft className="mr-2 size-4" />
+                )}
+                Microsoft
+              </button>
+            )}
+          </div>
+        </>
+      )}
     </div>
   );
 }

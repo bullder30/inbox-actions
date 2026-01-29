@@ -19,23 +19,28 @@ export default {
     error: "/login", // Redirige les erreurs OAuth (PKCE, etc.) vers login
   },
   providers: [
-    Google({
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-      allowDangerousEmailAccountLinking: true,
-      authorization: {
-        params: {
-          access_type: "offline",
-          prompt: "consent",
-          scope: [
-            "openid",
-            "email",
-            "profile",
-            "https://www.googleapis.com/auth/gmail.readonly",
-          ].join(" "),
-        },
-      },
-    }),
+    // Google OAuth (optional - only enabled if credentials are set)
+    ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+      ? [
+          Google({
+            clientId: env.GOOGLE_CLIENT_ID,
+            clientSecret: env.GOOGLE_CLIENT_SECRET,
+            allowDangerousEmailAccountLinking: true,
+            authorization: {
+              params: {
+                access_type: "offline",
+                prompt: "consent",
+                scope: [
+                  "openid",
+                  "email",
+                  "profile",
+                  "https://www.googleapis.com/auth/gmail.readonly",
+                ].join(" "),
+              },
+            },
+          }),
+        ]
+      : []),
     // Microsoft OAuth (optional - only enabled if credentials are set)
     ...(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
       ? [
