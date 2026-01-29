@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    console.log("[SYNC] Session userId:", session.user.id, "email:", session.user.email);
+    console.debug("[SYNC] Session userId:", session.user.id, "email:", session.user.email);
 
     // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
     const emailProvider = await createEmailProvider(session.user.id);

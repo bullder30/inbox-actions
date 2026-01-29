@@ -20,7 +20,7 @@ export async function createEmailProvider(
   userId: string
 ): Promise<IEmailProvider | null> {
   try {
-    console.log("[EmailProvider] Creating provider for userId:", userId);
+    console.debug("[EmailProvider] Creating provider for userId:", userId);
 
     // Récupérer la préférence de l'utilisateur
     const user = await prisma.user.findUnique({
@@ -34,7 +34,7 @@ export async function createEmailProvider(
     }
 
     const provider = user.emailProvider;
-    console.log("[EmailProvider] User", user.email, "has provider:", provider);
+    console.debug("[EmailProvider] User", user.email, "has provider:", provider);
 
     if (provider === "IMAP") {
       // Créer le service IMAP

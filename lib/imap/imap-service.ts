@@ -256,7 +256,7 @@ export class IMAPService {
         select: { lastUID: true, lastIMAPSync: true },
       });
 
-      console.log("[IMAP] Credential lastUID:", credential?.lastUID?.toString(), "lastSync:", credential?.lastIMAPSync);
+      console.debug("[IMAP] Credential lastUID:", credential?.lastUID?.toString(), "lastSync:", credential?.lastIMAPSync);
 
       // Ouvrir le dossier
       const mailbox = await client.getMailboxLock(folder);
@@ -282,7 +282,7 @@ export class IMAPService {
 
         // client.search peut retourner false si aucun résultat
         if (!uidsResult || uidsResult.length === 0) {
-          console.log("[IMAP] No new emails found");
+          console.debug("[IMAP] No new emails found");
           return [];
         }
 
@@ -618,7 +618,7 @@ export async function createIMAPService(
   userId: string
 ): Promise<IMAPService | null> {
   try {
-    console.log("[IMAP] Creating service for userId:", userId);
+    console.debug("[IMAP] Creating service for userId:", userId);
 
     // Récupérer les credentials IMAP de l'utilisateur
     const credential = await prisma.iMAPCredential.findFirst({
@@ -635,11 +635,11 @@ export async function createIMAPService(
     });
 
     if (!credential) {
-      console.log("[IMAP] No IMAP credential found for user:", userId);
+      console.debug("[IMAP] No IMAP credential found for user:", userId);
       return null;
     }
 
-    console.log("[IMAP] Found credential:", credential.id, "for host:", credential.imapHost);
+    console.debug("[IMAP] Found credential:", credential.id, "for host:", credential.imapHost);
 
     // Déchiffrer le mot de passe
     let password: string;
