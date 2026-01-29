@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createGmailService } from "@/lib/gmail/gmail-service";
+import { createEmailProvider } from "@/lib/email-provider/factory";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/gmail/sync
- * Synchronise les emails Gmail depuis le dernier scan
+ * Synchronise les emails depuis le dernier scan (Gmail ou IMAP)
  * Stocke uniquement les métadonnées (RGPD compliant)
  */
 export async function GET(req: NextRequest) {
@@ -20,15 +20,15 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Créer le service Gmail
-    const gmailService = await createGmailService(session.user.id);
+    // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
+    const emailProvider = await createEmailProvider(session.user.id);
 
-    if (!gmailService) {
+    if (!emailProvider) {
       return NextResponse.json(
         {
-          error: "Gmail n'est pas connecté ou le token a expiré",
-          message: "Veuillez vous (re)connecter avec Google pour activer la synchronisation Gmail",
-          code: "GMAIL_NOT_CONNECTED",
+          error: "Email non connecté ou le token a expiré",
+          message: "Veuillez vous (re)connecter pour activer la synchronisation",
+          code: "EMAIL_NOT_CONNECTED",
         },
         { status: 400 }
       );
@@ -37,21 +37,20 @@ export async function GET(req: NextRequest) {
     // Options de synchronisation
     const { searchParams } = new URL(req.url);
     const maxResultsParam = searchParams.get("maxResults");
-    const maxResults = maxResultsParam ? parseInt(maxResultsParam) : undefined; // Pas de limite par défaut
-    const query = searchParams.get("query") || undefined;
+    const maxResults = maxResultsParam ? parseInt(maxResultsParam) : undefined;
 
     // Récupérer les nouveaux emails
-    const emails = await gmailService.fetchNewEmails({
+    const emails = await emailProvider.fetchNewEmails({
       maxResults,
-      query,
-      labelIds: ["INBOX"], // Seulement les emails dans INBOX
+      folder: "INBOX",
     });
 
     return NextResponse.json({
       success: true,
       count: emails.length,
+      provider: emailProvider.providerType,
       emails: emails.map((email) => ({
-        id: email.gmailMessageId,
+        id: email.gmailMessageId || email.imapUID?.toString(),
         from: email.from,
         subject: email.subject,
         snippet: email.snippet,
@@ -61,7 +60,7 @@ export async function GET(req: NextRequest) {
       message: `${emails.length} nouveau(x) email(s) synchronisé(s)`,
     });
   } catch (error) {
-    console.error("Error syncing Gmail:", error);
+    console.error("Error syncing emails:", error);
 
     // Gérer les erreurs spécifiques
     if (error instanceof Error) {
@@ -69,7 +68,7 @@ export async function GET(req: NextRequest) {
         return NextResponse.json(
           {
             error: "Token expiré",
-            message: "Veuillez vous reconnecter à Gmail",
+            message: "Veuillez vous reconnecter",
             code: "TOKEN_EXPIRED",
           },
           { status: 401 }
@@ -78,7 +77,7 @@ export async function GET(req: NextRequest) {
     }
 
     return NextResponse.json(
-      { error: "Erreur lors de la synchronisation Gmail" },
+      { error: "Erreur lors de la synchronisation des emails" },
       { status: 500 }
     );
   }

@@ -6,7 +6,19 @@
 import { Action, ActionStatus, ActionType } from "@prisma/client";
 
 // Types pour les réponses API
-export type ActionWithUser = Action & {
+// Note: imapUID est converti en string dans les API routes (BigInt non supporté en JSON)
+// Pour les Server Components qui utilisent Prisma directement, utiliser ActionWithUserPrisma
+export type ActionWithUser = Omit<Action, "imapUID"> & {
+  imapUID: string | null;
+  user: {
+    id: string;
+    name: string | null;
+    email: string | null;
+  };
+};
+
+// Type pour les données Prisma brutes (Server Components)
+export type ActionWithUserPrisma = Action & {
   user: {
     id: string;
     name: string | null;

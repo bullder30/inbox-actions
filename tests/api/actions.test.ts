@@ -56,7 +56,7 @@ describe("API Actions - GET /api/actions", () => {
   });
 
   it("devrait retourner 401 si non authentifié", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as any);
 
     const req = createMockRequest("http://localhost:3000/api/actions");
     const response = await GET(req);
@@ -150,7 +150,7 @@ describe("API Actions - POST /api/actions", () => {
   });
 
   it("devrait retourner 401 si non authentifié", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as any);
 
     const req = createMockRequest("http://localhost:3000/api/actions", "POST", {
       title: "Test",
@@ -259,7 +259,7 @@ describe("API Actions - POST /api/actions/:id/done", () => {
   });
 
   it("devrait retourner 401 si non authentifié", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as any);
 
     const req = createMockRequest("http://localhost:3000/api/actions/action123/done", "POST");
     const response = await POST_DONE(req, { params: Promise.resolve({ id: "action123" }) });
@@ -316,7 +316,7 @@ describe("API Actions - POST /api/actions/:id/ignore", () => {
   });
 
   it("devrait retourner 401 si non authentifié", async () => {
-    vi.mocked(auth).mockResolvedValue(null);
+    vi.mocked(auth).mockResolvedValue(null as any);
 
     const req = createMockRequest("http://localhost:3000/api/actions/action123/ignore", "POST");
     const response = await POST_IGNORE(req, { params: Promise.resolve({ id: "action123" }) });

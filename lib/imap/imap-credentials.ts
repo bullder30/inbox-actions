@@ -37,7 +37,8 @@ export function encryptPassword(plainPassword: string): string {
   const masterKey = getMasterKey();
   const iv = crypto.randomBytes(IV_LENGTH);
 
-  const cipher = crypto.createCipheriv(ALGORITHM, masterKey, iv);
+  // Use Uint8Array for type compatibility with Node.js crypto
+  const cipher = crypto.createCipheriv(ALGORITHM, new Uint8Array(masterKey), new Uint8Array(iv));
   let encrypted = cipher.update(plainPassword, "utf8", "hex");
   encrypted += cipher.final("hex");
 
@@ -65,7 +66,8 @@ export function decryptPassword(encryptedPassword: string): string {
     throw new Error("Invalid IV length in encrypted password");
   }
 
-  const decipher = crypto.createDecipheriv(ALGORITHM, masterKey, iv);
+  // Use Uint8Array for type compatibility with Node.js crypto
+  const decipher = crypto.createDecipheriv(ALGORITHM, new Uint8Array(masterKey), new Uint8Array(iv));
   let decrypted = decipher.update(encrypted, "hex", "utf8");
   decrypted += decipher.final("utf8");
 

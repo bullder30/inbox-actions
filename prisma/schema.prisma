@@ -132,6 +132,7 @@ model Action {
   emailFrom        String
   emailReceivedAt  DateTime
   gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message Gmail pour créer un lien
+  imapUID          BigInt?      @map(name: "imap_uid") // UID IMAP pour créer un lien
   createdAt        DateTime     @default(now()) @map(name: "created_at")
   updatedAt        DateTime     @default(now()) @updatedAt @map(name: "updated_at")
 

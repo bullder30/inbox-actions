@@ -28,7 +28,6 @@ export default function SettingsPage() {
   // IMAP state
   const [emailProvider, setEmailProvider] = useState<"GMAIL" | "IMAP">("GMAIL");
   const [imapConfigured, setImapConfigured] = useState(false);
-  const [showImapForm, setShowImapForm] = useState(false);
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -290,10 +289,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setEmailProvider("GMAIL");
-                    setShowImapForm(false);
-                  }}
+                  onClick={() => setEmailProvider("GMAIL")}
                   className={cn(
                     "gap-2",
                     emailProvider === "GMAIL" && "border-primary bg-primary/10"
@@ -305,12 +301,7 @@ export default function SettingsPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => {
-                    setEmailProvider("IMAP");
-                    if (!imapConfigured) {
-                      setShowImapForm(true);
-                    }
-                  }}
+                  onClick={() => setEmailProvider("IMAP")}
                   className={cn(
                     "gap-2",
                     emailProvider === "IMAP" && "border-primary bg-primary/10"
@@ -360,27 +351,17 @@ export default function SettingsPage() {
               {/* IMAP section */}
               {emailProvider === "IMAP" && (
                 <div className="mt-4">
-                  {imapConfigured && !showImapForm ? (
-                    <div className="space-y-4">
-                      <IMAPStatus
-                        onDisconnect={() => {
-                          setImapConfigured(false);
-                          setShowImapForm(true);
-                        }}
-                      />
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setShowImapForm(true)}
-                      >
-                        Modifier la configuration
-                      </Button>
-                    </div>
+                  {imapConfigured ? (
+                    <IMAPStatus
+                      onDisconnect={() => {
+                        setImapConfigured(false);
+                        loadSettings();
+                      }}
+                    />
                   ) : (
                     <IMAPConnectForm
                       onSuccess={() => {
                         setImapConfigured(true);
-                        setShowImapForm(false);
                         loadSettings();
                       }}
                     />

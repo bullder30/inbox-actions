@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Parser les options
-    let options = { maxResults: 100, folder: undefined as string | undefined };
+    let options: { maxResults: number; folder?: string } = { maxResults: 100 };
     try {
       const body = await req.json();
       const validationResult = syncSchema.safeParse(body);

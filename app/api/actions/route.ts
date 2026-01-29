@@ -60,8 +60,14 @@ export async function GET(req: NextRequest) {
       },
     });
 
+    // Convertir les BigInt en string pour la sérialisation JSON
+    const serializedActions = actions.map((action) => ({
+      ...action,
+      imapUID: action.imapUID?.toString() ?? null,
+    }));
+
     return NextResponse.json({
-      actions,
+      actions: serializedActions,
       count: actions.length,
     });
   } catch (error) {

@@ -1,12 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
-import { createGmailService } from "@/lib/gmail/gmail-service";
+import { createEmailProvider } from "@/lib/email-provider/factory";
 import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
 import { prisma } from "@/lib/db";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 
 export const dynamic = "force-dynamic";
+
+/**
+ * Helper pour obtenir l'identifiant du message selon le provider
+ */
+function getMessageId(email: { gmailMessageId?: string | null; imapUID?: bigint | null }): string | bigint {
+  if (email.gmailMessageId) return email.gmailMessageId;
+  if (email.imapUID) return email.imapUID;
+  throw new Error("No message ID found");
+}
 
 /**
  * POST /api/gmail/analyze
@@ -25,14 +34,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Créer le service Gmail
-    const gmailService = await createGmailService(session.user.id);
+    // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
+    const emailProvider = await createEmailProvider(session.user.id);
 
-    if (!gmailService) {
+    if (!emailProvider) {
       return NextResponse.json(
         {
-          error: "Gmail n'est pas connecté",
-          message: "Veuillez connecter Gmail pour analyser vos emails",
+          error: "Email non connecté",
+          message: "Veuillez connecter votre email pour analyser vos messages",
         },
         { status: 400 }
       );
@@ -43,7 +52,7 @@ export async function POST(req: NextRequest) {
     const maxEmails = body.maxEmails; // Pas de limite par défaut
 
     // Récupérer les emails extraits (EXTRACTED) non encore analysés
-    const extractedEmails = await gmailService.getExtractedEmails();
+    const extractedEmails = await emailProvider.getExtractedEmails();
 
     if (extractedEmails.length === 0) {
       return NextResponse.json({
@@ -69,15 +78,16 @@ export async function POST(req: NextRequest) {
     // Traiter chaque email
     for (const emailMetadata of emailsToProcess) {
       try {
+        const messageId = getMessageId(emailMetadata);
+        const messageIdStr = typeof messageId === "bigint" ? messageId.toString() : messageId;
+
         // Récupérer le corps de l'email (temporaire, en mémoire uniquement)
-        const body = await gmailService.getEmailBodyForAnalysis(
-          emailMetadata.gmailMessageId
-        );
+        const body = await emailProvider.getEmailBodyForAnalysis(messageId);
 
         if (!body) {
-          console.warn(`No body for email ${emailMetadata.gmailMessageId}, marking as analyzed anyway`);
+          console.warn(`No body for email ${messageIdStr}, marking as analyzed anyway`);
           // Marquer comme analysé même si le body est vide
-          await gmailService.markEmailAsAnalyzed(emailMetadata.gmailMessageId);
+          await emailProvider.markEmailAsAnalyzed(messageId);
           processedCount++;
           continue;
         }
@@ -100,7 +110,8 @@ export async function POST(req: NextRequest) {
               sourceSentence: action.sourceSentence,
               emailFrom: emailMetadata.from,
               emailReceivedAt: emailMetadata.receivedAt,
-              gmailMessageId: emailMetadata.gmailMessageId, // Pour créer un lien vers Gmail
+              gmailMessageId: emailMetadata.gmailMessageId, // Pour lien Gmail (null si IMAP)
+              imapUID: emailMetadata.imapUID, // Pour IMAP (null si Gmail)
               dueDate: action.dueDate,
               status: "TODO",
             },
@@ -110,11 +121,12 @@ export async function POST(req: NextRequest) {
         }
 
         // Marquer l'email comme analysé (ANALYZED) - même si aucune action extraite
-        await gmailService.markEmailAsAnalyzed(emailMetadata.gmailMessageId);
+        await emailProvider.markEmailAsAnalyzed(messageId);
         processedCount++;
       } catch (error) {
+        const messageIdStr = emailMetadata.gmailMessageId || emailMetadata.imapUID?.toString() || "unknown";
         console.error(
-          `Error processing email ${emailMetadata.gmailMessageId}:`,
+          `Error processing email ${messageIdStr}:`,
           error
         );
         skippedCount++;

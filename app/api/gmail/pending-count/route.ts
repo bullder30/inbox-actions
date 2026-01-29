@@ -1,12 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createGmailService } from "@/lib/gmail/gmail-service";
+import { createEmailProvider } from "@/lib/email-provider/factory";
 
 export const dynamic = "force-dynamic";
 
 /**
  * GET /api/gmail/pending-count
- * Récupère le nombre de nouveaux emails non synchronisés dans Gmail
+ * Récupère le nombre de nouveaux emails non synchronisés (Gmail ou IMAP)
  */
 export async function GET() {
   try {
@@ -18,10 +18,10 @@ export async function GET() {
       );
     }
 
-    // Créer le service Gmail
-    const gmailService = await createGmailService(session.user.id);
+    // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
+    const emailProvider = await createEmailProvider(session.user.id);
 
-    if (!gmailService) {
+    if (!emailProvider) {
       return NextResponse.json({
         count: 0,
         connected: false,
@@ -29,11 +29,12 @@ export async function GET() {
     }
 
     // Compter les nouveaux emails
-    const count = await gmailService.countNewEmailsInGmail();
+    const count = await emailProvider.countNewEmails();
 
     return NextResponse.json({
       count,
       connected: true,
+      provider: emailProvider.providerType,
     });
   } catch (error) {
     console.error("Error getting pending count:", error);

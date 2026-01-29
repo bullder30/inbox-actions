@@ -21,8 +21,10 @@ export async function GET(req: NextRequest) {
       select: {
         id: true,
         imapHost: true,
+        imapPort: true,
         imapUsername: true,
         imapFolder: true,
+        useTLS: true,
         isConnected: true,
         lastIMAPSync: true,
         connectionError: true,
@@ -58,14 +60,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       configured: true,
       host: credential.imapHost,
+      port: credential.imapPort,
       username: credential.imapUsername,
       folder: credential.imapFolder,
+      useTLS: credential.useTLS,
       isConnected: credential.isConnected,
       lastSync: credential.lastIMAPSync,
       lastError: credential.connectionError,
       lastErrorAt: credential.lastErrorAt,
-      emailCount,
-      pendingCount,
       createdAt: credential.createdAt,
     });
   } catch (error) {

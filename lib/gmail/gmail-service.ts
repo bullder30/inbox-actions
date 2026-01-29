@@ -139,8 +139,8 @@ function normalizeTypography(text: string): string {
  * Type pour les métadonnées d'email minimales (RGPD compliant)
  */
 export type EmailMetadataType = {
-  gmailMessageId: string;
-  gmailThreadId: string;
+  gmailMessageId: string | null;
+  gmailThreadId: string | null;
   from: string;
   subject: string | null;
   snippet: string;

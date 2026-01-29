@@ -53,7 +53,13 @@ export async function POST(request: Request) {
       },
     });
 
-    return NextResponse.json({ action }, { status: 201 });
+    // Convertir BigInt en string pour la sérialisation JSON
+    return NextResponse.json({
+      action: {
+        ...action,
+        imapUID: action.imapUID?.toString() ?? null,
+      },
+    }, { status: 201 });
   } catch (error) {
     console.error("Error creating manual action:", error);
     return NextResponse.json(

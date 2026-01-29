@@ -1,5 +1,5 @@
 import { auth } from "@/auth";
-import { createGmailService } from "@/lib/gmail/gmail-service";
+import { createEmailProvider } from "@/lib/email-provider/factory";
 
 export const dynamic = "force-dynamic";
 
@@ -51,14 +51,14 @@ export async function GET() {
         }
 
         try {
-          const gmailService = await createGmailService(userId);
+          const emailProvider = await createEmailProvider(userId);
 
-          if (!gmailService) {
+          if (!emailProvider) {
             sendEvent({ count: 0 });
             return;
           }
 
-          const count = await gmailService.countNewEmailsInGmail();
+          const count = await emailProvider.countNewEmails();
           sendEvent({ count });
         } catch (error) {
           console.error("[SSE] Error fetching pending count:", error);

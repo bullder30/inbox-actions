@@ -276,12 +276,15 @@ export class IMAPService {
         }
 
         // Rechercher les UIDs des messages
-        const uids = await client.search({ uid: searchCriteria }, { uid: true });
+        const uidsResult = await client.search({ uid: searchCriteria }, { uid: true });
 
-        if (uids.length === 0) {
+        // client.search peut retourner false si aucun résultat
+        if (!uidsResult || uidsResult.length === 0) {
           console.log("[IMAP] No new emails found");
           return [];
         }
+
+        const uids = uidsResult as number[];
 
         // Limiter au nombre maximum demandé (les plus récents)
         const uidsToFetch = uids.slice(-maxResults);
@@ -324,7 +327,10 @@ export class IMAPService {
 
           const subject = envelope.subject || null;
           const messageId = envelope.messageId || null;
-          const receivedAt = message.internalDate || new Date();
+          const internalDate = message.internalDate;
+          const receivedAt = internalDate
+            ? (typeof internalDate === "string" ? new Date(internalDate) : internalDate)
+            : new Date();
 
           // Pour le snippet, on récupère juste les headers pour l'instant
           // Le snippet sera généré lors de l'analyse si besoin
@@ -422,7 +428,8 @@ export class IMAPService {
           { uid: true }
         );
 
-        if (!message?.source) {
+        // fetchOne peut retourner false si le message n'existe pas
+        if (!message || !("source" in message) || !message.source) {
           return null;
         }
 
@@ -521,21 +528,23 @@ export class IMAPService {
           const yesterday = new Date();
           yesterday.setDate(yesterday.getDate() - 1);
 
-          const uids = await client.search(
+          const uidsResult = await client.search(
             { since: yesterday },
             { uid: true }
           );
-          return uids.length;
+          // client.search peut retourner false si aucun résultat
+          return uidsResult ? (uidsResult as number[]).length : 0;
         }
 
         // Compter les emails depuis le dernier UID
         const startUID = credential.lastUID + BigInt(1);
-        const uids = await client.search(
+        const uidsResult = await client.search(
           { uid: `${startUID}:*` },
           { uid: true }
         );
 
-        return uids.length;
+        // client.search peut retourner false si aucun résultat
+        return uidsResult ? (uidsResult as number[]).length : 0;
       } finally {
         mailbox.release();
       }
