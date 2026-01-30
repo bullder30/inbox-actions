@@ -18,6 +18,8 @@ export async function getOAuthAccessToken(
   userId: string,
   provider: string
 ): Promise<string | null> {
+  console.log(`[OAuth] Getting access token for provider: ${provider}, userId: ${userId}`);
+
   try {
     // Get the account for this provider
     const account = await prisma.account.findFirst({
@@ -26,14 +28,27 @@ export async function getOAuthAccessToken(
         provider,
       },
       select: {
+        id: true,
         access_token: true,
         refresh_token: true,
         expires_at: true,
+        scope: true,
       },
     });
 
-    if (!account || !account.access_token) {
+    if (!account) {
       console.error(`[OAuth] No ${provider} account found for user ${userId}`);
+      return null;
+    }
+
+    console.log(`[OAuth] Found account: ${account.id}`);
+    console.log(`[OAuth] Has access_token: ${!!account.access_token}`);
+    console.log(`[OAuth] Has refresh_token: ${!!account.refresh_token}`);
+    console.log(`[OAuth] Expires_at: ${account.expires_at}`);
+    console.log(`[OAuth] Scopes: ${account.scope}`);
+
+    if (!account.access_token) {
+      console.error(`[OAuth] No access_token in ${provider} account for user ${userId}`);
       return null;
     }
 
@@ -42,6 +57,8 @@ export async function getOAuthAccessToken(
     const expiresAt = account.expires_at || 0;
     const isExpired = expiresAt > 0 && expiresAt - 300 < now;
 
+    console.log(`[OAuth] Now: ${now}, ExpiresAt: ${expiresAt}, IsExpired: ${isExpired}`);
+
     if (isExpired && account.refresh_token) {
       console.log(`[OAuth] Token expired for ${provider}, refreshing...`);
       const newToken = await refreshOAuthToken(
@@ -49,9 +66,15 @@ export async function getOAuthAccessToken(
         provider,
         account.refresh_token
       );
+      if (newToken) {
+        console.log(`[OAuth] Token refreshed successfully, length: ${newToken.length}`);
+      } else {
+        console.error(`[OAuth] Token refresh returned null`);
+      }
       return newToken;
     }
 
+    console.log(`[OAuth] Returning existing token, length: ${account.access_token.length}`);
     return account.access_token;
   } catch (error) {
     console.error(`[OAuth] Error getting access token for ${provider}:`, error);
@@ -67,6 +90,8 @@ async function refreshOAuthToken(
   provider: string,
   refreshToken: string
 ): Promise<string | null> {
+  console.log(`[OAuth] Refreshing token for provider: ${provider}`);
+
   try {
     let tokenUrl: string;
     let clientId: string | undefined;
@@ -77,6 +102,7 @@ async function refreshOAuthToken(
       tokenUrl = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
       clientId = process.env.MICROSOFT_CLIENT_ID;
       clientSecret = process.env.MICROSOFT_CLIENT_SECRET;
+      console.log(`[OAuth] Microsoft tenant: ${tenantId}`);
     } else if (provider === "google") {
       tokenUrl = "https://oauth2.googleapis.com/token";
       clientId = process.env.GOOGLE_CLIENT_ID;
@@ -87,9 +113,12 @@ async function refreshOAuthToken(
     }
 
     if (!clientId || !clientSecret) {
-      console.error(`[OAuth] Missing credentials for ${provider}`);
+      console.error(`[OAuth] Missing credentials for ${provider}: clientId=${!!clientId}, clientSecret=${!!clientSecret}`);
       return null;
     }
+
+    console.log(`[OAuth] Calling token endpoint: ${tokenUrl}`);
+    console.log(`[OAuth] Using clientId: ${clientId.substring(0, 8)}...`);
 
     const response = await fetch(tokenUrl, {
       method: "POST",
@@ -104,6 +133,8 @@ async function refreshOAuthToken(
       }),
     });
 
+    console.log(`[OAuth] Token endpoint response status: ${response.status}`);
+
     if (!response.ok) {
       const error = await response.text();
       console.error(`[OAuth] Token refresh failed for ${provider}:`, error);
@@ -111,6 +142,7 @@ async function refreshOAuthToken(
     }
 
     const data = await response.json();
+    console.log(`[OAuth] Token refresh response keys: ${Object.keys(data).join(", ")}`);
 
     // Update the token in database
     await prisma.account.updateMany({
@@ -128,7 +160,7 @@ async function refreshOAuthToken(
       },
     });
 
-    console.log(`[OAuth] Token refreshed successfully for ${provider}`);
+    console.log(`[OAuth] Token refreshed successfully for ${provider}, new expires_in: ${data.expires_in}`);
     return data.access_token;
   } catch (error) {
     console.error(`[OAuth] Error refreshing token for ${provider}:`, error);

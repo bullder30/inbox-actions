@@ -141,7 +141,11 @@ export class IMAPService {
    * Crée une connexion IMAP
    */
   private async connect(): Promise<ImapFlow> {
+    console.log(`[IMAP] Connecting to ${this.config.host}:${this.config.port}`);
+    console.log(`[IMAP] TLS: ${this.config.useTLS}, OAuth2: ${this.config.useOAuth2}, Provider: ${this.config.oauthProvider}`);
+
     if (this.client?.usable) {
+      console.log(`[IMAP] Reusing existing connection`);
       return this.client;
     }
 
@@ -149,6 +153,7 @@ export class IMAPService {
     let auth: { user: string; pass?: string; accessToken?: string };
 
     if (this.config.useOAuth2 && this.config.oauthProvider) {
+      console.log(`[IMAP] Using OAuth2 XOAUTH2 authentication`);
       // Use OAuth2 XOAUTH2 authentication
       const accessToken = await getOAuthAccessToken(
         this.userId,
@@ -156,17 +161,19 @@ export class IMAPService {
       );
 
       if (!accessToken) {
-        throw new Error(
-          `Failed to get OAuth2 access token for ${this.config.oauthProvider}`
-        );
+        const errorMsg = `Failed to get OAuth2 access token for ${this.config.oauthProvider}`;
+        console.error(`[IMAP] ${errorMsg}`);
+        throw new Error(errorMsg);
       }
 
+      console.log(`[IMAP] Got OAuth2 token, length: ${accessToken.length}`);
       auth = {
         user: this.config.username,
         accessToken: accessToken,
       };
-      console.log(`[IMAP] Using OAuth2 authentication for ${this.config.oauthProvider}`);
+      console.log(`[IMAP] Auth configured for user: ${this.config.username}`);
     } else {
+      console.log(`[IMAP] Using basic password authentication`);
       // Use basic authentication
       auth = {
         user: this.config.username,
@@ -174,16 +181,24 @@ export class IMAPService {
       };
     }
 
+    console.log(`[IMAP] Creating ImapFlow client...`);
     this.client = new ImapFlow({
       host: this.config.host,
       port: this.config.port,
       secure: this.config.useTLS !== false,
       auth,
-      logger: false, // Désactiver les logs verbeux
+      logger: {
+        debug: (info) => console.log(`[IMAP DEBUG] ${JSON.stringify(info)}`),
+        info: (info) => console.log(`[IMAP INFO] ${JSON.stringify(info)}`),
+        warn: (info) => console.warn(`[IMAP WARN] ${JSON.stringify(info)}`),
+        error: (info) => console.error(`[IMAP ERROR] ${JSON.stringify(info)}`),
+      },
     });
 
     try {
+      console.log(`[IMAP] Attempting to connect...`);
       await this.client.connect();
+      console.log(`[IMAP] Connected successfully!`);
 
       // Mettre à jour le statut de connexion
       await prisma.iMAPCredential.update({
@@ -200,6 +215,11 @@ export class IMAPService {
       // Enregistrer l'erreur de connexion
       const errorMessage =
         error instanceof Error ? error.message : "Unknown connection error";
+
+      console.error(`[IMAP] Connection failed: ${errorMessage}`);
+      if (error instanceof Error && error.stack) {
+        console.error(`[IMAP] Stack: ${error.stack}`);
+      }
 
       await prisma.iMAPCredential.update({
         where: { id: this.credentialId },

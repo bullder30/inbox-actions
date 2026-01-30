@@ -21,18 +21,24 @@ interface SetupOAuthRequest {
 }
 
 export async function POST(req: NextRequest) {
+  console.log("[IMAP Setup OAuth] POST request received");
+
   try {
     const session = await auth();
 
     if (!session?.user?.id || !session?.user?.email) {
+      console.log("[IMAP Setup OAuth] No session or user");
       return NextResponse.json(
         { error: "Non authentifié" },
         { status: 401 }
       );
     }
 
+    console.log(`[IMAP Setup OAuth] User: ${session.user.email}, ID: ${session.user.id}`);
+
     const body: SetupOAuthRequest = await req.json();
     const { provider } = body;
+    console.log(`[IMAP Setup OAuth] Provider: ${provider}`);
 
     if (!provider || !["microsoft-entra-id", "google"].includes(provider)) {
       return NextResponse.json(
@@ -42,7 +48,10 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if user has OAuth credentials for this provider
+    console.log(`[IMAP Setup OAuth] Checking for OAuth credentials...`);
     const hasCredentials = await hasOAuthCredentials(session.user.id, provider);
+    console.log(`[IMAP Setup OAuth] Has credentials: ${hasCredentials}`);
+
     if (!hasCredentials) {
       return NextResponse.json(
         { error: `Aucun compte ${provider} lié à votre profil` },
@@ -50,14 +59,36 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // Get the account to check scopes
+    const account = await prisma.account.findFirst({
+      where: { userId: session.user.id, provider },
+      select: { scope: true, access_token: true, refresh_token: true, expires_at: true },
+    });
+    console.log(`[IMAP Setup OAuth] Account scopes: ${account?.scope}`);
+    console.log(`[IMAP Setup OAuth] Has access_token: ${!!account?.access_token}`);
+    console.log(`[IMAP Setup OAuth] Has refresh_token: ${!!account?.refresh_token}`);
+    console.log(`[IMAP Setup OAuth] Token expires_at: ${account?.expires_at}`);
+
+    // Check if IMAP scope is present
+    if (provider === "microsoft-entra-id") {
+      const hasImapScope = account?.scope?.includes("IMAP.AccessAsUser.All");
+      console.log(`[IMAP Setup OAuth] Has IMAP scope: ${hasImapScope}`);
+      if (!hasImapScope) {
+        console.warn(`[IMAP Setup OAuth] WARNING: IMAP.AccessAsUser.All scope may be missing!`);
+      }
+    }
+
     // Verify we can get an access token
+    console.log(`[IMAP Setup OAuth] Getting OAuth access token...`);
     const accessToken = await getOAuthAccessToken(session.user.id, provider);
     if (!accessToken) {
+      console.error(`[IMAP Setup OAuth] Failed to get access token`);
       return NextResponse.json(
-        { error: `Impossible de récupérer le token OAuth pour ${provider}` },
+        { error: `Impossible de récupérer le token OAuth pour ${provider}. Vérifiez les scopes IMAP dans Azure.` },
         { status: 400 }
       );
     }
+    console.log(`[IMAP Setup OAuth] Got access token, length: ${accessToken.length}`);
 
     // Get IMAP preset for provider
     const presetKey = provider === "microsoft-entra-id" ? "outlook" : "gmail";
@@ -79,7 +110,10 @@ export async function POST(req: NextRequest) {
       },
     });
 
+    let credentialId: string;
+
     if (existingCredential) {
+      console.log(`[IMAP Setup OAuth] Updating existing credential: ${existingCredential.id}`);
       // Update existing credential to use OAuth2
       await prisma.iMAPCredential.update({
         where: { id: existingCredential.id },
@@ -91,35 +125,26 @@ export async function POST(req: NextRequest) {
           connectionError: null,
         },
       });
-
-      // Update user's email provider
-      await prisma.user.update({
-        where: { id: session.user.id },
-        data: { emailProvider: "IMAP" },
+      credentialId = existingCredential.id;
+    } else {
+      console.log(`[IMAP Setup OAuth] Creating new credential`);
+      // Create new IMAP credential with OAuth2
+      const credential = await prisma.iMAPCredential.create({
+        data: {
+          userId: session.user.id,
+          imapHost: preset.host,
+          imapPort: preset.port,
+          imapUsername: session.user.email,
+          imapPassword: encryptPassword("oauth2"), // Placeholder - not used with OAuth2
+          imapFolder: "INBOX",
+          useTLS: preset.useTLS,
+          useOAuth2: true,
+          oauthProvider: provider,
+          isConnected: false,
+        },
       });
-
-      return NextResponse.json({
-        success: true,
-        message: "Configuration IMAP OAuth2 mise à jour",
-        credentialId: existingCredential.id,
-      });
+      credentialId = credential.id;
     }
-
-    // Create new IMAP credential with OAuth2
-    const credential = await prisma.iMAPCredential.create({
-      data: {
-        userId: session.user.id,
-        imapHost: preset.host,
-        imapPort: preset.port,
-        imapUsername: session.user.email,
-        imapPassword: encryptPassword("oauth2"), // Placeholder - not used with OAuth2
-        imapFolder: "INBOX",
-        useTLS: preset.useTLS,
-        useOAuth2: true,
-        oauthProvider: provider,
-        isConnected: false,
-      },
-    });
 
     // Update user's email provider
     await prisma.user.update({
@@ -127,10 +152,34 @@ export async function POST(req: NextRequest) {
       data: { emailProvider: "IMAP" },
     });
 
+    // Test the connection
+    console.log(`[IMAP Setup OAuth] Testing IMAP connection...`);
+    let connectionTest = { success: false, error: "" };
+    try {
+      const { createIMAPService } = await import("@/lib/imap/imap-service");
+      const imapService = await createIMAPService(session.user.id);
+      if (imapService) {
+        const connected = await imapService.testConnection();
+        connectionTest.success = connected;
+        if (!connected) {
+          connectionTest.error = "Test de connexion échoué";
+        }
+        console.log(`[IMAP Setup OAuth] Connection test result: ${connected}`);
+      } else {
+        connectionTest.error = "Impossible de créer le service IMAP";
+        console.error(`[IMAP Setup OAuth] Failed to create IMAP service`);
+      }
+    } catch (testError) {
+      connectionTest.error = testError instanceof Error ? testError.message : "Erreur inconnue";
+      console.error(`[IMAP Setup OAuth] Connection test error:`, testError);
+    }
+
     return NextResponse.json({
       success: true,
-      message: "Configuration IMAP OAuth2 créée",
-      credentialId: credential.id,
+      message: existingCredential
+        ? "Configuration IMAP OAuth2 mise à jour"
+        : "Configuration IMAP OAuth2 créée",
+      credentialId,
       config: {
         host: preset.host,
         port: preset.port,
@@ -138,6 +187,7 @@ export async function POST(req: NextRequest) {
         useOAuth2: true,
         provider: provider,
       },
+      connectionTest,
     });
   } catch (error) {
     console.error("[IMAP Setup OAuth] Error:", error);
