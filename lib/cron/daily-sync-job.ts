@@ -25,14 +25,14 @@ export async function runDailySyncJob() {
 
   try {
     // Récupérer tous les utilisateurs avec sync activé et un provider email configuré
-    // Cas 1: Gmail connecté (account google avec access_token)
-    const usersWithGmail = await prisma.account.findMany({
+    // Cas 1: Microsoft Graph connecté (account microsoft-entra-id avec access_token)
+    const usersWithMicrosoftGraph = await prisma.account.findMany({
       where: {
-        provider: "google",
+        provider: "microsoft-entra-id",
         access_token: { not: null },
         user: {
           syncEnabled: true,
-          emailProvider: "GMAIL",
+          emailProvider: "MICROSOFT_GRAPH",
         },
       },
       select: {
@@ -70,10 +70,10 @@ export async function runDailySyncJob() {
       distinct: ["userId"],
     });
 
-    // Combiner les deux listes (éviter les doublons par userId)
-    const allUsersMap = new Map<string, { id: string; email: string | null; emailProvider: string }>();
+    // Combiner les listes (éviter les doublons par userId)
+    const allUsersMap = new Map<string, { id: string; email: string | null; emailProvider: string | null }>();
 
-    for (const account of usersWithGmail) {
+    for (const account of usersWithMicrosoftGraph) {
       allUsersMap.set(account.userId, {
         id: account.user.id,
         email: account.user.email,
@@ -94,7 +94,7 @@ export async function runDailySyncJob() {
     const allUsers = Array.from(allUsersMap.values());
 
     console.log(`[DAILY-SYNC JOB] Found ${allUsers.length} users with email connected and sync enabled`);
-    console.log(`[DAILY-SYNC JOB]   - Gmail: ${usersWithGmail.length} users`);
+    console.log(`[DAILY-SYNC JOB]   - Microsoft Graph: ${usersWithMicrosoftGraph.length} users`);
     console.log(`[DAILY-SYNC JOB]   - IMAP: ${usersWithIMAP.length} users`);
 
     // Stats globales

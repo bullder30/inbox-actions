@@ -3,10 +3,10 @@
  */
 
 import { prisma } from "@/lib/db";
-import { createGmailService } from "@/lib/gmail/gmail-service";
 import { createIMAPService } from "@/lib/imap/imap-service";
-import { GmailProvider } from "./gmail-provider";
+import { createMicrosoftGraphService } from "@/lib/microsoft-graph/graph-service";
 import { IMAPProvider } from "./imap-provider";
+import { MicrosoftGraphProvider } from "./microsoft-graph-provider";
 import type { IEmailProvider } from "./interface";
 
 /**
@@ -36,6 +36,16 @@ export async function createEmailProvider(
     const provider = user.emailProvider;
     console.debug("[EmailProvider] User", user.email, "has provider:", provider);
 
+    if (provider === "MICROSOFT_GRAPH") {
+      // Créer le service Microsoft Graph
+      const graphService = await createMicrosoftGraphService(userId);
+      if (!graphService) {
+        console.log("[EmailProvider] Failed to create Microsoft Graph service for user:", userId);
+        return null;
+      }
+      return new MicrosoftGraphProvider(graphService, userId);
+    }
+
     if (provider === "IMAP") {
       // Créer le service IMAP
       const imapService = await createIMAPService(userId);
@@ -46,29 +56,24 @@ export async function createEmailProvider(
       return new IMAPProvider(imapService);
     }
 
-    // Par défaut : Gmail
-    const gmailService = await createGmailService(userId);
-    if (!gmailService) {
-      console.log("[EmailProvider] Failed to create Gmail service for user:", userId);
+    // GMAIL provider is deprecated - users should configure IMAP instead
+    if (provider === "GMAIL") {
+      console.log("[EmailProvider] Gmail API is deprecated. User should configure IMAP instead.");
+      // Try IMAP as fallback
+      const imapService = await createIMAPService(userId);
+      if (imapService) {
+        return new IMAPProvider(imapService);
+      }
       return null;
     }
-    return new GmailProvider(gmailService);
+
+    // No provider configured
+    console.log("[EmailProvider] No email provider configured for user:", userId);
+    return null;
   } catch (error) {
     console.error("[EmailProvider] Error creating provider:", error);
     return null;
   }
-}
-
-/**
- * Crée une instance Gmail provider explicitement
- * Utile quand on sait qu'on veut Gmail spécifiquement
- */
-export async function createGmailProvider(
-  userId: string
-): Promise<GmailProvider | null> {
-  const service = await createGmailService(userId);
-  if (!service) return null;
-  return new GmailProvider(service);
 }
 
 /**
@@ -81,4 +86,16 @@ export async function createIMAPProvider(
   const service = await createIMAPService(userId);
   if (!service) return null;
   return new IMAPProvider(service);
+}
+
+/**
+ * Crée une instance Microsoft Graph provider explicitement
+ * Utile quand on sait qu'on veut Graph API spécifiquement
+ */
+export async function createMicrosoftGraphProvider(
+  userId: string
+): Promise<MicrosoftGraphProvider | null> {
+  const service = await createMicrosoftGraphService(userId);
+  if (!service) return null;
+  return new MicrosoftGraphProvider(service, userId);
 }

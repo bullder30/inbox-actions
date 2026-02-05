@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
-import { google } from "googleapis";
 
 export const dynamic = "force-dynamic";
 
 /**
  * POST /api/email/disconnect
- * Déconnecte l'email (Gmail ou IMAP) et supprime toutes les données associées (RGPD compliant)
+ * Déconnecte l'email (Microsoft Graph ou IMAP) et supprime toutes les données associées (RGPD compliant)
  */
 export async function POST() {
   try {
@@ -59,10 +58,10 @@ export async function POST() {
         where: { id: imapCredential.id },
       });
 
-      // 3. Remettre le provider par défaut (Gmail)
+      // 3. Reset email provider
       await prisma.user.update({
         where: { id: session.user.id },
-        data: { emailProvider: "GMAIL" },
+        data: { emailProvider: null },
       });
 
       return NextResponse.json({
@@ -73,61 +72,55 @@ export async function POST() {
       });
     }
 
-    // Par défaut: Gmail
-    const googleAccount = await prisma.account.findFirst({
-      where: {
-        userId: session.user.id,
-        provider: "google",
-      },
-    });
+    if (user.emailProvider === "MICROSOFT_GRAPH") {
+      // Déconnexion Microsoft Graph
+      const microsoftAccount = await prisma.account.findFirst({
+        where: {
+          userId: session.user.id,
+          provider: "microsoft-entra-id",
+        },
+      });
 
-    if (!googleAccount) {
-      return NextResponse.json(
-        { error: "Aucun compte Gmail connecté" },
-        { status: 400 }
-      );
-    }
-
-    // 1. Révoquer le token Google (optionnel mais recommandé RGPD)
-    if (googleAccount.access_token) {
-      try {
-        const oauth2Client = new google.auth.OAuth2();
-        oauth2Client.setCredentials({
-          access_token: googleAccount.access_token,
-        });
-        await oauth2Client.revokeCredentials();
-      } catch (error) {
-        // Ignorer les erreurs de révocation (le token peut déjà être invalide)
-        console.warn("Could not revoke token:", error);
+      if (!microsoftAccount) {
+        return NextResponse.json(
+          { error: "Aucun compte Microsoft connecté" },
+          { status: 400 }
+        );
       }
+
+      // 1. Supprimer toutes les métadonnées d'emails (RGPD: droit à l'effacement)
+      const deletedEmailsResult = await prisma.emailMetadata.deleteMany({
+        where: { userId: session.user.id },
+      });
+      deletedEmails = deletedEmailsResult.count;
+
+      // 2. Supprimer le compte Microsoft de la base de données
+      // Note: We don't delete the account itself as it's used for authentication
+      // Just reset the email provider
+
+      // 3. Réinitialiser les champs de sync
+      await prisma.user.update({
+        where: { id: session.user.id },
+        data: {
+          emailProvider: null,
+          lastEmailSync: null,
+          microsoftDeltaLink: null,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        provider: "MICROSOFT_GRAPH",
+        message: "Microsoft Graph déconnecté avec succès",
+        deletedEmails,
+      });
     }
 
-    // 2. Supprimer toutes les métadonnées d'emails (RGPD: droit à l'effacement)
-    const deletedEmailsResult = await prisma.emailMetadata.deleteMany({
-      where: { userId: session.user.id },
-    });
-    deletedEmails = deletedEmailsResult.count;
-
-    // 3. Supprimer le compte Google de la base de données
-    await prisma.account.delete({
-      where: { id: googleAccount.id },
-    });
-
-    // 4. Réinitialiser les champs de sync Gmail
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        lastGmailSync: null,
-        gmailHistoryId: null,
-      },
-    });
-
-    return NextResponse.json({
-      success: true,
-      provider: "GMAIL",
-      message: "Gmail déconnecté avec succès",
-      deletedEmails,
-    });
+    // No provider configured
+    return NextResponse.json(
+      { error: "Aucun fournisseur email configuré" },
+      { status: 400 }
+    );
   } catch (error) {
     console.error("Error disconnecting email:", error);
     return NextResponse.json(

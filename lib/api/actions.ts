@@ -12,7 +12,6 @@ export type ActionWithUser = Omit<Action, "imapUID"> & {
   imapUID: string | null;
   user: {
     id: string;
-    name: string | null;
     email: string | null;
   };
 };
@@ -21,7 +20,6 @@ export type ActionWithUser = Omit<Action, "imapUID"> & {
 export type ActionWithUserPrisma = Action & {
   user: {
     id: string;
-    name: string | null;
     email: string | null;
   };
 };

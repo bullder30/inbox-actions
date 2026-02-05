@@ -20,7 +20,7 @@ export async function ScanStatusHeader() {
     prisma.user.findUnique({
       where: { id: user.id },
       select: {
-        lastGmailSync: true,
+        lastEmailSync: true,
       },
     }),
     // Statistiques sur les emails
@@ -94,7 +94,7 @@ export async function ScanStatusHeader() {
     return true; // Email sans identifiant = ignoré
   }).length;
 
-  const lastSync = userData?.lastGmailSync;
+  const lastSync = userData?.lastEmailSync ?? null;
   const totalEmails = emailStats._count;
   const periodStart = emailStats._min.receivedAt;
   const periodEnd = emailStats._max.receivedAt;

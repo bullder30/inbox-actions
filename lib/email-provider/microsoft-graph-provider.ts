@@ -1,10 +1,11 @@
 /**
- * Adapter Gmail pour l'interface IEmailProvider
- * Encapsule GmailService pour respecter l'interface commune
+ * Adapter Microsoft Graph pour l'interface IEmailProvider
+ * Encapsule MicrosoftGraphService pour respecter l'interface commune
  */
 
 import type { EmailProvider } from "@prisma/client";
-import { GmailService } from "@/lib/gmail/gmail-service";
+import { MicrosoftGraphService } from "@/lib/microsoft-graph/graph-service";
+import { prisma } from "@/lib/db";
 import type {
   IEmailProvider,
   EmailMetadata,
@@ -12,20 +13,27 @@ import type {
   ConnectionStatus,
 } from "./interface";
 
-export class GmailProvider implements IEmailProvider {
-  readonly providerType: EmailProvider = "GMAIL";
+export class MicrosoftGraphProvider implements IEmailProvider {
+  readonly providerType: EmailProvider = "MICROSOFT_GRAPH";
+  private userId: string;
 
-  constructor(private service: GmailService) {}
+  constructor(
+    private service: MicrosoftGraphService,
+    userId: string
+  ) {
+    this.userId = userId;
+  }
 
   async fetchNewEmails(options?: FetchOptions): Promise<EmailMetadata[]> {
     const emails = await this.service.fetchNewEmails({
       maxResults: options?.maxResults,
-      labelIds: options?.folder ? [options.folder] : ["INBOX"],
+      folder: options?.folder || "inbox",
     });
 
     return emails.map((email) => ({
-      gmailMessageId: email.gmailMessageId,
-      gmailThreadId: email.gmailThreadId,
+      // Graph uses gmailMessageId field for its message ID (field reuse)
+      gmailMessageId: email.graphMessageId,
+      gmailThreadId: email.conversationId,
       imapUID: null,
       imapMessageId: null,
       from: email.from,
@@ -33,25 +41,25 @@ export class GmailProvider implements IEmailProvider {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
-      emailProvider: "GMAIL" as EmailProvider,
+      emailProvider: "MICROSOFT_GRAPH" as EmailProvider,
     }));
   }
 
   async getEmailBodyForAnalysis(
     messageId: string | bigint
   ): Promise<string | null> {
-    // Gmail utilise des string IDs
-    const gmailMessageId =
+    // Graph uses string IDs
+    const graphMessageId =
       typeof messageId === "string" ? messageId : messageId.toString();
-    return this.service.getEmailBodyForAnalysis(gmailMessageId);
+    return this.service.getEmailBodyForAnalysis(graphMessageId);
   }
 
   async getExtractedEmails(): Promise<EmailMetadata[]> {
     const emails = await this.service.getExtractedEmails();
 
     return emails.map((email) => ({
-      gmailMessageId: email.gmailMessageId,
-      gmailThreadId: email.gmailThreadId,
+      gmailMessageId: email.graphMessageId,
+      gmailThreadId: email.conversationId,
       imapUID: null,
       imapMessageId: null,
       from: email.from,
@@ -59,32 +67,35 @@ export class GmailProvider implements IEmailProvider {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
-      emailProvider: "GMAIL" as EmailProvider,
+      emailProvider: "MICROSOFT_GRAPH" as EmailProvider,
     }));
   }
 
   async markEmailAsAnalyzed(messageId: string | bigint): Promise<void> {
-    const gmailMessageId =
+    const graphMessageId =
       typeof messageId === "string" ? messageId : messageId.toString();
-    await this.service.markEmailAsAnalyzed(gmailMessageId);
+    await this.service.markEmailAsAnalyzed(graphMessageId);
   }
 
   async countNewEmails(): Promise<number> {
-    return this.service.countNewEmailsInGmail();
+    return this.service.countNewEmails();
   }
 
   async disconnect(): Promise<void> {
-    // Gmail API n'a pas besoin de déconnexion explicite
+    await this.service.disconnect();
   }
 
   async getStatus(): Promise<ConnectionStatus> {
-    // Gmail est considéré comme connecté si le service existe
-    // TODO: Améliorer en vérifiant vraiment le token
+    const user = await prisma.user.findUnique({
+      where: { id: this.userId },
+      select: { lastEmailSync: true },
+    });
+
     return {
       isConnected: true,
-      lastSync: null, // TODO: Récupérer depuis la DB
+      lastSync: user?.lastEmailSync || null,
       lastError: null,
-      provider: "GMAIL",
+      provider: "MICROSOFT_GRAPH",
     };
   }
 }

@@ -1,18 +1,26 @@
 # Intégration IMAP
 
-Cette documentation décrit l'intégration IMAP comme alternative à Gmail OAuth.
+Cette documentation décrit l'intégration IMAP pour la connexion email dans Inbox Actions (Gmail, Yahoo, iCloud, Fastmail, ProtonMail...).
 
 ---
 
 ## Vue d'ensemble
 
-Inbox Actions supporte plusieurs méthodes de connexion email :
+Pour les providers non-Microsoft, Inbox Actions utilise **IMAP avec App Password** pour accéder aux emails. Cette méthode est universelle et fonctionne avec tous les fournisseurs email.
 
-| Méthode | Provider | Avantages | Inconvénients |
-|---------|----------|-----------|---------------|
-| **Gmail OAuth** | Gmail uniquement | Connexion 1 clic, Gmail API | Uniquement Gmail |
-| **Microsoft OAuth + IMAP OAuth2** | Microsoft 365 | Connexion 1 clic, IMAP automatique | Nécessite configuration Azure |
-| **IMAP App Password** | Tous providers | Universel | Nécessite un App Password |
+| Provider | Méthode recommandée |
+|----------|---------------------|
+| **Microsoft (Outlook, Hotmail, Live)** | Microsoft Graph API ([voir doc](./MICROSOFT_GRAPH.md)) |
+| **Gmail, Yahoo, iCloud, Fastmail, ProtonMail...** | IMAP avec App Password |
+
+### Exclusivité mutuelle
+
+**Important** : Un seul provider email peut être actif à la fois.
+
+- **Connecter IMAP** → Supprime automatiquement le scope Mail.Read de Microsoft Graph
+- **Connecter Microsoft Graph** → Supprime automatiquement les credentials IMAP
+
+Cette exclusivité évite les conflits et garantit qu'un seul provider est utilisé pour la synchronisation.
 
 ---
 
@@ -28,21 +36,21 @@ Le système utilise un pattern Factory pour abstraire le provider email :
 │  lib/email-provider/factory.ts      │
 └──────────────┬──────────────────────┘
                │
-       ┌───────┴───────┐
-       ▼               ▼
+      ┌────────┴────────┐
+      ▼                 ▼
 ┌──────────────┐  ┌──────────────┐
-│ GmailProvider│  │ IMAPProvider │
-│ (OAuth)      │  │ (IMAP)       │
+│ MicrosoftGraph│  │ IMAPProvider │
+│   Provider    │  │              │
 └──────────────┘  └──────────────┘
 ```
 
 ### Interface commune
 
-Les deux providers implémentent `IEmailProvider` :
+Le provider implémente `IEmailProvider` :
 
 ```typescript
 interface IEmailProvider {
-  providerType: EmailProvider; // "GMAIL" | "IMAP"
+  providerType: EmailProvider; // "IMAP"
 
   fetchNewEmails(options?: FetchOptions): Promise<EmailMetadata[]>;
   getEmailBodyForAnalysis(messageId: string | bigint): Promise<string | null>;
@@ -63,11 +71,12 @@ interface IEmailProvider {
 | Provider | Serveur IMAP | Port | TLS |
 |----------|--------------|------|-----|
 | Gmail | imap.gmail.com | 993 | Oui |
-| Outlook/Office 365 | outlook.office365.com | 993 | Oui |
 | Yahoo | imap.mail.yahoo.com | 993 | Oui |
 | iCloud | imap.mail.me.com | 993 | Oui |
 | Fastmail | imap.fastmail.com | 993 | Oui |
 | ProtonMail | 127.0.0.1 (via Bridge) | 1143 | Non |
+
+> **Note** : Pour Microsoft (Outlook, Hotmail, Live), utilisez [Microsoft Graph API](./MICROSOFT_GRAPH.md) - pas de configuration IMAP nécessaire.
 
 ### Détection automatique
 
@@ -79,9 +88,13 @@ export function detectProviderFromEmail(email: string): string | null {
   const domain = email.split("@")[1]?.toLowerCase();
 
   if (domain === "gmail.com") return "gmail";
-  if (domain === "outlook.com" || domain === "hotmail.com") return "outlook";
   if (domain === "yahoo.com") return "yahoo";
-  // ...
+  if (domain === "icloud.com" || domain === "me.com") return "icloud";
+  // Microsoft → redirige vers Graph API
+  if (["outlook.com", "hotmail.com", "live.com"].includes(domain)) {
+    return "microsoft"; // Signal pour utiliser Graph API
+  }
+  return null;
 }
 ```
 
@@ -113,128 +126,51 @@ node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 IMAP_MASTER_KEY=<votre_clé_64_caractères>
 ```
 
-### App Passwords (recommandé)
+### Configuration des App Passwords
 
-Pour Gmail et les providers avec 2FA, utilisez un **App Password** :
+Un **App Password** est un mot de passe spécial généré par votre fournisseur email. Il permet l'accès IMAP sans utiliser votre mot de passe principal.
 
 #### Gmail
-1. Aller sur [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-2. Sélectionner "Mail" et "Autre (nom personnalisé)"
-3. Nommer "Inbox Actions"
-4. Copier le mot de passe généré (16 caractères)
 
-#### Outlook
-1. Aller sur [account.microsoft.com/security](https://account.microsoft.com/security)
-2. "Options de sécurité avancées"
-3. "Ajouter une nouvelle façon de se connecter"
-4. "Mot de passe d'application"
+1. Activez la validation en 2 étapes sur votre compte Google
+2. Allez sur [myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+3. Sélectionnez "Mail" et "Autre (nom personnalisé)"
+4. Nommez-le "Inbox Actions"
+5. Copiez le mot de passe généré (16 caractères sans espaces)
+6. **Important** : Activez IMAP dans Gmail → Paramètres → Tous les paramètres → Transfert et POP/IMAP
 
----
+#### Yahoo Mail
 
-## IMAP OAuth2 (XOAUTH2)
+1. Activez la vérification en 2 étapes
+2. Allez sur [login.yahoo.com/account/security](https://login.yahoo.com/account/security)
+3. "Générer un mot de passe d'application"
+4. Sélectionnez "Autre application"
+5. Copiez le mot de passe généré
 
-### Vue d'ensemble
+#### iCloud Mail
 
-Pour Microsoft 365, l'authentification basique (username/password) est souvent désactivée. Inbox Actions supporte **IMAP OAuth2 (XOAUTH2)** qui utilise le token OAuth pour s'authentifier au serveur IMAP.
+1. Activez l'authentification à deux facteurs
+2. Allez sur [appleid.apple.com](https://appleid.apple.com)
+3. "Sécurité" → "Mots de passe d'application"
+4. Cliquez sur "+" pour générer un nouveau mot de passe
+5. Copiez le mot de passe généré
 
-### Flux d'authentification
+#### Fastmail
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│  Connexion Microsoft OAuth                                       │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. Utilisateur clique "Se connecter avec Microsoft"             │
-│                          │                                       │
-│                          ▼                                       │
-│  2. Microsoft retourne access_token + refresh_token              │
-│     (stockés dans table Account)                                 │
-│                          │                                       │
-│                          ▼                                       │
-│  3. POST /api/imap/setup-oauth { provider: "microsoft-entra-id" }│
-│                          │                                       │
-│                          ▼                                       │
-│  4. Création IMAPCredential avec useOAuth2: true                 │
-│     - Host: outlook.office365.com                                │
-│     - Port: 993                                                  │
-│     - oauthProvider: "microsoft-entra-id"                        │
-│                          │                                       │
-│                          ▼                                       │
-│  5. Lors de la sync, le service IMAP:                            │
-│     - Récupère le access_token depuis Account                    │
-│     - Rafraîchit si expiré (via refresh_token)                   │
-│     - S'authentifie avec XOAUTH2                                 │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
+1. Allez dans Paramètres → Mots de passe et sécurité
+2. "Nouveaux mots de passe d'application"
+3. Créez un mot de passe pour "IMAP"
+4. Copiez le mot de passe généré
 
-### Configuration automatique
+#### ProtonMail
 
-Après connexion Microsoft OAuth :
+ProtonMail nécessite le **ProtonMail Bridge** pour l'accès IMAP :
 
-```bash
-POST /api/imap/setup-oauth
-Content-Type: application/json
-
-{
-  "provider": "microsoft-entra-id"
-}
-```
-
-**Réponse :**
-```json
-{
-  "success": true,
-  "message": "Configuration IMAP OAuth2 créée",
-  "credentialId": "clu...",
-  "config": {
-    "host": "outlook.office365.com",
-    "port": 993,
-    "username": "user@domain.com",
-    "useOAuth2": true,
-    "provider": "microsoft-entra-id"
-  }
-}
-```
-
-### Gestion des tokens
-
-Le module `lib/imap/oauth-token.ts` gère :
-
-1. **Récupération du token** depuis la table `Account`
-2. **Vérification d'expiration** (avec buffer de 5 minutes)
-3. **Rafraîchissement automatique** via l'endpoint Microsoft/Google
-4. **Mise à jour en base** du nouveau token
-
-```typescript
-// Exemple d'utilisation interne
-const accessToken = await getOAuthAccessToken(userId, "microsoft-entra-id");
-// Si expiré, le token est automatiquement rafraîchi
-```
-
-### Prérequis Azure
-
-Pour que IMAP OAuth2 fonctionne, l'application Azure doit avoir :
-
-1. **Scopes dans auth.config.ts** :
-   - `offline_access` (pour le refresh token)
-   - `https://outlook.office.com/IMAP.AccessAsUser.All` (pour IMAP)
-
-2. **Permissions API dans Azure Portal** :
-   - Microsoft Graph : `openid`, `email`, `profile`, `offline_access`
-   - Office 365 Exchange Online : `IMAP.AccessAsUser.All`
-
-3. **Admin consent** si nécessaire (pour les apps multi-tenant)
-
-### Différence avec App Password
-
-| Aspect | App Password | OAuth2 XOAUTH2 |
-|--------|-------------|----------------|
-| Stockage | Mot de passe chiffré en DB | Token OAuth dans Account |
-| Expiration | Jamais (sauf révocation) | ~1h, refresh automatique |
-| Sécurité | Moins sécurisé | Plus sécurisé |
-| Configuration | Manuelle | Automatique |
-| Microsoft 365 | Souvent bloqué | Supporté |
+1. Téléchargez et installez [ProtonMail Bridge](https://protonmail.com/bridge)
+2. Connectez-vous dans Bridge
+3. Cliquez sur votre compte pour voir les identifiants IMAP
+4. Utilisez le mot de passe affiché dans Bridge
+5. **Host** : 127.0.0.1, **Port** : 1143, **TLS** : Non
 
 ---
 
@@ -251,15 +187,12 @@ model IMAPCredential {
   imapHost        String   // ex: "imap.gmail.com"
   imapPort        Int      @default(993)
   imapUsername    String   // Email ou username
-  imapPassword    String   @db.Text // Chiffré AES-256 (vide si OAuth2)
-
-  // OAuth2 authentication
-  useOAuth2       Boolean  @default(false)
-  oauthProvider   String?  // "microsoft-entra-id", "google"
+  imapPassword    String   @db.Text // Chiffré AES-256
 
   // Configuration
   imapFolder      String   @default("INBOX")
   useTLS          Boolean  @default(true)
+  authMethod      IMAPAuthMethod @default(PASSWORD)
 
   // Tracking synchronisation
   lastIMAPSync    DateTime?
@@ -281,24 +214,18 @@ model IMAPCredential {
 ```prisma
 model User {
   // ...
-  emailProvider EmailProvider @default(GMAIL)
-  // GMAIL = utiliser OAuth
-  // IMAP = utiliser IMAPCredential
+  emailProvider EmailProvider? // IMAP, MICROSOFT_GRAPH, etc.
 }
 ```
 
-### EmailMetadata dual-provider
+### EmailMetadata
 
 ```prisma
 model EmailMetadata {
   // Provider
-  emailProvider  EmailProvider @default(GMAIL)
+  emailProvider  EmailProvider
 
-  // Gmail identifiers (null si IMAP)
-  gmailMessageId String?
-  gmailThreadId  String?
-
-  // IMAP identifiers (null si Gmail)
+  // IMAP identifiers
   imapUID        BigInt?
   imapMessageId  String?
 
@@ -309,7 +236,6 @@ model EmailMetadata {
   receivedAt     DateTime
   labels         String[]
 
-  @@unique([userId, gmailMessageId])
   @@unique([userId, imapUID])
 }
 ```
@@ -327,7 +253,7 @@ Content-Type: application/json
 
 {
   "imapUsername": "user@gmail.com",
-  "imapPassword": "xxxx xxxx xxxx xxxx",  # App Password
+  "imapPassword": "xxxx xxxx xxxx xxxx",
   "imapHost": "imap.gmail.com",
   "imapPort": 993,
   "useTLS": true,
@@ -348,7 +274,7 @@ GET /api/imap/status
   "username": "user@gmail.com",
   "folder": "INBOX",
   "isConnected": true,
-  "lastSync": "2026-01-29T10:00:00Z"
+  "lastSync": "2026-02-01T10:00:00Z"
 }
 ```
 
@@ -365,19 +291,14 @@ POST /api/imap/disconnect
 }
 ```
 
-### Endpoints provider-agnostic
-
-Les endpoints suivants fonctionnent pour **Gmail ET IMAP** :
+### Synchronisation et analyse
 
 | Endpoint | Description |
 |----------|-------------|
-| `GET /api/email/sync` | Synchroniser les emails |
+| `GET /api/email/sync` | Synchroniser les emails via IMAP |
 | `POST /api/email/analyze` | Analyser et extraire les actions |
 | `GET /api/email/status` | Statut de connexion |
-| `POST /api/email/disconnect` | Déconnecter (Gmail ou IMAP) |
 | `GET /api/email/pending-count` | Compter les emails en attente |
-
-> **Note** : Le préfixe `/api/email/` est conservé pour compatibilité, mais ces endpoints supportent les deux providers via le factory pattern.
 
 ---
 
@@ -385,28 +306,15 @@ Les endpoints suivants fonctionnent pour **Gmail ET IMAP** :
 
 ### Page Settings
 
-Dans `app/(protected)/settings/page.tsx` :
-
-```tsx
-// Sélecteur de provider
-<Button onClick={() => setEmailProvider("GMAIL")}>
-  <Mail /> Gmail (OAuth)
-</Button>
-<Button onClick={() => setEmailProvider("IMAP")}>
-  <Server /> IMAP
-</Button>
-
-// Section IMAP (si sélectionné)
-{emailProvider === "IMAP" && (
-  imapConfigured ? <IMAPStatus /> : <IMAPConnectForm />
-)}
-```
+Dans `app/(protected)/settings/page.tsx`, l'utilisateur peut configurer sa connexion IMAP.
 
 ### IMAPConnectForm
 
 Formulaire de configuration IMAP avec :
-- Détection automatique du provider
+- Détection automatique du provider depuis l'adresse email
 - Presets pour les providers courants
+- Redirection vers Microsoft Graph pour les emails Microsoft
+- Instructions spécifiques par provider
 - Validation des credentials
 - Affichage des erreurs
 
@@ -423,25 +331,20 @@ Affiche le statut de la connexion :
 
 ## Cron Jobs
 
-Le job de synchronisation quotidienne supporte les deux providers :
+Le job de synchronisation quotidienne :
 
 ```typescript
 // lib/cron/daily-sync-job.ts
 export async function runDailySyncJob() {
-  // 1. Récupérer les utilisateurs Gmail
-  const usersWithGmail = await prisma.account.findMany({
-    where: { provider: "google", user: { emailProvider: "GMAIL" } }
-  });
-
-  // 2. Récupérer les utilisateurs IMAP
+  // Récupérer les utilisateurs IMAP connectés
   const usersWithIMAP = await prisma.iMAPCredential.findMany({
-    where: { isConnected: true, user: { emailProvider: "IMAP" } }
+    where: { isConnected: true }
   });
 
-  // 3. Pour chaque utilisateur, utiliser le factory
-  for (const user of allUsers) {
-    const emailProvider = await createEmailProvider(user.id);
-    await emailProvider.fetchNewEmails();
+  // Pour chaque utilisateur, synchroniser via IMAP
+  for (const credential of usersWithIMAP) {
+    const imapService = await createIMAPService(credential.userId);
+    await imapService.fetchNewEmails();
     // ...
   }
 }
@@ -453,61 +356,39 @@ export async function runDailySyncJob() {
 
 ### Erreur "Authentication failed"
 
-1. Vérifier que l'App Password est correct
-2. Pour Gmail : activer l'accès IMAP dans les paramètres Gmail
-3. Pour Outlook : désactiver la sécurité par défaut si nécessaire
+1. Vérifiez que l'App Password est correct (sans espaces)
+2. Pour Gmail : vérifiez que l'accès IMAP est activé dans les paramètres Gmail
+3. Vérifiez que la vérification en 2 étapes est activée sur votre compte
+4. Certains fournisseurs bloquent les connexions depuis de nouvelles applications - vérifiez votre boîte mail pour une alerte de sécurité
 
 ### Erreur "Connection refused"
 
-1. Vérifier le host et le port
-2. Vérifier que TLS est activé (port 993)
-3. Vérifier le firewall
+1. Vérifiez le host et le port
+2. Vérifiez que TLS est activé (port 993)
+3. Vérifiez votre firewall / antivirus
+4. Pour ProtonMail : vérifiez que Bridge est lancé
 
 ### Erreur "IMAP_MASTER_KEY not set"
 
-Générer et configurer la clé de chiffrement :
+Générez et configurez la clé de chiffrement :
 
 ```bash
 node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
-# Ajouter à .env.local
+# Ajouter le résultat à .env.local
+IMAP_MASTER_KEY=<votre_clé>
 ```
 
-### Erreur "Failed to get OAuth2 access token"
+### Gmail : "IMAP access is not enabled"
 
-Pour IMAP OAuth2 :
+1. Allez dans Gmail → Paramètres (roue dentée)
+2. "Voir tous les paramètres"
+3. Onglet "Transfert et POP/IMAP"
+4. Activez "Activer IMAP"
+5. Sauvegardez
 
-1. Vérifier que le scope `IMAP.AccessAsUser.All` est configuré dans Azure
-2. Vérifier que `offline_access` est demandé (pour le refresh token)
-3. Vérifier les logs : `[OAuth] Token refresh failed`
-4. Reconnectez-vous avec Microsoft pour obtenir un nouveau token
+### Email Microsoft détecté
 
-### Erreur "Token refresh failed"
-
-1. Le refresh token a peut-être expiré (rare)
-2. L'application Azure a peut-être été modifiée
-3. Solution : déconnecter et reconnecter avec Microsoft OAuth
-
-### Microsoft 365 : "Basic authentication is disabled"
-
-C'est pour cela que IMAP OAuth2 existe :
-
-1. Connectez-vous avec Microsoft OAuth
-2. Appelez `POST /api/imap/setup-oauth { "provider": "microsoft-entra-id" }`
-3. L'authentification utilisera XOAUTH2 au lieu du mot de passe
-
----
-
-## Migration Gmail → IMAP
-
-Pour migrer d'un compte Gmail OAuth vers IMAP :
-
-1. Aller dans Paramètres
-2. Sélectionner "IMAP"
-3. Configurer les credentials IMAP
-4. Les anciennes actions sont conservées
-5. Les nouveaux emails seront synchronisés via IMAP
-
-> **Note** : Les anciennes actions avec `gmailMessageId` resteront liées à Gmail. Les nouvelles actions auront un `imapUID`.
+Si vous entrez une adresse @outlook.com, @hotmail.com ou @live.com, le formulaire IMAP vous redirigera vers Microsoft Graph API qui offre une meilleure expérience utilisateur.
 
 ---
 
@@ -516,8 +397,7 @@ Pour migrer d'un compte Gmail OAuth vers IMAP :
 - [RFC 3501 - IMAP](https://tools.ietf.org/html/rfc3501)
 - [ImapFlow Documentation](https://imapflow.com/)
 - [Gmail IMAP Settings](https://support.google.com/mail/answer/7126229)
-- [Outlook IMAP Settings](https://support.microsoft.com/en-us/office/pop-imap-and-smtp-settings-8361e398-8af4-4e97-b147-6c6c4ac95353)
 
 ---
 
-Dernière mise à jour : 29 janvier 2026
+**Dernière mise à jour** : 6 février 2026

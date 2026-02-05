@@ -7,7 +7,6 @@ import { prisma } from "@/lib/db";
 export const dynamic = "force-dynamic";
 
 const registerSchema = z.object({
-  name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
   email: z.string().email("Email invalide"),
   password: z
     .string()
@@ -26,7 +25,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const { name, email, password } = parsed.data;
+    const { email, password } = parsed.data;
 
     // Check if user already exists
     const existingUser = await prisma.user.findUnique({
@@ -40,7 +39,6 @@ export async function POST(req: NextRequest) {
         await prisma.user.update({
           where: { email },
           data: {
-            name: existingUser.name || name,
             password: hashedPassword,
           },
         });
@@ -62,7 +60,6 @@ export async function POST(req: NextRequest) {
 
     await prisma.user.create({
       data: {
-        name,
         email,
         password: hashedPassword,
       },

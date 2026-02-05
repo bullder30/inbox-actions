@@ -1,6 +1,6 @@
 # Documentation Inbox Actions
 
-## 📋 Présentation du projet
+## Présentation du projet
 
 **Inbox Actions** est une application Next.js 14 qui extrait automatiquement les tâches actionnables de vos emails. L'application analyse le contenu de vos emails et identifie les demandes explicites nécessitant une action de votre part.
 
@@ -17,7 +17,8 @@
 
 | Fonctionnalité | Description |
 |----------------|-------------|
-| **Multi-provider** | Gmail OAuth, Microsoft OAuth, IMAP (tous providers) |
+| **Microsoft Graph API** | Accès natif aux emails Outlook/Microsoft 365 (sans configuration) |
+| **IMAP universel** | Gmail, Yahoo, iCloud, Fastmail, ProtonMail... |
 | **Extraction d'actions** | 5 types : SEND, CALL, FOLLOW_UP, PAY, VALIDATE |
 | **Détection de deadlines** | Dates absolues, relatives, heures spécifiques |
 | **Temps réel** | Mises à jour via SSE (Server-Sent Events) |
@@ -25,7 +26,7 @@
 
 ---
 
-## 🏗️ Architecture technique
+## Architecture technique
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
@@ -43,11 +44,12 @@
 ├─────────────────────────────────────────────────────────────────────────┤
 │                                                                          │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    Email Provider Factory                        │    │
-│  │  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │    │
-│  │  │ Gmail API   │  │ IMAP Basic  │  │ IMAP OAuth2 (XOAUTH2)   │  │    │
-│  │  │ (OAuth)     │  │ (Password)  │  │ (Microsoft 365)         │  │    │
-│  │  └─────────────┘  └─────────────┘  └─────────────────────────┘  │    │
+│  │                      Email Providers                             │    │
+│  │  ┌───────────────────────────┐  ┌─────────────────────────────┐ │    │
+│  │  │ Microsoft Graph API       │  │ IMAP Service (App Password) │ │    │
+│  │  │ Outlook.com, Hotmail,     │  │ Gmail, Yahoo, iCloud,       │ │    │
+│  │  │ Live.com, Microsoft 365   │  │ Fastmail, ProtonMail...     │ │    │
+│  │  └───────────────────────────┘  └─────────────────────────────┘ │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────┐  │
@@ -68,7 +70,8 @@
 | **Frontend** | Next.js 14, React 18, TypeScript, Tailwind CSS, shadcn/ui |
 | **Backend** | Next.js API Routes, Auth.js v5, Prisma |
 | **Database** | PostgreSQL (Neon DB) |
-| **Email** | Gmail API, IMAP (imapflow), OAuth2 XOAUTH2 |
+| **Email (Microsoft)** | Microsoft Graph API (OAuth2) |
+| **Email (Autres)** | IMAP (imapflow) avec App Password |
 | **Auth** | Google OAuth, Microsoft OAuth, Credentials (bcrypt) |
 | **Notifications** | Resend (email digests) |
 | **Cron** | node-cron (in-process) |
@@ -76,81 +79,79 @@
 
 ---
 
-## 📚 Index de la documentation
+## Index de la documentation
 
-### 🔐 Authentification
+### Authentification et Email
 
 | Document | Description |
 |----------|-------------|
 | **[AUTH_SETUP.md](./AUTH_SETUP.md)** | **Guide complet d'authentification** |
-| | • Email/Mot de passe (credentials) |
-| | • Google OAuth (Gmail API automatique) |
-| | • Microsoft OAuth (IMAP OAuth2 automatique) |
-| | • Variables d'environnement |
-| | • Dépannage des erreurs courantes |
+| | - Email/Mot de passe (credentials) |
+| | - Google OAuth (authentification uniquement) |
+| | - Microsoft OAuth + Graph API (authentification + emails) |
+| | - Variables d'environnement |
+| | - Dépannage des erreurs courantes |
 
-### 📬 Intégration Email
+### Intégration Email
 
 | Document | Description |
 |----------|-------------|
-| **[IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)** | **Intégration IMAP complète** |
-| | • Factory pattern dual-provider |
-| | • IMAP OAuth2 (XOAUTH2) pour Microsoft 365 |
-| | • Gestion automatique des tokens |
-| | • Chiffrement AES-256 des credentials |
-| | • Presets pour tous providers |
-| [GMAIL_INTEGRATION.md](./GMAIL_INTEGRATION.md) | Architecture Gmail API |
-| [GMAIL_OAUTH_SETUP.md](./GMAIL_OAUTH_SETUP.md) | Configuration Google Cloud Console |
-| [GMAIL_SECURITY_GDPR.md](./GMAIL_SECURITY_GDPR.md) | Sécurité et conformité RGPD |
-| [GMAIL_TROUBLESHOOTING.md](./GMAIL_TROUBLESHOOTING.md) | Résolution de problèmes Gmail |
+| **[MICROSOFT_GRAPH.md](./MICROSOFT_GRAPH.md)** | **Microsoft Graph API (recommandé pour Outlook)** |
+| | - Accès natif aux emails Microsoft |
+| | - Aucune configuration utilisateur requise |
+| | - Delta query pour sync incrémental |
+| **[IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)** | **Intégration IMAP** |
+| | - Configuration avec App Password |
+| | - Chiffrement AES-256 des credentials |
+| | - Gmail, Yahoo, iCloud, Fastmail, ProtonMail |
+| [SECURITY_GDPR.md](./SECURITY_GDPR.md) | Sécurité et conformité RGPD |
 
-### 🔍 Extraction d'actions
+### Extraction d'actions
 
 | Document | Description |
 |----------|-------------|
 | **[REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)** | **Système d'extraction regex** |
-| | • Patterns par type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE) |
-| | • Détection de deadlines (dates, heures) |
-| | • Règles d'exclusion (newsletters, no-reply) |
-| | • Conditions ignorées ("si tu peux", "éventuellement") |
+| | - Patterns par type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE) |
+| | - Détection de deadlines (dates, heures) |
+| | - Règles d'exclusion (newsletters, no-reply) |
+| | - Conditions ignorées ("si tu peux", "éventuellement") |
 
-### 🏗️ Base de données
+### Base de données
 
 | Document | Description |
 |----------|-------------|
 | **[DATABASE_MODEL.md](./DATABASE_MODEL.md)** | **Modèle Prisma complet** |
-| | • User, Account, Session (Auth.js) |
-| | • Action (avec gmailMessageId, imapUID) |
-| | • EmailMetadata (dual-provider) |
-| | • IMAPCredential (avec OAuth2) |
+| | - User, Account, Session (Auth.js) |
+| | - Action (avec imapUID et gmailMessageId) |
+| | - EmailMetadata |
+| | - IMAPCredential |
 | [EMAIL_STATUS_MIGRATION.md](./EMAIL_STATUS_MIGRATION.md) | Migration EXTRACTED → ANALYZED |
 
-### ⚙️ Automatisation
+### Automatisation
 
 | Document | Description |
 |----------|-------------|
 | **[CRON.md](./CRON.md)** | **Tâches planifiées** |
-| | • Daily sync (8h00) |
-| | • Cleanup metadata (23h00) |
-| | • Count new emails (optionnel) |
+| | - Daily sync (7h00) |
+| | - Cleanup metadata (3h00) |
+| | - Count new emails (optionnel) |
 | [cron-setup.md](./cron-setup.md) | Configuration détaillée node-cron |
 | [REALTIME_UPDATES.md](./REALTIME_UPDATES.md) | SSE + Zustand pour temps réel |
 
-### 🛠️ API
+### API
 
 | Document | Description |
 |----------|-------------|
 | [API_ACTIONS.md](./API_ACTIONS.md) | Endpoints CRUD actions |
 | [API_USAGE_EXAMPLES.md](./API_USAGE_EXAMPLES.md) | Exemples de requêtes |
 
-### 🎨 Interface utilisateur
+### Interface utilisateur
 
 | Document | Description |
 |----------|-------------|
 | [UX_DESIGN.md](./UX_DESIGN.md) | Design et composants UI |
-| [GMAIL_USAGE_EXAMPLE.md](./GMAIL_USAGE_EXAMPLE.md) | Exemples d'utilisation |
 
-### 🧪 Tests
+### Tests
 
 | Document | Description |
 |----------|-------------|
@@ -158,7 +159,7 @@
 
 ---
 
-## 🚀 Guide de démarrage
+## Guide de démarrage
 
 ### Prérequis
 
@@ -198,13 +199,18 @@ NEXT_PUBLIC_APP_URL=http://localhost:3000
 AUTH_SECRET=<générer avec: openssl rand -base64 32>
 DATABASE_URL=postgresql://user:pass@localhost:5432/inbox_actions
 
-# Au moins un provider email
+# Pour IMAP (chiffrement des mots de passe)
+IMAP_MASTER_KEY=<générer avec: openssl rand -hex 32>
+
+# Microsoft OAuth (recommandé - auth + email)
+MICROSOFT_CLIENT_ID=...
+MICROSOFT_CLIENT_SECRET=...
+MICROSOFT_TENANT_ID=consumers   # ou votre tenant GUID
+NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true
+
+# Google OAuth (optionnel - auth uniquement)
 GOOGLE_CLIENT_ID=...
 GOOGLE_CLIENT_SECRET=...
-NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true
-
-# Pour IMAP (chiffrement)
-IMAP_MASTER_KEY=<générer avec: openssl rand -hex 32>
 ```
 
 ### Parcours recommandé
@@ -213,58 +219,72 @@ IMAP_MASTER_KEY=<générer avec: openssl rand -hex 32>
 |----------|------------------|
 | **Comprendre l'architecture** | [DATABASE_MODEL.md](./DATABASE_MODEL.md) → [REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md) |
 | **Configurer l'auth** | [AUTH_SETUP.md](./AUTH_SETUP.md) |
-| **Ajouter Gmail** | [GMAIL_OAUTH_SETUP.md](./GMAIL_OAUTH_SETUP.md) |
-| **Ajouter Microsoft** | [AUTH_SETUP.md](./AUTH_SETUP.md#microsoft-oauth) → [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md#imap-oauth2-xoauth2) |
+| **Configurer Microsoft Graph** | [MICROSOFT_GRAPH.md](./MICROSOFT_GRAPH.md) |
+| **Configurer IMAP** | [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md) |
 | **Configurer les crons** | [CRON.md](./CRON.md) → [cron-setup.md](./cron-setup.md) |
 
 ---
 
-## 🔧 Points techniques clés
+## Points techniques clés
 
-### 1. Authentification multi-provider
+### 1. Authentification à l'application
+
+L'authentification à l'application est séparée de l'accès aux emails :
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                 Méthodes d'authentification                  │
-├───────────────┬───────────────┬─────────────────────────────┤
-│ Credentials   │ Google OAuth  │ Microsoft OAuth             │
-│ (email/mdp)   │               │                             │
-├───────────────┼───────────────┼─────────────────────────────┤
-│ Compte local  │ Gmail API     │ IMAP OAuth2 (XOAUTH2)       │
-│ + IMAP manuel │ automatique   │ automatique                 │
-└───────────────┴───────────────┴─────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                    Inscription / Connexion                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │ Email/MDP    │  │ Google OAuth │  │ Microsoft OAuth      │   │
+│  │              │  │ (auth only)  │  │ (auth + email)       │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
+│         │                 │                      │               │
+│         └────────────────┬┴──────────────────────┘               │
+│                          │                                       │
+│                          ▼                                       │
+│    ┌─────────────────────────────────────────────────────────┐  │
+│    │                   Accès aux emails                       │  │
+│    │  ┌───────────────────────┐  ┌─────────────────────────┐ │  │
+│    │  │ Microsoft Graph API   │  │ IMAP (App Password)     │ │  │
+│    │  │ (automatique si MS)   │  │ (configuration requise) │ │  │
+│    │  └───────────────────────┘  └─────────────────────────┘ │  │
+│    └─────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────┘
 ```
 
 **Détails** : [AUTH_SETUP.md](./AUTH_SETUP.md)
 
-### 2. Factory Pattern Email
+### 2. Accès aux emails
 
-Le système utilise un factory pour abstraire le provider email :
+Le système utilise deux méthodes selon le provider :
+
+#### Microsoft (Outlook, Hotmail, Live, Microsoft 365)
 
 ```typescript
-const provider = await createEmailProvider(userId);
-// Retourne GmailProvider ou IMAPProvider selon User.emailProvider
+// Automatique via Microsoft Graph API
+const graphService = await createMicrosoftGraphService(userId);
+await graphService.fetchNewEmails();
+await graphService.getEmailBodyForAnalysis(messageId);
+```
 
-await provider.fetchNewEmails();
-await provider.getEmailBodyForAnalysis(messageId);
+**Avantages** : Aucune configuration utilisateur, delta query efficace.
+
+**Détails** : [MICROSOFT_GRAPH.md](./MICROSOFT_GRAPH.md)
+
+#### Autres providers (Gmail, Yahoo, iCloud, Fastmail...)
+
+```typescript
+// IMAP avec App Password
+const imapService = await createIMAPService(userId);
+await imapService.fetchNewEmails();
+await imapService.getEmailBodyForAnalysis(uid);
 ```
 
 **Détails** : [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md)
 
-### 3. IMAP OAuth2 (XOAUTH2)
-
-Pour Microsoft 365 (basic auth désactivé), le système utilise OAuth2 XOAUTH2 :
-
-```
-1. Connexion Microsoft OAuth → access_token + refresh_token
-2. POST /api/imap/setup-oauth → Création IMAPCredential
-3. Sync IMAP → getOAuthAccessToken() → XOAUTH2 auth
-4. Token expiré → Refresh automatique
-```
-
-**Détails** : [IMAP_INTEGRATION.md](./IMAP_INTEGRATION.md#imap-oauth2-xoauth2)
-
-### 4. Extraction d'actions (Regex)
+### 3. Extraction d'actions (Regex)
 
 L'extraction utilise des patterns regex déterministes :
 
@@ -282,7 +302,7 @@ L'extraction utilise des patterns regex déterministes :
 
 **Détails** : [REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)
 
-### 5. Sécurité et chiffrement
+### 4. Sécurité et chiffrement
 
 | Donnée | Protection |
 |--------|------------|
@@ -291,9 +311,9 @@ L'extraction utilise des patterns regex déterministes :
 | Tokens OAuth | Stockés en DB (table Account) |
 | Sessions | JWT (AUTH_SECRET) |
 
-**Détails** : [GMAIL_SECURITY_GDPR.md](./GMAIL_SECURITY_GDPR.md)
+**Détails** : [SECURITY_GDPR.md](./SECURITY_GDPR.md)
 
-### 6. Temps réel (SSE + Zustand)
+### 5. Temps réel (SSE + Zustand)
 
 ```
 Server (Cron) ──SSE──► Client (Zustand Store) ──► UI Components
@@ -306,7 +326,7 @@ Server (Cron) ──SSE──► Client (Zustand Store) ──► UI Components
 
 ---
 
-## 📝 Variables d'environnement
+## Variables d'environnement
 
 ### Référence complète
 
@@ -322,16 +342,15 @@ AUTH_URL=http://localhost:3000
 # ═══════════════════════════════════════════════════════════════
 AUTH_SECRET=                              # openssl rand -base64 32
 
-# Google OAuth (optionnel)
+# Google OAuth (optionnel - authentification uniquement)
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
-NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=false
 
-# Microsoft OAuth (optionnel)
+# Microsoft OAuth (recommandé - authentification + emails)
 MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
-MICROSOFT_TENANT_ID=                      # GUID, pas "common"
-NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=false
+MICROSOFT_TENANT_ID=                      # "consumers" ou GUID
+NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true
 
 # ═══════════════════════════════════════════════════════════════
 # BASE DE DONNÉES
@@ -339,7 +358,7 @@ NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=false
 DATABASE_URL=postgresql://user:pass@host:5432/db
 
 # ═══════════════════════════════════════════════════════════════
-# IMAP
+# IMAP (pour les providers non-Microsoft)
 # ═══════════════════════════════════════════════════════════════
 IMAP_MASTER_KEY=                          # openssl rand -hex 32
 
@@ -369,15 +388,14 @@ NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID=
 
 ---
 
-## 🔗 Ressources externes
+## Ressources externes
 
 ### Documentation officielle
 
 - [Next.js 14](https://nextjs.org/docs)
 - [Auth.js (NextAuth v5)](https://authjs.dev/)
 - [Prisma ORM](https://www.prisma.io/docs)
-- [Gmail API](https://developers.google.com/gmail/api)
-- [Microsoft Graph](https://learn.microsoft.com/en-us/graph/)
+- [Microsoft Graph API](https://learn.microsoft.com/en-us/graph/api/overview)
 
 ### Outils et bibliothèques
 
@@ -388,24 +406,23 @@ NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID=
 
 ### Portails de configuration
 
-- [Google Cloud Console](https://console.cloud.google.com)
-- [Azure Portal](https://portal.azure.com)
+- [Azure Portal](https://portal.azure.com) - Microsoft OAuth
+- [Google Cloud Console](https://console.cloud.google.com) - Google OAuth
 
 ---
 
-## 📧 Support
+## Support
 
 Pour toute question :
 - Créer une [issue GitHub](https://github.com/bullder30/inbox-actions/issues)
-- Consulter le [troubleshooting](./GMAIL_TROUBLESHOOTING.md)
 
 ---
 
-## 📜 Licence
+## Licence
 
 Ce projet est sous licence **AGPL-3.0**. Voir [LICENSE](../LICENSE.md).
 
 ---
 
-**Dernière mise à jour** : 29 janvier 2026
+**Dernière mise à jour** : 6 février 2026
 **Version** : 0.2.0 MVP

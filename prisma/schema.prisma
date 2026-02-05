@@ -29,8 +29,14 @@ enum EmailStatus {
 }
 
 enum EmailProvider {
-  GMAIL // Gmail via OAuth (existant)
-  IMAP  // IMAP générique (nouveau)
+  GMAIL           // Gmail via OAuth (existant)
+  IMAP            // IMAP générique
+  MICROSOFT_GRAPH // Microsoft Graph API (Outlook, Hotmail, Live, M365)
+}
+
+enum IMAPAuthMethod {
+  PASSWORD // App Password (traditional IMAP auth)
+  OAUTH    // OAuth2 / XOAUTH2 (Microsoft, Google)
 }
 
 enum ActionStatus {
@@ -75,7 +81,6 @@ model Session {
 
 model User {
   id            String    @id @default(cuid())
-  name          String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
@@ -94,13 +99,14 @@ model User {
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
-  // Email provider preference
-  emailProvider           EmailProvider @default(GMAIL) @map(name: "email_provider")
+  // Email provider preference (nullable - null means no provider configured)
+  emailProvider           EmailProvider? @map(name: "email_provider")
 
-  // Gmail sync (kept for backward compatibility)
-  lastGmailSync           DateTime? @map(name: "last_gmail_sync")
-  gmailHistoryId          String?   @map(name: "gmail_history_id")
-  lastEmailExtractionDate DateTime? @map(name: "last_email_extraction_date")
+  // Universal sync timestamp (used by all providers)
+  lastEmailSync           DateTime? @map(name: "last_email_sync")
+
+  // Microsoft Graph delta link (for incremental sync)
+  microsoftDeltaLink      String?   @db.Text @map(name: "microsoft_delta_link")
 
   // Notification preferences
   emailNotifications   Boolean   @default(true) @map(name: "email_notifications")
@@ -197,11 +203,10 @@ model IMAPCredential {
   imapHost        String   @map(name: "imap_host")     // ex: "imap.gmail.com"
   imapPort        Int      @default(993) @map(name: "imap_port")
   imapUsername    String   @map(name: "imap_username") // Email ou username IMAP
-  imapPassword    String   @db.Text @map(name: "imap_password") // Chiffré AES-256 (ou vide si OAuth2)
+  imapPassword    String?  @db.Text @map(name: "imap_password") // Chiffré AES-256 (App Password) - null for OAuth
 
-  // OAuth2 authentication (for Microsoft 365, etc.)
-  useOAuth2       Boolean  @default(false) @map(name: "use_oauth2")
-  oauthProvider   String?  @map(name: "oauth_provider") // "microsoft-entra-id", "google", etc.
+  // Authentication method
+  authMethod      IMAPAuthMethod @default(PASSWORD) @map(name: "auth_method")
 
   // Configuration
   imapFolder      String   @default("INBOX") @map(name: "imap_folder")

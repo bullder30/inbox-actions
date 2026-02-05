@@ -11,7 +11,6 @@ async function main() {
     update: {},
     create: {
       email: "test@inbox-actions.com",
-      name: "Test User",
       role: "USER",
     },
   });

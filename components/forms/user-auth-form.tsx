@@ -14,17 +14,12 @@ import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/shared/icons";
 import { toast } from "sonner";
 
-const loginSchema = z.object({
+const authSchema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
 });
 
-const registerSchema = loginSchema.extend({
-  name: z.string().min(2, "Le nom doit contenir au moins 2 caractères"),
-});
-
-type LoginFormData = z.infer<typeof loginSchema>;
-type RegisterFormData = z.infer<typeof registerSchema>;
+type AuthFormData = z.infer<typeof authSchema>;
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   mode?: "login" | "register";
@@ -42,17 +37,15 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
   const searchParams = useSearchParams();
   const error = searchParams?.get("error");
 
-  const schema = mode === "register" ? registerSchema : loginSchema;
-
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<RegisterFormData>({
-    resolver: zodResolver(schema),
+  } = useForm<AuthFormData>({
+    resolver: zodResolver(authSchema),
   });
 
-  async function onCredentialsSubmit(data: RegisterFormData) {
+  async function onCredentialsSubmit(data: AuthFormData) {
     setIsCredentialsLoading(true);
 
     try {
@@ -109,22 +102,6 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
 
       {/* Credentials Form */}
       <form onSubmit={handleSubmit(onCredentialsSubmit)} className="grid gap-4">
-        {mode === "register" && (
-          <div className="grid gap-2">
-            <Label htmlFor="name">Nom</Label>
-            <Input
-              id="name"
-              type="text"
-              placeholder="Jean Dupont"
-              autoComplete="name"
-              disabled={isCredentialsLoading}
-              {...register("name")}
-            />
-            {errors.name && (
-              <p className="text-xs text-destructive">{errors.name.message}</p>
-            )}
-          </div>
-        )}
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
           <Input

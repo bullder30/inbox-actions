@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server } from "lucide-react";
+import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server, Zap } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
@@ -95,21 +95,17 @@ export default async function HomePage() {
             <div className="mt-8 flex flex-col items-center gap-3 text-sm text-muted-foreground">
               <div className="flex flex-wrap items-center justify-center gap-4">
                 <div className="flex items-center gap-2">
-                  <Mail className="size-4 text-blue-500" />
-                  <span>Google OAuth</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Mail className="size-4 text-cyan-500" />
-                  <span>Microsoft OAuth</span>
+                  <Zap className="size-4 text-blue-500" />
+                  <span>Microsoft Outlook (Graph API)</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <Server className="size-4 text-purple-500" />
-                  <span>IMAP (tous providers)</span>
+                  <span>Gmail, Yahoo, iCloud, Fastmail (IMAP)</span>
                 </div>
               </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-green-600" />
-                <span>Lecture seule • RGPD • Chiffrement • OAuth2</span>
+                <span>Lecture seule • RGPD • Chiffrement AES-256</span>
               </div>
               <p className="text-xs">
                 Préfère manquer une action que vous stresser avec un doute
@@ -230,21 +226,33 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {/* Feature 6 */}
+            {/* Feature 6 - Microsoft Graph */}
+            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
+                <Zap className="size-6 text-blue-500" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold">Microsoft Outlook sans friction</h3>
+              <p className="text-muted-foreground">
+                Connectez-vous avec votre compte Microsoft et c&apos;est tout !
+                <strong className="mt-2 block">Microsoft Graph API : aucune configuration IMAP requise.</strong>
+              </p>
+            </div>
+
+            {/* Feature 7 - IMAP */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
               <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-purple-500/10">
                 <Server className="size-6 text-purple-500" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold">Multi-providers email</h3>
+              <h3 className="mb-2 text-xl font-semibold">IMAP universel</h3>
               <p className="text-muted-foreground">
-                <strong>OAuth :</strong> Google, Microsoft 365 (avec IMAP OAuth2 automatique).
+                Gmail, Yahoo, iCloud, Fastmail, ProtonMail...
                 <br />
-                <strong>IMAP :</strong> Gmail, Outlook, Yahoo, iCloud, Fastmail, ProtonMail...
-                <strong className="mt-2 block">Authentification : OAuth, Email/Mot de passe, ou App Password.</strong>
+                Connexion via <strong>IMAP avec App Password</strong> : simple, universel, sécurisé.
+                <strong className="mt-2 block">Vos mots de passe sont chiffrés AES-256.</strong>
               </p>
             </div>
 
-            {/* Feature 7 */}
+            {/* Feature 8 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
               <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-indigo-500/10">
                 <ShieldCheck className="size-6 text-indigo-500" />
@@ -275,15 +283,19 @@ export default async function HomePage() {
                 1
               </div>
               <div>
-                <h3 className="mb-2 text-xl font-semibold">Connexion (3 méthodes)</h3>
+                <h3 className="mb-2 text-xl font-semibold">Connexion simple</h3>
                 <p className="text-muted-foreground">
-                  <strong>Google OAuth :</strong> Connexion sécurisée en 1 clic + accès Gmail en lecture seule.
+                  <strong>Option A - Microsoft (recommandé) :</strong> Connectez-vous avec votre compte Microsoft.
                   <br />
-                  <strong>Microsoft OAuth :</strong> Connexion Microsoft 365 + IMAP OAuth2 automatique.
+                  L&apos;accès aux emails est automatique via Microsoft Graph API. Aucune configuration !
+                </p>
+                <p className="mt-2 text-muted-foreground">
+                  <strong>Option B - Autres providers :</strong> Créez un compte, puis configurez IMAP avec un <strong>App Password</strong>.
                   <br />
-                  <strong>Email/Mot de passe :</strong> Compte local + configuration IMAP manuelle.
-                  <br />
-                  <span className="mt-2 block text-sm">Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).</span>
+                  <span className="text-sm">Compatible avec Gmail, Yahoo, iCloud, Fastmail, ProtonMail...</span>
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).
                 </p>
               </div>
             </div>
@@ -296,7 +308,7 @@ export default async function HomePage() {
               <div>
                 <h3 className="mb-2 text-xl font-semibold">Scan automatique ou manuel</h3>
                 <p className="text-muted-foreground">
-                  Scan quotidien automatique à 8h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.
+                  Scan quotidien automatique à 7h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.
                   <strong className="mt-2 block">Sont automatiquement exclus :</strong>
                   newsletters, notifications automatiques, emails no-reply, footers de désinscription.
                 </p>
@@ -540,7 +552,7 @@ export default async function HomePage() {
               Réduisez votre stress email dès aujourd&apos;hui
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Gratuit. Sans carte bancaire. Gmail OAuth ou IMAP en quelques clics.
+              Gratuit. Sans carte bancaire. Microsoft : connexion instantanée. Autres : configuration IMAP simple.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/register">

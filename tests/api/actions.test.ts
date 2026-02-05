@@ -27,7 +27,6 @@ function createMockRequest(
 const mockUser = {
   id: "user123",
   email: "test@example.com",
-  name: "Test User",
 };
 
 const mockSession = {

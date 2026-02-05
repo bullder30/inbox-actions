@@ -1,18 +1,22 @@
 import type { EmailProvider, EmailStatus } from "@prisma/client";
 
 /**
+ * Authentication method for IMAP
+ */
+export type IMAPAuthMethod = "PASSWORD" | "OAUTH";
+
+/**
  * Configuration for IMAP connection
  */
 export interface IMAPConfig {
   host: string;
   port: number;
   username: string;
-  password: string; // Plain text (decrypted) - empty if using OAuth2
+  password?: string; // Plain text (decrypted) - App Password (for PASSWORD auth)
+  accessToken?: string; // OAuth2 access token (for OAUTH auth)
+  authMethod: IMAPAuthMethod;
   folder?: string;
   useTLS?: boolean;
-  // OAuth2 configuration
-  useOAuth2?: boolean;
-  oauthProvider?: string; // "microsoft-entra-id", "google", etc.
 }
 
 /**
@@ -110,12 +114,7 @@ export const IMAP_PRESETS: Record<
     useTLS: true,
     name: "Gmail",
   },
-  outlook: {
-    host: "outlook.office365.com",
-    port: 993,
-    useTLS: true,
-    name: "Outlook / Office 365",
-  },
+  // Note: Outlook/Microsoft removed - use Microsoft Graph API instead
   yahoo: {
     host: "imap.mail.yahoo.com",
     port: 993,
@@ -144,10 +143,11 @@ export const IMAP_PRESETS: Record<
 
 /**
  * Detect provider from email address
+ * Returns the IMAP preset key, or "microsoft" for Microsoft accounts (which should use Graph API)
  */
 export function detectProviderFromEmail(
   email: string
-): keyof typeof IMAP_PRESETS | null {
+): keyof typeof IMAP_PRESETS | "microsoft" | null {
   const domain = email.split("@")[1]?.toLowerCase();
 
   if (!domain) return null;
@@ -155,13 +155,16 @@ export function detectProviderFromEmail(
   if (domain === "gmail.com" || domain.endsWith(".gmail.com")) {
     return "gmail";
   }
+  // Microsoft accounts - should use Graph API, not IMAP
   if (
     domain === "outlook.com" ||
     domain === "hotmail.com" ||
     domain === "live.com" ||
-    domain.endsWith(".outlook.com")
+    domain.endsWith(".outlook.com") ||
+    domain === "outlook.fr" ||
+    domain === "hotmail.fr"
   ) {
-    return "outlook";
+    return "microsoft";
   }
   if (domain === "yahoo.com" || domain.endsWith(".yahoo.com")) {
     return "yahoo";
@@ -181,4 +184,11 @@ export function detectProviderFromEmail(
   }
 
   return null;
+}
+
+/**
+ * Check if a provider is Microsoft (should use Graph API instead of IMAP)
+ */
+export function isMicrosoftProvider(provider: string | null): boolean {
+  return provider === "microsoft";
 }

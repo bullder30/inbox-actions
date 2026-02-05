@@ -12,12 +12,12 @@ export type {
 } from "./interface";
 
 // Providers
-export { GmailProvider } from "./gmail-provider";
 export { IMAPProvider } from "./imap-provider";
+export { MicrosoftGraphProvider } from "./microsoft-graph-provider";
 
 // Factory
 export {
   createEmailProvider,
-  createGmailProvider,
   createIMAPProvider,
+  createMicrosoftGraphProvider,
 } from "./factory";

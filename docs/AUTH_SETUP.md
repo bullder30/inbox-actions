@@ -16,13 +16,21 @@ Ce guide explique comment configurer les différentes méthodes d'authentificati
 
 ## Vue d'ensemble
 
-Inbox Actions propose 3 méthodes d'authentification :
+Inbox Actions sépare l'authentification à l'application de l'accès aux emails :
 
-| Méthode | Accès Email | Configuration |
-|---------|-------------|---------------|
-| **Email/Mot de passe** | IMAP manuel | Simple, universel |
-| **Google OAuth** | Gmail API (automatique) | Recommandé pour Gmail |
-| **Microsoft OAuth** | IMAP OAuth2 (automatique) | Recommandé pour Microsoft 365 |
+### Authentification à l'application
+
+| Méthode | Description |
+|---------|-------------|
+| **Email/Mot de passe** | Compte local avec mot de passe hashé (bcrypt) |
+| **Google OAuth** | Connexion sécurisée via Google |
+| **Microsoft OAuth** | Connexion sécurisée via Microsoft |
+
+### Accès aux emails
+
+| Méthode | Description |
+|---------|-------------|
+| **IMAP + App Password** | Accès universel via IMAP (Gmail, Outlook, Yahoo, iCloud...) |
 
 ### Flux utilisateur
 
@@ -35,11 +43,13 @@ Inbox Actions propose 3 méthodes d'authentification :
 │  │ Email/MDP    │  │ Google OAuth │  │ Microsoft OAuth      │   │
 │  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
 │         │                 │                      │               │
-│         ▼                 ▼                      ▼               │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
-│  │ Config IMAP  │  │ Gmail API    │  │ IMAP OAuth2 auto     │   │
-│  │ manuelle     │  │ automatique  │  │ (outlook.office365)  │   │
-│  └──────────────┘  └──────────────┘  └──────────────────────┘   │
+│         └────────────────┬┴──────────────────────┘               │
+│                          │                                       │
+│                          ▼                                       │
+│               ┌──────────────────────┐                          │
+│               │ Configuration IMAP   │                          │
+│               │ (App Password)       │                          │
+│               └──────────────────────┘                          │
 │                                                                  │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -78,13 +88,7 @@ Si un utilisateur s'inscrit par email/mot de passe puis se connecte avec Google/
 3. Nommez votre projet (ex: "Inbox Actions")
 4. Cliquez sur **"Create"**
 
-### 2. Activer Gmail API
-
-1. Dans le menu, allez dans **"APIs & Services"** → **"Library"**
-2. Recherchez **"Gmail API"**
-3. Cliquez sur **"Enable"**
-
-### 3. Configurer l'écran de consentement OAuth
+### 2. Configurer l'écran de consentement OAuth
 
 1. Allez dans **"APIs & Services"** → **"OAuth consent screen"**
 2. Sélectionnez **"External"**
@@ -96,10 +100,9 @@ Si un utilisateur s'inscrit par email/mot de passe puis se connecte avec Google/
    - `openid`
    - `email`
    - `profile`
-   - `https://www.googleapis.com/auth/gmail.readonly`
 5. Ajoutez des utilisateurs de test si en mode "Testing"
 
-### 4. Créer les credentials OAuth 2.0
+### 3. Créer les credentials OAuth 2.0
 
 1. Allez dans **"APIs & Services"** → **"Credentials"**
 2. Cliquez sur **"Create Credentials"** → **"OAuth 2.0 Client ID"**
@@ -111,7 +114,7 @@ Si un utilisateur s'inscrit par email/mot de passe puis se connecte avec Google/
    ```
 5. Copiez le **Client ID** et le **Client Secret**
 
-### 5. Variables d'environnement
+### 4. Variables d'environnement
 
 ```env
 # Google OAuth
@@ -161,17 +164,10 @@ Sur la page de l'application :
 
 1. Allez dans **"API permissions"**
 2. Cliquez sur **"Add a permission"**
-3. Ajoutez ces permissions :
-
-**Microsoft Graph :**
-- `openid` (déléguée)
-- `email` (déléguée)
-- `profile` (déléguée)
-- `offline_access` (déléguée) - **Important pour le refresh token**
-
-**Office 365 Exchange Online :**
-- `IMAP.AccessAsUser.All` (déléguée) - **Pour l'accès IMAP OAuth2**
-
+3. Ajoutez ces permissions **Microsoft Graph** :
+   - `openid` (déléguée)
+   - `email` (déléguée)
+   - `profile` (déléguée)
 4. Cliquez sur **"Grant admin consent"** si vous êtes admin du tenant
 
 ### 5. Configurer l'authentification
@@ -206,45 +202,69 @@ NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true
 
 ## Configuration IMAP
 
-### Option 1 : IMAP OAuth2 (Microsoft 365)
+Après vous être connecté à l'application (via email/mot de passe, Google, ou Microsoft), configurez l'accès IMAP avec un **App Password** :
 
-Après connexion avec Microsoft OAuth, configurez IMAP automatiquement :
+### Qu'est-ce qu'un App Password ?
 
-```bash
-# Via API
-POST /api/imap/setup-oauth
-{
-  "provider": "microsoft-entra-id"
-}
-```
+Un App Password est un mot de passe spécial généré par votre fournisseur email. Il permet l'accès IMAP sans utiliser votre mot de passe principal.
 
-Cela :
-1. Crée automatiquement les credentials IMAP
-2. Configure `outlook.office365.com:993`
-3. Active l'authentification OAuth2 (XOAUTH2)
-4. Les tokens sont automatiquement rafraîchis
+### Gmail
 
-### Option 2 : IMAP avec App Password
-
-Pour les comptes personnels ou quand OAuth2 n'est pas disponible :
-
-**Gmail :**
 1. Activez la validation en 2 étapes sur votre compte Google
 2. Générez un mot de passe d'application : [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
-3. Configurez IMAP :
-   - Serveur : `imap.gmail.com`
-   - Port : `993`
-   - TLS : Oui
-   - Mot de passe : Le mot de passe d'application généré
+3. Sélectionnez "Mail" et "Autre (nom personnalisé)"
+4. Nommez-le "Inbox Actions"
+5. Copiez le mot de passe généré (16 caractères)
+6. **Important** : Activez IMAP dans Gmail → Paramètres → Transfert et POP/IMAP
 
-**Outlook.com (personnel) :**
-1. Activez la validation en 2 étapes
+Configuration IMAP :
+- Serveur : `imap.gmail.com`
+- Port : `993`
+- TLS : Oui
+
+### Outlook.com / Hotmail
+
+1. Activez la validation en 2 étapes sur votre compte Microsoft
 2. Générez un mot de passe d'application : [https://account.live.com/proofs/AppPassword](https://account.live.com/proofs/AppPassword)
-3. Configurez IMAP :
-   - Serveur : `outlook.office365.com`
-   - Port : `993`
-   - TLS : Oui
-   - Mot de passe : Le mot de passe d'application généré
+3. Copiez le mot de passe généré
+
+Configuration IMAP :
+- Serveur : `outlook.office365.com`
+- Port : `993`
+- TLS : Oui
+
+### Yahoo Mail
+
+1. Activez la vérification en 2 étapes
+2. Générez un mot de passe d'application : [https://login.yahoo.com/account/security](https://login.yahoo.com/account/security)
+3. Sélectionnez "Autre application"
+
+Configuration IMAP :
+- Serveur : `imap.mail.yahoo.com`
+- Port : `993`
+- TLS : Oui
+
+### iCloud Mail
+
+1. Activez l'authentification à deux facteurs
+2. Générez un mot de passe spécifique : [https://appleid.apple.com](https://appleid.apple.com)
+3. "Sécurité" → "Mots de passe d'application"
+
+Configuration IMAP :
+- Serveur : `imap.mail.me.com`
+- Port : `993`
+- TLS : Oui
+
+### ProtonMail (via Bridge)
+
+1. Installez ProtonMail Bridge
+2. Connectez-vous dans Bridge
+3. Utilisez le mot de passe affiché dans Bridge
+
+Configuration IMAP :
+- Serveur : `127.0.0.1`
+- Port : `1143`
+- TLS : Non
 
 ### Presets IMAP disponibles
 
@@ -343,15 +363,6 @@ openssl rand -hex 32
 1. Ajoutez dans Azure Portal → App registrations → Authentication
 2. URI : `http://localhost:3000/api/auth/callback/microsoft-entra-id`
 
-### Token IMAP OAuth2 expiré
-
-**Cause :** Le refresh token a échoué.
-
-**Solution :**
-1. Vérifiez que le scope `offline_access` est présent
-2. Reconnectez-vous avec Microsoft pour obtenir un nouveau token
-3. Vérifiez les logs : `[OAuth] Token refresh failed`
-
 ### Boutons OAuth non affichés
 
 **Cause :** Variables d'environnement non définies.
@@ -359,6 +370,15 @@ openssl rand -hex 32
 **Solution :**
 1. Vérifiez que `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` ou `NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true`
 2. Redémarrez le serveur après modification des `.env`
+
+### Erreur "Authentication failed" (IMAP)
+
+**Cause :** App Password incorrect ou IMAP non activé.
+
+**Solution :**
+1. Vérifiez que l'App Password est correct (sans espaces)
+2. Pour Gmail : activez IMAP dans les paramètres Gmail
+3. Vérifiez que la vérification en 2 étapes est activée
 
 ---
 

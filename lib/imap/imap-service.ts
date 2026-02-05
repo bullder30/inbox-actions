@@ -1,21 +1,21 @@
 /**
  * Service IMAP
  * Récupère les emails via IMAP de manière sécurisée
- * Alternative à Gmail API - fonctionne avec tous les providers IMAP
+ * Fonctionne avec tous les providers IMAP (Gmail, Outlook, Yahoo, etc.)
  */
 
 import { ImapFlow } from "imapflow";
-import { simpleParser, ParsedMail } from "mailparser";
+import { simpleParser } from "mailparser";
 
 import { prisma } from "@/lib/db";
 import { decryptPassword } from "./imap-credentials";
-import { getOAuthAccessToken } from "./oauth-token";
 import type {
   IMAPConfig,
   FetchEmailsOptions,
   EmailMetadataType,
   IMAPStatus,
   IMAPFolder,
+  IMAPAuthMethod,
 } from "./types";
 
 // ============================================================================
@@ -110,14 +110,6 @@ function extractSnippet(text: string, maxLength: number = 200): string {
   return cleaned;
 }
 
-/**
- * Extrait l'adresse email d'une chaîne "Nom <email@example.com>"
- */
-function extractEmailAddress(from: string): string {
-  const match = from.match(/<([^>]+)>/);
-  return match ? match[1] : from;
-}
-
 // ============================================================================
 // CLASSE PRINCIPALE
 // ============================================================================
@@ -142,39 +134,31 @@ export class IMAPService {
    */
   private async connect(): Promise<ImapFlow> {
     console.log(`[IMAP] Connecting to ${this.config.host}:${this.config.port}`);
-    console.log(`[IMAP] TLS: ${this.config.useTLS}, OAuth2: ${this.config.useOAuth2}, Provider: ${this.config.oauthProvider}`);
+    console.log(`[IMAP] TLS: ${this.config.useTLS}`);
+    console.log(`[IMAP] Auth method: ${this.config.authMethod}`);
 
     if (this.client?.usable) {
       console.log(`[IMAP] Reusing existing connection`);
       return this.client;
     }
 
-    // Determine authentication method
+    // Build auth object based on auth method
     let auth: { user: string; pass?: string; accessToken?: string };
 
-    if (this.config.useOAuth2 && this.config.oauthProvider) {
-      console.log(`[IMAP] Using OAuth2 XOAUTH2 authentication`);
-      // Use OAuth2 XOAUTH2 authentication
-      const accessToken = await getOAuthAccessToken(
-        this.userId,
-        this.config.oauthProvider
-      );
-
-      if (!accessToken) {
-        const errorMsg = `Failed to get OAuth2 access token for ${this.config.oauthProvider}`;
-        console.error(`[IMAP] ${errorMsg}`);
-        throw new Error(errorMsg);
+    if (this.config.authMethod === "OAUTH") {
+      if (!this.config.accessToken) {
+        throw new Error("OAuth authentication requires an access token");
       }
-
-      console.log(`[IMAP] Got OAuth2 token, length: ${accessToken.length}`);
+      console.log(`[IMAP] Using OAuth2 (XOAUTH2) authentication`);
       auth = {
         user: this.config.username,
-        accessToken: accessToken,
+        accessToken: this.config.accessToken,
       };
-      console.log(`[IMAP] Auth configured for user: ${this.config.username}`);
     } else {
-      console.log(`[IMAP] Using basic password authentication`);
-      // Use basic authentication
+      if (!this.config.password) {
+        throw new Error("Password authentication requires a password");
+      }
+      console.log(`[IMAP] Using password authentication`);
       auth = {
         user: this.config.username,
         pass: this.config.password,
@@ -187,12 +171,7 @@ export class IMAPService {
       port: this.config.port,
       secure: this.config.useTLS !== false,
       auth,
-      logger: {
-        debug: (info) => console.log(`[IMAP DEBUG] ${JSON.stringify(info)}`),
-        info: (info) => console.log(`[IMAP INFO] ${JSON.stringify(info)}`),
-        warn: (info) => console.warn(`[IMAP WARN] ${JSON.stringify(info)}`),
-        error: (info) => console.error(`[IMAP ERROR] ${JSON.stringify(info)}`),
-      },
+      logger: false, // Disable verbose logging in production
     });
 
     try {
@@ -217,9 +196,6 @@ export class IMAPService {
         error instanceof Error ? error.message : "Unknown connection error";
 
       console.error(`[IMAP] Connection failed: ${errorMessage}`);
-      if (error instanceof Error && error.stack) {
-        console.error(`[IMAP] Stack: ${error.stack}`);
-      }
 
       await prisma.iMAPCredential.update({
         where: { id: this.credentialId },
@@ -318,9 +294,6 @@ export class IMAPService {
           searchCriteria = `${startUID}:*`;
         } else {
           // Première sync : récupérer les emails récents (dernières 24h)
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          // On utilise SINCE pour filtrer par date
           searchCriteria = "*";
         }
 
@@ -344,17 +317,14 @@ export class IMAPService {
         let lastProcessedUID: bigint | null = null;
 
         console.log(`[IMAP] Processing emails for userId: ${this.userId}`);
-        console.log(`[IMAP] UIDs to fetch:`, uidsToFetch);
 
         // Récupérer les métadonnées de chaque message
-        // Note: Le 3ème paramètre { uid: true } indique qu'on utilise des UIDs (pas des sequence numbers)
         for await (const message of client.fetch(uidsToFetch, {
           envelope: true,
           internalDate: true,
           flags: true,
         }, { uid: true })) {
           const uid = BigInt(message.uid);
-          console.log(`[IMAP] Processing UID: ${uid}`);
 
           // Vérifier si l'email existe déjà en base
           const existing = await prisma.emailMetadata.findUnique({
@@ -367,14 +337,12 @@ export class IMAPService {
           });
 
           if (existing) {
-            console.log(`[IMAP] UID ${uid} already exists for userId ${this.userId}, skipping`);
             continue;
           }
 
           // Extraire les métadonnées
           const envelope = message.envelope;
           if (!envelope) {
-            console.log(`[IMAP] UID ${uid} has no envelope, skipping`);
             continue;
           }
 
@@ -389,11 +357,7 @@ export class IMAPService {
             ? (typeof internalDate === "string" ? new Date(internalDate) : internalDate)
             : new Date();
 
-          // Pour le snippet, on récupère juste les headers pour l'instant
-          // Le snippet sera généré lors de l'analyse si besoin
           const snippet = subject ? extractSnippet(subject, 200) : "";
-
-          // Extraire les labels/flags
           const labels = message.flags ? Array.from(message.flags) : [];
 
           const metadata: EmailMetadataType = {
@@ -428,10 +392,8 @@ export class IMAPService {
                 labels: metadata.labels,
               },
             });
-            console.log(`[IMAP] UID ${uid} saved to database for userId ${this.userId}`);
           } catch (createError) {
             console.error(`[IMAP] Failed to save UID ${uid}:`, createError);
-            // Remove from metadata array since it wasn't saved
             emailsMetadata.pop();
             continue;
           }
@@ -440,12 +402,13 @@ export class IMAPService {
         }
 
         // Mettre à jour le dernier UID synchronisé
+        const now = new Date();
         if (lastProcessedUID) {
           await prisma.iMAPCredential.update({
             where: { id: this.credentialId },
             data: {
               lastUID: lastProcessedUID,
-              lastIMAPSync: new Date(),
+              lastIMAPSync: now,
             },
           });
         }
@@ -454,7 +417,7 @@ export class IMAPService {
         await prisma.user.update({
           where: { id: this.userId },
           data: {
-            lastGmailSync: new Date(), // Réutilisé pour IMAP aussi
+            lastEmailSync: now,
           },
         });
 
@@ -493,7 +456,6 @@ export class IMAPService {
           { uid: true }
         );
 
-        // fetchOne peut retourner false si le message n'existe pas
         if (!message || !("source" in message) || !message.source) {
           return null;
         }
@@ -597,7 +559,6 @@ export class IMAPService {
             { since: yesterday },
             { uid: true }
           );
-          // client.search peut retourner false si aucun résultat
           return uidsResult ? (uidsResult as number[]).length : 0;
         }
 
@@ -608,7 +569,6 @@ export class IMAPService {
           { uid: true }
         );
 
-        // client.search peut retourner false si aucun résultat
         return uidsResult ? (uidsResult as number[]).length : 0;
       } finally {
         mailbox.release();
@@ -678,8 +638,7 @@ export async function createIMAPService(
         imapPassword: true,
         imapFolder: true,
         useTLS: true,
-        useOAuth2: true,
-        oauthProvider: true,
+        authMethod: true,
       },
     });
 
@@ -689,28 +648,48 @@ export async function createIMAPService(
     }
 
     console.debug("[IMAP] Found credential:", credential.id, "for host:", credential.imapHost);
+    console.debug("[IMAP] Auth method:", credential.authMethod);
 
-    // Déchiffrer le mot de passe (sauf si OAuth2)
-    let password: string = "";
-    if (!credential.useOAuth2) {
+    let config: IMAPConfig;
+
+    if (credential.authMethod === "OAUTH") {
+      // OAuth authentication for IMAP is no longer supported for Microsoft accounts
+      // Microsoft users should use Graph API instead
+      console.error("[IMAP] OAuth IMAP is deprecated. Use Microsoft Graph API instead.");
+      await prisma.iMAPCredential.update({
+        where: { id: credential.id },
+        data: {
+          isConnected: false,
+          connectionError: "IMAP OAuth is no longer supported. Please use Microsoft Graph API instead.",
+          lastErrorAt: new Date(),
+        },
+      });
+      return null;
+    } else {
+      // Password authentication
+      if (!credential.imapPassword) {
+        console.error("[IMAP] No password found for user:", userId);
+        return null;
+      }
+
+      let password: string;
       try {
         password = decryptPassword(credential.imapPassword);
       } catch (error) {
         console.error("[IMAP] Failed to decrypt password for user:", userId);
         return null;
       }
-    }
 
-    const config: IMAPConfig = {
-      host: credential.imapHost,
-      port: credential.imapPort,
-      username: credential.imapUsername,
-      password,
-      folder: credential.imapFolder,
-      useTLS: credential.useTLS,
-      useOAuth2: credential.useOAuth2,
-      oauthProvider: credential.oauthProvider || undefined,
-    };
+      config = {
+        host: credential.imapHost,
+        port: credential.imapPort,
+        username: credential.imapUsername,
+        password,
+        authMethod: "PASSWORD",
+        folder: credential.imapFolder,
+        useTLS: credential.useTLS,
+      };
+    }
 
     return new IMAPService(config, userId, credential.id);
   } catch (error) {

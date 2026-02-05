@@ -19,45 +19,49 @@ export default {
     error: "/login", // Redirige les erreurs OAuth (PKCE, etc.) vers login
   },
   providers: [
-    // Google OAuth (optional - only enabled if credentials are set)
+    // Google OAuth for authentication only (no Gmail API access)
     ...(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
       ? [
           Google({
             clientId: env.GOOGLE_CLIENT_ID,
             clientSecret: env.GOOGLE_CLIENT_SECRET,
             allowDangerousEmailAccountLinking: true,
-            authorization: {
-              params: {
-                access_type: "offline",
-                prompt: "consent",
-                scope: [
-                  "openid",
-                  "email",
-                  "profile",
-                  "https://www.googleapis.com/auth/gmail.readonly",
-                ].join(" "),
-              },
-            },
+            // Basic scopes for authentication only - no Gmail API
           }),
         ]
       : []),
     // Microsoft OAuth (optional - only enabled if credentials are set)
-    // Requires MICROSOFT_TENANT_ID to be set (not "common" - use your actual tenant ID)
+    // For personal Microsoft accounts (outlook.com, hotmail.com, live.com):
+    // - Set MICROSOFT_TENANT_ID=consumers in .env
+    // - The actual issuer for personal accounts is always 9188040d-6c67-4c5b-b112-36a304b66dad
+    // For organization accounts only:
+    // - Use your specific tenant GUID
+    //
+    // NOTE: This is for AUTHENTICATION only. Mail.Read scope is requested separately
+    // when the user chooses to connect Microsoft email in settings.
     ...(env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET && env.MICROSOFT_TENANT_ID
       ? [
           MicrosoftEntraID({
             clientId: env.MICROSOFT_CLIENT_ID,
             clientSecret: env.MICROSOFT_CLIENT_SECRET,
-            issuer: `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/v2.0`,
+            // For personal accounts, use the fixed consumer tenant ID as issuer
+            // For org accounts, use the configured tenant ID
+            issuer:
+              env.MICROSOFT_TENANT_ID === "consumers" || env.MICROSOFT_TENANT_ID === "common"
+                ? "https://login.microsoftonline.com/9188040d-6c67-4c5b-b112-36a304b66dad/v2.0"
+                : `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/v2.0`,
             allowDangerousEmailAccountLinking: true,
             authorization: {
+              // Use the configured tenant for authorization URL
+              url: `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize`,
               params: {
+                // Basic scopes for authentication only - NO Mail.Read here
+                // Mail.Read is requested separately via /api/microsoft-graph/connect
                 scope: [
                   "openid",
                   "email",
                   "profile",
                   "offline_access", // Required for refresh token
-                  "https://outlook.office.com/IMAP.AccessAsUser.All", // IMAP access
                 ].join(" "),
               },
             },
@@ -98,7 +102,6 @@ export default {
         return {
           id: user.id,
           email: user.email,
-          name: user.name,
           image: user.image,
         };
       },
