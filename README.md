@@ -1,6 +1,6 @@
 # Inbox Actions
 
-Transform your Gmail emails into clear, actionable tasks. No magic, no guessing — just simple, transparent rules.
+Transform your emails into clear, actionable tasks. No magic, no guessing — just simple, transparent rules.
 
 ![Next.js](https://img.shields.io/badge/Next.js-14-black)
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
@@ -13,7 +13,18 @@ Transform your Gmail emails into clear, actionable tasks. No magic, no guessing 
 
 ## Overview
 
-**Inbox Actions** is a Next.js application that extracts actionable tasks from your Gmail emails using deterministic regex patterns. It's designed with transparency in mind — you always know what was analyzed, what was ignored, and why.
+**Inbox Actions** is a Next.js application that extracts actionable tasks from your emails using deterministic regex patterns. It's designed with transparency in mind — you always know what was analyzed, what was ignored, and why.
+
+### Supported Email Providers
+
+| Provider | Method | Features |
+|----------|--------|----------|
+| **Microsoft** (Outlook, Hotmail, Live, Microsoft 365) | Microsoft Graph API | OAuth, no config needed |
+| **Gmail** | IMAP + App Password | Requires App Password |
+| **Yahoo** | IMAP + App Password | Requires App Password |
+| **iCloud** | IMAP + App Password | Requires App Password |
+| **Fastmail** | IMAP + App Password | Requires App Password |
+| **ProtonMail** | IMAP via Bridge | Requires ProtonMail Bridge |
 
 ### Philosophy
 
@@ -23,7 +34,7 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 
 ## Features
 
-- **Google OAuth Integration** — One-click login with Gmail read-only access
+- **Multi-Provider Support** — Microsoft Graph API or IMAP for any email provider
 - **Deterministic Detection** — Simple, explainable regex rules (no black-box AI)
 - **5 Action Types** — SEND, CALL, FOLLOW_UP, PAY, VALIDATE
 - **Due Date Extraction** — Automatic detection of deadlines from email content
@@ -32,6 +43,7 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 - **Manual Override** — "Missing an action?" button available everywhere
 - **Email Digest** — Daily notification summary via Resend
 - **GDPR Compliant** — Email body is never stored, only minimal metadata
+- **Secure Credentials** — IMAP passwords encrypted with AES-256
 
 ## Tech Stack
 
@@ -42,7 +54,8 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 | Database | PostgreSQL (Neon) |
 | ORM | Prisma |
 | Auth | Auth.js v5 (NextAuth) |
-| Email API | Gmail API (read-only) |
+| Email API | Microsoft Graph API (Outlook) |
+| Email Protocol | IMAP (Gmail, Yahoo, iCloud...) |
 | Transactional Email | Resend |
 | UI | shadcn/ui + Tailwind CSS |
 | State | Zustand |
@@ -56,7 +69,8 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 - Node.js 18+
 - pnpm (recommended) or npm
 - PostgreSQL database (Neon recommended)
-- Google Cloud Console project with Gmail API enabled
+- Microsoft Entra ID (Azure AD) app for Microsoft Graph (optional)
+- Google Cloud Console project for Google OAuth (optional)
 
 ### Installation
 
@@ -89,9 +103,17 @@ Create a `.env.local` file with the following variables:
 # Authentication
 AUTH_SECRET=                    # Generate with: openssl rand -base64 32
 
-# Google OAuth (Google Cloud Console)
+# Google OAuth (Google Cloud Console) - For Google login
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+
+# Microsoft OAuth (Azure Portal) - For Microsoft login & Graph API
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+MICROSOFT_TENANT_ID=common      # Use "common" for multi-tenant
+
+# IMAP Encryption
+IMAP_MASTER_KEY=                # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Database
 DATABASE_URL=                   # PostgreSQL connection string
@@ -109,26 +131,50 @@ SUPPORT_EMAIL=                  # Contact form recipient
 FEATURE_EMAIL_COUNT=false       # Enable email count job & KPI (default: false)
 ```
 
-### Google OAuth Setup
+### OAuth Setup
+
+#### Microsoft Entra ID (for Outlook/Microsoft 365)
+
+1. Go to [Azure Portal](https://portal.azure.com/) → Microsoft Entra ID
+2. App registrations → New registration
+3. Set redirect URI: `http://localhost:3000/api/auth/callback/microsoft-entra-id`
+4. API permissions → Add `Mail.Read` (Microsoft Graph, Delegated)
+5. Certificates & secrets → Create a client secret
+6. Copy Application (client) ID and secret to `.env.local`
+
+#### Google Cloud (for Google login)
 
 1. Go to [Google Cloud Console](https://console.cloud.google.com/)
 2. Create a new project or select existing
-3. Enable the **Gmail API**
-4. Configure OAuth consent screen
-5. Create OAuth 2.0 credentials (Web application)
-6. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
-7. Copy Client ID and Client Secret to `.env.local`
+3. Configure OAuth consent screen
+4. Create OAuth 2.0 credentials (Web application)
+5. Add authorized redirect URI: `http://localhost:3000/api/auth/callback/google`
+6. Copy Client ID and Client Secret to `.env.local`
 
 ## How It Works
 
-### 1. Email Synchronization
+### 1. Email Provider Setup
+
+**Microsoft Graph API** (Outlook, Hotmail, Live, Microsoft 365):
+- Sign in with Microsoft OAuth
+- Automatic `Mail.Read` permission request
+- No manual configuration needed
+
+**IMAP** (Gmail, Yahoo, iCloud, Fastmail, ProtonMail...):
+- Configure in Settings → Email Configuration
+- Requires an App Password (not your main password)
+- Passwords encrypted with AES-256-CBC
+
+> **Note:** Only one email provider can be active at a time. Connecting a new provider automatically disconnects the previous one.
+
+### 2. Email Synchronization
 
 - Daily automatic sync at 8:00 AM (configurable)
 - Manual sync available anytime
 - Only fetches INBOX emails
 - Stores minimal metadata (sender, subject, snippet)
 
-### 2. Action Detection
+### 3. Action Detection
 
 The system uses regex patterns to detect explicit requests:
 
@@ -140,7 +186,7 @@ The system uses regex patterns to detect explicit requests:
 | PAY | "pay the invoice", "transfer...", "payment due" |
 | VALIDATE | "approve...", "confirm...", "validate..." |
 
-### 3. Automatic Exclusions
+### 4. Automatic Exclusions
 
 Emails are automatically ignored if:
 - Sender is `no-reply@`, `newsletter@`, `notifications@`
@@ -148,7 +194,7 @@ Emails are automatically ignored if:
 - Body contains unsubscribe footers
 - Request is conditional ("if you can", "when you have time")
 
-### 4. Due Date Detection
+### 5. Due Date Detection
 
 Extracts deadlines from phrases like:
 - "before Friday", "by March 15"
@@ -160,22 +206,28 @@ Extracts deadlines from phrases like:
 ```
 inbox-actions/
 ├── app/
-│   ├── (auth)/              # Login page
+│   ├── (auth)/              # Login/register pages
 │   ├── (protected)/         # Dashboard, actions, settings
 │   ├── api/                 # API routes
 │   │   ├── actions/         # CRUD operations
-│   │   ├── gmail/           # Gmail sync & analysis
+│   │   ├── email/           # Email sync & analysis
+│   │   ├── imap/            # IMAP configuration
+│   │   ├── microsoft-graph/ # Microsoft Graph status & sync
 │   │   ├── contact/         # Contact form
 │   │   └── cron/            # Scheduled jobs
 │   └── contact/             # Contact page
 ├── components/
 │   ├── actions/             # Action cards, lists, dialogs
 │   ├── dashboard/           # Stats, sync button
+│   ├── imap/                # IMAP configuration form
+│   ├── microsoft-graph/     # Microsoft Graph status
 │   ├── layout/              # Sidebar, footer, nav
 │   └── ui/                  # shadcn/ui components
 ├── lib/
 │   ├── actions/             # Regex extraction logic
-│   ├── gmail/               # Gmail API service
+│   ├── email-provider/      # Provider factory & interface
+│   ├── imap/                # IMAP service & credentials
+│   ├── microsoft-graph/     # Microsoft Graph service
 │   ├── notifications/       # Email digest service
 │   └── cron/                # Cron job handlers
 ├── emails/                  # React Email templates
@@ -203,6 +255,7 @@ pnpm email        # Start React Email dev server
 - **Action** — Extracted tasks with type, status, due date
 - **EmailMetadata** — Minimal email info (GDPR compliant)
 - **Account** — OAuth tokens (managed by Auth.js)
+- **IMAPCredential** — IMAP configuration (encrypted password)
 
 ## Cron Jobs
 
@@ -219,19 +272,40 @@ pnpm email        # Start React Email dev server
 - `POST /api/actions/[id]/done` — Mark as done
 - `POST /api/actions/[id]/ignore` — Ignore action
 
-### Gmail
-- `POST /api/email/sync` — Sync new emails
+### Email (Generic)
+- `POST /api/email/sync` — Sync new emails (auto-detects provider)
 - `POST /api/email/analyze` — Extract actions
 - `GET /api/email/status` — Connection status
+- `POST /api/email/disconnect` — Disconnect email provider
+
+### Microsoft Graph
+- `GET /api/microsoft-graph/status` — Microsoft Graph status
+- `POST /api/microsoft-graph/sync` — Sync via Graph API
+- `POST /api/microsoft-graph/activate` — Activate as email provider
+
+### IMAP
+- `GET /api/imap/status` — IMAP configuration status
+- `POST /api/imap/connect` — Configure IMAP connection
 
 ## Security & Privacy
 
-- **Read-only Gmail access** — Cannot send, delete, or modify emails
+- **Read-only email access** — Cannot send, delete, or modify emails
 - **No email body storage** — Content is analyzed in memory, then discarded
 - **Minimal metadata** — Only sender, subject, and 200-char snippet stored
 - **No retention (MVP)** — Email metadata deleted daily, actions preserved
 - **User data isolation** — All queries scoped to authenticated user
-- **Cascade delete** — Disconnecting Gmail removes all related data
+- **Cascade delete** — Disconnecting email removes all related data
+- **AES-256 encryption** — IMAP passwords encrypted at rest
+- **OAuth tokens encrypted** — Microsoft and Google tokens stored securely
+
+## Documentation
+
+See the `docs/` folder for detailed documentation:
+
+- [README.md](docs/README.md) — Documentation overview
+- [MICROSOFT_GRAPH.md](docs/MICROSOFT_GRAPH.md) — Microsoft Graph API integration
+- [IMAP_INTEGRATION.md](docs/IMAP_INTEGRATION.md) — IMAP configuration guide
+- [AUTH_SETUP.md](docs/AUTH_SETUP.md) — Authentication setup
 
 ## Contributing
 
