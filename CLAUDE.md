@@ -13,7 +13,7 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 - Track due dates and completion status
 - Receive email digests with pending actions
 
-**MVP Limitation:** This version (0.1.0) only analyzes emails written in **French**. The regex patterns are designed for French language detection. Multi-language support is planned for future releases.
+**MVP Limitation:** This version (0.2.0) only analyzes emails written in **French**. The regex patterns are designed for French language detection. Multi-language support is planned for future releases.
 
 ## Technology Stack
 
@@ -772,45 +772,45 @@ export async function POST(req: Request, { params }: { params: { id: string } })
 }
 ```
 
-#### Gmail API (`/api/gmail/`)
+#### Gmail API (`/api/email/`)
 
-**POST /api/gmail/sync**
+**POST /api/email/sync**
 - Syncs new emails from Gmail (metadata only)
 - Returns count of synced emails
 - Updates `User.lastGmailSync`
 
-**POST /api/gmail/analyze**
+**POST /api/email/analyze**
 - Extracts actions from EXTRACTED emails
 - Uses regex-based extraction
 - Marks emails as ANALYZED
 - Triggers notification digest
 - Returns extraction stats
 
-**GET /api/gmail/status**
+**GET /api/email/status**
 - Checks Gmail connection status
 - Returns: connected (boolean), email, lastSync
 
-**GET /api/gmail/stats**
+**GET /api/email/stats**
 - Returns email statistics
 - Total synced, analyzed, extracted
 - Action counts by type
 
-**GET /api/gmail/pending-count**
+**GET /api/email/pending-count**
 - Counts emails with status EXTRACTED (pending analysis)
 - Fast, used for UI badge
 
-**GET /api/gmail/pending-stream**
+**GET /api/email/pending-stream**
 - Server-Sent Events (SSE) stream
 - Real-time updates of pending email count
 - Updates every 5 seconds
 - Used for real-time UI updates without polling
 
-**POST /api/gmail/disconnect**
+**POST /api/email/disconnect**
 - Disconnects Gmail account
 - Deletes Account record
 - Resets `User.lastGmailSync`
 
-**GET /api/gmail/ignored-emails**
+**GET /api/email/ignored-emails**
 - Returns list of ignored email patterns
 - For future feature: user-defined ignore rules
 
@@ -990,12 +990,12 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   ```
 
 #### Real-Time Updates
-- **Server-Sent Events (SSE)** - `/api/gmail/pending-stream`
+- **Server-Sent Events (SSE)** - `/api/email/pending-stream`
 - Updates UI without polling
 - Example usage:
   ```typescript
   useEffect(() => {
-    const eventSource = new EventSource('/api/gmail/pending-stream');
+    const eventSource = new EventSource('/api/email/pending-stream');
     eventSource.onmessage = (event) => {
       const data = JSON.parse(event.data);
       setPendingCount(data.count);
@@ -1342,7 +1342,7 @@ export function SyncButton() {
 
   async function handleSync() {
     setLoading(true);
-    await fetch("/api/gmail/sync", { method: "POST" });
+    await fetch("/api/email/sync", { method: "POST" });
     setLoading(false);
   }
 

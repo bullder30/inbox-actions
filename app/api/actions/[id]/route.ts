@@ -31,7 +31,6 @@ export async function GET(
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
           },
         },
@@ -53,7 +52,11 @@ export async function GET(
       );
     }
 
-    return NextResponse.json(action);
+    // Convertir BigInt en string pour la sérialisation JSON
+    return NextResponse.json({
+      ...action,
+      imapUID: action.imapUID?.toString() ?? null,
+    });
   } catch (error) {
     console.error("Error fetching action:", error);
     return NextResponse.json(

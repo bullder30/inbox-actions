@@ -1,9 +1,9 @@
 /**
- * Job de comptage des nouveaux emails Gmail
+ * Job de comptage des nouveaux emails
  * Exécuté toutes les 10 minutes
  *
  * IMPORTANT: Ce job NE synchronise PAS les emails, il compte uniquement
- * les nouveaux emails disponibles dans Gmail depuis la dernière synchro.
+ * les nouveaux emails disponibles depuis la dernière synchro.
  *
  * La synchronisation réelle se fait via :
  * - Le bouton "Analyser" dans le dashboard (manuel)
@@ -11,7 +11,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { createGmailService } from "@/lib/gmail/gmail-service";
+import { createEmailProvider } from "@/lib/email-provider/factory";
 
 export async function runCountNewEmailsJob() {
   const startTime = Date.now();
@@ -19,29 +19,24 @@ export async function runCountNewEmailsJob() {
   console.log("[COUNT-NEW-EMAILS JOB] 🔢 Starting...");
 
   try {
-    // Récupérer tous les utilisateurs avec Gmail connecté
-    const usersWithGmail = await prisma.account.findMany({
+    // Récupérer tous les utilisateurs avec un email provider configuré
+    const usersWithEmail = await prisma.user.findMany({
       where: {
-        provider: "google",
-        access_token: { not: null },
+        emailProvider: { in: ["MICROSOFT_GRAPH", "IMAP"] },
+        syncEnabled: true,
       },
       select: {
-        userId: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-          },
-        },
+        id: true,
+        email: true,
+        emailProvider: true,
       },
-      distinct: ["userId"],
     });
 
-    console.log(`[COUNT-NEW-EMAILS JOB] Found ${usersWithGmail.length} users with Gmail`);
+    console.log(`[COUNT-NEW-EMAILS JOB] Found ${usersWithEmail.length} users with email configured`);
 
     // Stats globales
     const stats = {
-      totalUsers: usersWithGmail.length,
+      totalUsers: usersWithEmail.length,
       successUsers: 0,
       failedUsers: 0,
       totalNewEmails: 0,
@@ -49,21 +44,21 @@ export async function runCountNewEmailsJob() {
     };
 
     // Compter pour chaque utilisateur
-    for (const account of usersWithGmail) {
-      const userId = account.userId;
-      const userEmail = account.user.email || "unknown";
+    for (const user of usersWithEmail) {
+      const userId = user.id;
+      const userEmail = user.email || "unknown";
 
       try {
-        // Créer le service Gmail
-        const gmailService = await createGmailService(userId);
+        // Créer le provider email
+        const emailProvider = await createEmailProvider(userId);
 
-        if (!gmailService) {
+        if (!emailProvider) {
           stats.failedUsers++;
           continue;
         }
 
         // UNIQUEMENT compter les nouveaux emails (pas de synchronisation)
-        const newEmailsCount = await gmailService.countNewEmailsInGmail();
+        const newEmailsCount = await emailProvider.countNewEmails();
 
         if (newEmailsCount > 0) {
           console.log(`[COUNT-NEW-EMAILS JOB] ${userEmail}: ${newEmailsCount} new emails`);

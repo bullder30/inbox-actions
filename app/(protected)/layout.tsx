@@ -63,7 +63,7 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
             </div>
 
             <div className="flex-1" /> {/* Spacer pour pousser les éléments à droite */}
-            <UserAccountNav />
+            <UserAccountNav todoCount={todoCount} />
           </MaxWidthWrapper>
         </header>
 

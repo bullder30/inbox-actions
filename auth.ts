@@ -2,9 +2,33 @@ import authConfig from "@/auth.config";
 import { PrismaAdapter } from "@auth/prisma-adapter";
 import { UserRole } from "@prisma/client";
 import NextAuth, { type DefaultSession } from "next-auth";
+import type { Adapter, AdapterUser } from "next-auth/adapters";
 
 import { prisma } from "@/lib/db";
 import { getUserById } from "@/lib/user";
+
+// Custom adapter that removes the 'name' field since it was removed from the User model
+function CustomPrismaAdapter(): Adapter {
+  const adapter = PrismaAdapter(prisma);
+
+  return {
+    ...adapter,
+    createUser: async (data: Omit<AdapterUser, "id">) => {
+      // Remove 'name' field as it no longer exists in our User model
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { name, ...userData } = data as Omit<AdapterUser, "id"> & { name?: string };
+      // Use prisma directly to avoid type issues with the adapter
+      const user = await prisma.user.create({
+        data: {
+          email: userData.email,
+          emailVerified: userData.emailVerified,
+          image: userData.image,
+        },
+      });
+      return { ...user, id: user.id, email: user.email!, emailVerified: user.emailVerified };
+    },
+  };
+}
 
 // More info: https://authjs.dev/getting-started/typescript#module-augmentation
 declare module "next-auth" {
@@ -22,7 +46,7 @@ export const {
   signOut,
 } = NextAuth({
   ...authConfig,
-  adapter: PrismaAdapter(prisma),
+  adapter: CustomPrismaAdapter(),
   trustHost: true,
   session: {
     strategy: "jwt",
@@ -31,8 +55,8 @@ export const {
   },
   callbacks: {
     async signIn({ user, account, profile }) {
-      // Si c'est une connexion OAuth (Google)
-      if (account?.provider === "google") {
+      // Si c'est une connexion OAuth (Google ou Microsoft)
+      if (account?.provider === "google" || account?.provider === "microsoft-entra-id") {
         // Vérifier si un utilisateur existe déjà avec cet email
         const existingUser = await prisma.user.findUnique({
           where: { email: user.email! },
@@ -40,13 +64,13 @@ export const {
         });
 
         if (existingUser) {
-          // Vérifier si le compte Google est déjà lié
-          const googleAccount = existingUser.accounts.find(
-            (acc) => acc.provider === "google"
+          // Vérifier si le compte OAuth est déjà lié
+          const existingAccount = existingUser.accounts.find(
+            (acc) => acc.provider === account.provider
           );
 
-          if (!googleAccount) {
-            // Lier le compte Google à l'utilisateur existant
+          if (!existingAccount) {
+            // Lier le compte OAuth à l'utilisateur existant
             await prisma.account.create({
               data: {
                 userId: existingUser.id,
@@ -61,7 +85,7 @@ export const {
                 id_token: account.id_token,
               },
             });
-            console.log(`[Auth] Compte Google lié à l'utilisateur existant: ${user.email}`);
+            console.log(`[Auth] Compte ${account.provider} lié à l'utilisateur existant: ${user.email}`);
           }
         }
       }
@@ -103,7 +127,6 @@ export const {
           session.user.role = token.role;
         }
 
-        session.user.name = token.name;
         session.user.image = token.picture;
       }
 
@@ -117,7 +140,6 @@ export const {
 
       if (!dbUser) return token;
 
-      token.name = dbUser.name;
       token.email = dbUser.email;
       token.picture = dbUser.image;
       token.role = dbUser.role;

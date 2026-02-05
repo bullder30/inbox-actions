@@ -37,7 +37,7 @@ lib/actions/
 ├── extract-actions-regex.ts      # Extraction engine
 └── extract-actions-examples.ts   # Tests and examples
 
-app/api/gmail/analyze/route.ts    # API endpoint
+app/api/email/analyze/route.ts    # API endpoint
 ```
 
 ### Processing Flow
@@ -945,7 +945,7 @@ The system can process thousands of emails per second. The limit is the database
 ### API Code
 
 ```typescript
-// app/api/gmail/analyze/route.ts
+// app/api/email/analyze/route.ts
 
 const body = await gmailService.getEmailBodyForAnalysis(emailId);
 // ⚠️ Used ONLY in memory
@@ -1118,7 +1118,7 @@ Link format: `https://mail.google.com/mail/u/0/#inbox/{messageId}`
 
 - **Source code**: `lib/actions/extract-actions-regex.ts`
 - **Tests**: `lib/actions/extract-actions-examples.ts`
-- **API**: `app/api/gmail/analyze/route.ts`
+- **API**: `app/api/email/analyze/route.ts`
 - **Regex tester**: https://regex101.com/
 
 ---

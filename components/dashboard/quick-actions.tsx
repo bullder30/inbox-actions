@@ -1,19 +1,21 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 
 export function QuickActions() {
+  const router = useRouter();
   const [syncing, setSyncing] = useState(false);
   const [analyzing, setAnalyzing] = useState(false);
 
   async function handleSync() {
     try {
       setSyncing(true);
-      const response = await fetch("/api/gmail/sync");
+      const response = await fetch("/api/email/sync");
       const data = await response.json();
 
       if (!response.ok) {
@@ -36,7 +38,7 @@ export function QuickActions() {
   async function handleAnalyze() {
     try {
       setAnalyzing(true);
-      const response = await fetch("/api/gmail/analyze", {
+      const response = await fetch("/api/email/analyze", {
         method: "POST",
       });
       const data = await response.json();
@@ -50,7 +52,7 @@ export function QuickActions() {
       );
 
       // Rafraîchir la page pour afficher les nouvelles actions
-      window.location.reload();
+      router.refresh();
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : "Échec de l'analyse"

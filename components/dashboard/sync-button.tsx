@@ -2,7 +2,7 @@
 
 import { RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { syncGmail } from "@/lib/api/gmail";
+import { syncGmail } from "@/lib/api/email";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useRouter } from "next/navigation";

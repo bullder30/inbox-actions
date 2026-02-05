@@ -55,7 +55,16 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(git config:*)",
-      "Bash(npx tsx:*)"
+      "Bash(npx tsx:*)",
+      "Bash(find:*)",
+      "Bash(pnpm test:regex:*)",
+      "Bash(echo:*)",
+      "Bash(git checkout:*)",
+      "Bash(PGPASSWORD='#Charlotte2013#' psql:*)",
+      "Bash(npm run build:*)",
+      "Bash(timeout 5 npm run dev:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git mv:*)"
     ]
   }
 }

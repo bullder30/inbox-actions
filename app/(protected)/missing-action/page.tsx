@@ -47,7 +47,7 @@ export default function MissingActionPage() {
   async function loadIgnoredEmails() {
     try {
       setLoading(true);
-      const response = await fetch("/api/gmail/ignored-emails");
+      const response = await fetch("/api/email/ignored-emails");
       if (!response.ok) {
         throw new Error("Erreur de chargement");
       }

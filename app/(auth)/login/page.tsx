@@ -27,7 +27,7 @@ export default function LoginPage() {
             Inbox Actions
           </h1>
           <p className="text-sm text-muted-foreground">
-            Connectez-vous avec votre compte Google pour accéder à vos emails
+            Connectez-vous pour accéder à vos emails
           </p>
         </div>
         <Suspense>

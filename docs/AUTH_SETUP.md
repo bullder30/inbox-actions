@@ -1,17 +1,85 @@
-# Configuration de l'authentification OAuth
+# Configuration de l'authentification
 
-Ce guide vous explique comment configurer l'authentification Google et GitHub pour votre application Inbox Actions.
+Ce guide explique comment configurer les différentes méthodes d'authentification pour Inbox Actions.
 
 ## Table des matières
 
+- [Vue d'ensemble](#vue-densemble)
+- [Authentification Email/Mot de passe](#authentification-emailmot-de-passe)
 - [Google OAuth](#google-oauth)
-- [GitHub OAuth](#github-oauth)
-- [Configuration des variables d'environnement](#configuration-des-variables-denvironnement)
-- [Test de l'authentification](#test-de-lauthentification)
+- [Microsoft OAuth](#microsoft-oauth)
+- [Configuration IMAP](#configuration-imap)
+- [Variables d'environnement](#variables-denvironnement)
+- [Dépannage](#dépannage)
+
+---
+
+## Vue d'ensemble
+
+Inbox Actions sépare l'authentification à l'application de l'accès aux emails :
+
+### Authentification à l'application
+
+| Méthode | Description |
+|---------|-------------|
+| **Email/Mot de passe** | Compte local avec mot de passe hashé (bcrypt) |
+| **Google OAuth** | Connexion sécurisée via Google |
+| **Microsoft OAuth** | Connexion sécurisée via Microsoft |
+
+### Accès aux emails
+
+| Méthode | Description |
+|---------|-------------|
+| **IMAP + App Password** | Accès universel via IMAP (Gmail, Outlook, Yahoo, iCloud...) |
+
+### Flux utilisateur
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    Inscription / Connexion                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                  │
+│  ┌──────────────┐  ┌──────────────┐  ┌──────────────────────┐   │
+│  │ Email/MDP    │  │ Google OAuth │  │ Microsoft OAuth      │   │
+│  └──────┬───────┘  └──────┬───────┘  └──────────┬───────────┘   │
+│         │                 │                      │               │
+│         └────────────────┬┴──────────────────────┘               │
+│                          │                                       │
+│                          ▼                                       │
+│               ┌──────────────────────┐                          │
+│               │ Configuration IMAP   │                          │
+│               │ (App Password)       │                          │
+│               └──────────────────────┘                          │
+│                                                                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## Authentification Email/Mot de passe
+
+### Configuration
+
+L'authentification par email/mot de passe est toujours disponible. Aucune configuration supplémentaire n'est requise.
+
+### Utilisation
+
+1. Aller sur `/register`
+2. Entrer nom, email, mot de passe
+3. Le compte est créé avec un mot de passe hashé (bcrypt)
+
+### Lien avec OAuth
+
+Si un utilisateur s'inscrit par email/mot de passe puis se connecte avec Google/Microsoft (même email), les comptes sont automatiquement liés.
 
 ---
 
 ## Google OAuth
+
+### Prérequis
+
+- Un compte Google Cloud
+- Un projet Google Cloud
 
 ### 1. Créer un projet Google Cloud
 
@@ -20,284 +88,304 @@ Ce guide vous explique comment configurer l'authentification Google et GitHub po
 3. Nommez votre projet (ex: "Inbox Actions")
 4. Cliquez sur **"Create"**
 
-### 2. Activer Google+ API
-
-1. Dans le menu de navigation, allez dans **"APIs & Services"** → **"Library"**
-2. Recherchez **"Google+ API"**
-3. Cliquez sur **"Enable"**
-
-### 3. Configurer l'écran de consentement OAuth
+### 2. Configurer l'écran de consentement OAuth
 
 1. Allez dans **"APIs & Services"** → **"OAuth consent screen"**
-2. Sélectionnez **"External"** (ou "Internal" si vous avez Google Workspace)
-3. Cliquez sur **"Create"**
-4. Remplissez les informations obligatoires :
+2. Sélectionnez **"External"**
+3. Remplissez les informations :
    - **App name**: Inbox Actions
    - **User support email**: votre email
-   - **Developer contact information**: votre email
-5. Cliquez sur **"Save and Continue"**
-6. Passez les **Scopes** (cliquez sur "Save and Continue")
-7. Ajoutez vos emails de test si nécessaire
-8. Cliquez sur **"Save and Continue"** puis **"Back to Dashboard"**
+   - **Developer contact**: votre email
+4. **Scopes** : Ajoutez :
+   - `openid`
+   - `email`
+   - `profile`
+5. Ajoutez des utilisateurs de test si en mode "Testing"
 
-### 4. Créer les credentials OAuth 2.0
+### 3. Créer les credentials OAuth 2.0
 
 1. Allez dans **"APIs & Services"** → **"Credentials"**
 2. Cliquez sur **"Create Credentials"** → **"OAuth 2.0 Client ID"**
 3. Sélectionnez **"Web application"**
-4. Nommez votre client (ex: "Inbox Actions Web")
-5. Ajoutez les **Authorized redirect URIs** :
+4. Ajoutez les **Authorized redirect URIs** :
    ```
    http://localhost:3000/api/auth/callback/google
    https://votre-domaine.com/api/auth/callback/google
    ```
-   > Note: Ajoutez l'URL de production quand vous déploierez
+5. Copiez le **Client ID** et le **Client Secret**
 
-6. Cliquez sur **"Create"**
-7. Copiez le **Client ID** et le **Client Secret** qui s'affichent
-
-### 5. Ajouter les credentials dans .env.local
-
-Mettez à jour votre fichier `.env.local` :
+### 4. Variables d'environnement
 
 ```env
-GOOGLE_CLIENT_ID=votre_client_id_ici
-GOOGLE_CLIENT_SECRET=votre_client_secret_ici
+# Google OAuth
+GOOGLE_CLIENT_ID=votre_client_id
+GOOGLE_CLIENT_SECRET=votre_client_secret
+NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true
 ```
 
 ---
 
-## GitHub OAuth
+## Microsoft OAuth
 
-### 1. Créer une OAuth App sur GitHub
+### Prérequis
 
-1. Allez sur [GitHub](https://github.com) et connectez-vous
-2. Cliquez sur votre avatar (en haut à droite) → **Settings**
-3. Dans le menu de gauche, tout en bas, cliquez sur **Developer settings**
-4. Cliquez sur **OAuth Apps** → **New OAuth App**
+- Un compte Microsoft Azure
+- Un tenant Azure AD (personnel ou organisation)
 
-### 2. Configurer l'OAuth App
+### 1. Créer une application Azure AD
 
-Remplissez le formulaire :
+1. Allez sur [Azure Portal](https://portal.azure.com)
+2. Recherchez **"App registrations"**
+3. Cliquez sur **"New registration"**
+4. Remplissez :
+   - **Name**: Inbox Actions
+   - **Supported account types**: Choisissez selon vos besoins
+     - "Accounts in this organizational directory only" (mono-tenant)
+     - "Accounts in any organizational directory" (multi-tenant)
+     - "Personal Microsoft accounts" (comptes personnels)
+   - **Redirect URI**: Web → `http://localhost:3000/api/auth/callback/microsoft-entra-id`
+5. Cliquez sur **"Register"**
 
-- **Application name**: Inbox Actions
-- **Homepage URL**:
-  ```
-  http://localhost:3000
-  ```
-- **Application description**: (optionnel) Gestionnaire d'actions depuis inbox
-- **Authorization callback URL**:
-  ```
-  http://localhost:3000/api/auth/callback/github
-  ```
+### 2. Récupérer les identifiants
 
-Cliquez sur **"Register application"**
+Sur la page de l'application :
 
-### 3. Générer un Client Secret
+1. **Application (client) ID** → Notez-le (c'est le `MICROSOFT_CLIENT_ID`)
+2. **Directory (tenant) ID** → Notez-le (c'est le `MICROSOFT_TENANT_ID`)
 
-1. Sur la page de votre OAuth App, cliquez sur **"Generate a new client secret"**
-2. Confirmez avec votre mot de passe si demandé
-3. **Copiez immédiatement le client secret** (vous ne pourrez plus le voir après)
+### 3. Créer un secret client
 
-### 4. Ajouter les credentials dans .env.local
+1. Allez dans **"Certificates & secrets"**
+2. Cliquez sur **"New client secret"**
+3. Donnez une description et une durée de validité
+4. **Copiez immédiatement la valeur** (pas l'ID) → C'est le `MICROSOFT_CLIENT_SECRET`
 
-Mettez à jour votre fichier `.env.local` :
+### 4. Configurer les permissions API
+
+1. Allez dans **"API permissions"**
+2. Cliquez sur **"Add a permission"**
+3. Ajoutez ces permissions **Microsoft Graph** :
+   - `openid` (déléguée)
+   - `email` (déléguée)
+   - `profile` (déléguée)
+4. Cliquez sur **"Grant admin consent"** si vous êtes admin du tenant
+
+### 5. Configurer l'authentification
+
+1. Allez dans **"Authentication"**
+2. Vérifiez que l'URI de redirection est présente :
+   ```
+   http://localhost:3000/api/auth/callback/microsoft-entra-id
+   ```
+3. Pour la production, ajoutez :
+   ```
+   https://votre-domaine.com/api/auth/callback/microsoft-entra-id
+   ```
+
+### 6. Variables d'environnement
 
 ```env
-GITHUB_CLIENT_ID=votre_github_client_id_ici
-GITHUB_CLIENT_SECRET=votre_github_client_secret_ici
+# Microsoft OAuth
+MICROSOFT_CLIENT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+MICROSOFT_CLIENT_SECRET=votre_secret_value
+MICROSOFT_TENANT_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true
 ```
 
-### 5. Ajouter le provider GitHub dans auth.config.ts
+### Note importante sur le Tenant ID
 
-Ouvrez le fichier `auth.config.ts` et ajoutez le provider GitHub :
-
-```typescript
-import type { NextAuthConfig } from "next-auth";
-import Google from "next-auth/providers/google";
-import GitHub from "next-auth/providers/github";
-import Resend from "next-auth/providers/resend";
-
-import { env } from "@/env.mjs";
-
-export default {
-  providers: [
-    Google({
-      clientId: env.GOOGLE_CLIENT_ID,
-      clientSecret: env.GOOGLE_CLIENT_SECRET,
-    }),
-    GitHub({
-      clientId: env.GITHUB_CLIENT_ID,
-      clientSecret: env.GITHUB_CLIENT_SECRET,
-    }),
-    Resend({
-      apiKey: env.RESEND_API_KEY,
-      from: env.EMAIL_FROM,
-    }),
-  ],
-} satisfies NextAuthConfig;
-```
-
-### 6. Ajouter les variables d'environnement dans env.mjs
-
-Ouvrez le fichier `env.mjs` et ajoutez les variables GitHub :
-
-```javascript
-// Dans la section server
-GITHUB_CLIENT_ID: z.string(),
-GITHUB_CLIENT_SECRET: z.string(),
-
-// Dans la section runtimeEnv
-GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,
-GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
-```
+- **Ne pas utiliser "common"** comme tenant ID - cela cause des erreurs de validation d'issuer
+- Utilisez toujours votre **vrai tenant ID** (GUID)
+- Le tenant ID se trouve dans Azure Portal → Azure Active Directory → Overview
 
 ---
 
-## Configuration des variables d'environnement
+## Configuration IMAP
 
-Votre fichier `.env.local` final devrait ressembler à ça :
+Après vous être connecté à l'application (via email/mot de passe, Google, ou Microsoft), configurez l'accès IMAP avec un **App Password** :
+
+### Qu'est-ce qu'un App Password ?
+
+Un App Password est un mot de passe spécial généré par votre fournisseur email. Il permet l'accès IMAP sans utiliser votre mot de passe principal.
+
+### Gmail
+
+1. Activez la validation en 2 étapes sur votre compte Google
+2. Générez un mot de passe d'application : [https://myaccount.google.com/apppasswords](https://myaccount.google.com/apppasswords)
+3. Sélectionnez "Mail" et "Autre (nom personnalisé)"
+4. Nommez-le "Inbox Actions"
+5. Copiez le mot de passe généré (16 caractères)
+6. **Important** : Activez IMAP dans Gmail → Paramètres → Transfert et POP/IMAP
+
+Configuration IMAP :
+- Serveur : `imap.gmail.com`
+- Port : `993`
+- TLS : Oui
+
+### Outlook.com / Hotmail
+
+1. Activez la validation en 2 étapes sur votre compte Microsoft
+2. Générez un mot de passe d'application : [https://account.live.com/proofs/AppPassword](https://account.live.com/proofs/AppPassword)
+3. Copiez le mot de passe généré
+
+Configuration IMAP :
+- Serveur : `outlook.office365.com`
+- Port : `993`
+- TLS : Oui
+
+### Yahoo Mail
+
+1. Activez la vérification en 2 étapes
+2. Générez un mot de passe d'application : [https://login.yahoo.com/account/security](https://login.yahoo.com/account/security)
+3. Sélectionnez "Autre application"
+
+Configuration IMAP :
+- Serveur : `imap.mail.yahoo.com`
+- Port : `993`
+- TLS : Oui
+
+### iCloud Mail
+
+1. Activez l'authentification à deux facteurs
+2. Générez un mot de passe spécifique : [https://appleid.apple.com](https://appleid.apple.com)
+3. "Sécurité" → "Mots de passe d'application"
+
+Configuration IMAP :
+- Serveur : `imap.mail.me.com`
+- Port : `993`
+- TLS : Oui
+
+### ProtonMail (via Bridge)
+
+1. Installez ProtonMail Bridge
+2. Connectez-vous dans Bridge
+3. Utilisez le mot de passe affiché dans Bridge
+
+Configuration IMAP :
+- Serveur : `127.0.0.1`
+- Port : `1143`
+- TLS : Non
+
+### Presets IMAP disponibles
+
+| Provider | Serveur | Port | TLS |
+|----------|---------|------|-----|
+| Gmail | imap.gmail.com | 993 | Oui |
+| Outlook/Office 365 | outlook.office365.com | 993 | Oui |
+| Yahoo | imap.mail.yahoo.com | 993 | Oui |
+| iCloud | imap.mail.me.com | 993 | Oui |
+| ProtonMail (Bridge) | 127.0.0.1 | 1143 | Non |
+| Fastmail | imap.fastmail.com | 993 | Oui |
+
+---
+
+## Variables d'environnement
+
+### Fichier `.env.local` complet
 
 ```env
 # -----------------------------------------------------------------------------
 # App
 # -----------------------------------------------------------------------------
 NEXT_PUBLIC_APP_URL=http://localhost:3000
+AUTH_URL=http://localhost:3000
 
 # -----------------------------------------------------------------------------
 # Authentication (NextAuth.js)
 # -----------------------------------------------------------------------------
-AUTH_SECRET=t6Oc1oipa076PhcRdRMdnEtmrbwPCcPS7MzsYiw8/wc=
+AUTH_SECRET=votre_secret_genere_aleatoirement
 
-GOOGLE_CLIENT_ID=votre_google_client_id_ici
-GOOGLE_CLIENT_SECRET=votre_google_client_secret_ici
+# Google OAuth (optionnel)
+GOOGLE_CLIENT_ID=
+GOOGLE_CLIENT_SECRET=
+NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=false
 
-GITHUB_CLIENT_ID=votre_github_client_id_ici
-GITHUB_CLIENT_SECRET=votre_github_client_secret_ici
+# Microsoft OAuth (optionnel)
+MICROSOFT_CLIENT_ID=
+MICROSOFT_CLIENT_SECRET=
+MICROSOFT_TENANT_ID=
+NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=false
 
 # -----------------------------------------------------------------------------
 # Database
 # -----------------------------------------------------------------------------
-DATABASE_URL='postgresql://inbox_admin:%23Charlotte2013%23@localhost:15432/inbox_actions'
+DATABASE_URL='postgresql://user:password@localhost:5432/inbox_actions'
 
 # -----------------------------------------------------------------------------
-# Email (Resend)
+# Email (Resend) - Pour les notifications
 # -----------------------------------------------------------------------------
-RESEND_API_KEY=re_2ExbL6FN_J7SpLZ2pEiDEr6bgUH4JvB5a
-EMAIL_FROM="Inbox Actions <onboarding@resend.dev>"
+RESEND_API_KEY=
+EMAIL_FROM="Inbox Actions <noreply@inbox-actions.com>"
 
 # -----------------------------------------------------------------------------
-# Subscriptions (Stripe)
+# IMAP (pour le chiffrement des mots de passe)
 # -----------------------------------------------------------------------------
-STRIPE_API_KEY=sk_test_dummy_stripe_key_12345678901234567890
-STRIPE_WEBHOOK_SECRET=whsec_dummy_webhook_secret_1234567890
-
-NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID=price_dummy_pro_monthly
-NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID=price_dummy_pro_yearly
-
-NEXT_PUBLIC_STRIPE_BUSINESS_MONTHLY_PLAN_ID=price_dummy_business_monthly
-NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID=price_dummy_business_yearly
+IMAP_MASTER_KEY=votre_cle_256_bits_en_hex
 ```
 
----
-
-## Test de l'authentification
-
-### 1. Redémarrer le serveur de développement
+### Génération des secrets
 
 ```bash
-pnpm dev
-```
+# AUTH_SECRET (32 bytes base64)
+openssl rand -base64 32
 
-### 2. Tester les différentes méthodes d'authentification
-
-Allez sur http://localhost:3000/login et testez :
-
-#### Email Magic Link (Resend)
-1. Entrez votre email
-2. Cliquez sur "Sign in with Email"
-3. Vérifiez votre boîte mail
-4. Cliquez sur le lien magique
-
-#### Google OAuth
-1. Cliquez sur "Continue with Google"
-2. Sélectionnez votre compte Google
-3. Autorisez l'application
-
-#### GitHub OAuth
-1. Cliquez sur "Continue with GitHub"
-2. Autorisez l'application GitHub
-
-### 3. Vérification en base de données
-
-Après une connexion réussie, vérifiez que l'utilisateur a été créé :
-
-```bash
-# Connectez-vous à PostgreSQL
-psql -U inbox_admin -d inbox_actions
-
-# Vérifiez les utilisateurs
-SELECT * FROM users;
-
-# Vérifiez les comptes OAuth
-SELECT * FROM accounts;
+# IMAP_MASTER_KEY (256 bits hex)
+openssl rand -hex 32
 ```
 
 ---
 
 ## Dépannage
 
-### Erreur "redirect_uri_mismatch" (Google)
+### Erreur "issuer does not match expectedIssuer" (Microsoft)
 
-- Vérifiez que l'URL de callback est exactement la même dans Google Cloud Console et dans votre application
-- Format exact : `http://localhost:3000/api/auth/callback/google`
-- Pas de slash final `/`
+**Cause :** Le tenant ID est invalide ou vous utilisez "common".
 
-### Erreur "The redirect_uri MUST match" (GitHub)
+**Solution :**
+1. Utilisez votre vrai tenant ID (GUID), pas "common"
+2. Trouvez-le dans Azure Portal → Azure Active Directory → Overview → Tenant ID
 
-- Même chose pour GitHub : vérifiez l'URL de callback
-- Format exact : `http://localhost:3000/api/auth/callback/github`
+### Erreur "redirect_uri_mismatch"
 
-### L'authentification ne fonctionne pas
+**Cause :** L'URL de callback ne correspond pas.
 
-1. Vérifiez que toutes les variables d'environnement sont définies
-2. Redémarrez le serveur (`pnpm dev`)
-3. Vérifiez les logs de la console pour voir les erreurs spécifiques
-4. Vérifiez que la base de données est bien démarrée
+**Solution :**
+1. Vérifiez l'URL exacte dans Azure/Google Console
+2. Format : `http://localhost:3000/api/auth/callback/[provider]`
+3. Pas de slash final
+4. Respectez la casse
 
-### Email magic link ne fonctionne pas
+### Erreur "AADSTS50011" (Microsoft)
 
-- Vérifiez que votre clé API Resend est valide
-- Vérifiez que l'email `EMAIL_FROM` est vérifié sur Resend
-- Regardez les logs Resend pour voir si l'email a été envoyé
+**Cause :** URI de redirection non configurée.
 
----
+**Solution :**
+1. Ajoutez dans Azure Portal → App registrations → Authentication
+2. URI : `http://localhost:3000/api/auth/callback/microsoft-entra-id`
 
-## Production
+### Boutons OAuth non affichés
 
-Quand vous déployez en production :
+**Cause :** Variables d'environnement non définies.
 
-### Google OAuth
-1. Ajoutez l'URL de production dans "Authorized redirect URIs" :
-   ```
-   https://votre-domaine.com/api/auth/callback/google
-   ```
+**Solution :**
+1. Vérifiez que `NEXT_PUBLIC_AUTH_GOOGLE_ENABLED=true` ou `NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true`
+2. Redémarrez le serveur après modification des `.env`
 
-### GitHub OAuth
-1. Créez une **nouvelle** OAuth App pour la production (recommandé)
-2. Ou ajoutez l'URL de production dans l'app existante :
-   - Homepage URL: `https://votre-domaine.com`
-   - Callback URL: `https://votre-domaine.com/api/auth/callback/github`
+### Erreur "Authentication failed" (IMAP)
 
-### Variables d'environnement
-- Utilisez les variables d'environnement de votre plateforme de déploiement (Vercel, Railway, etc.)
-- Ne commitez **jamais** le fichier `.env.local` dans Git
+**Cause :** App Password incorrect ou IMAP non activé.
+
+**Solution :**
+1. Vérifiez que l'App Password est correct (sans espaces)
+2. Pour Gmail : activez IMAP dans les paramètres Gmail
+3. Vérifiez que la vérification en 2 étapes est activée
 
 ---
 
 ## Ressources
 
-- [NextAuth.js Documentation](https://next-auth.js.org/)
-- [Google OAuth Setup](https://next-auth.js.org/providers/google)
-- [GitHub OAuth Setup](https://next-auth.js.org/providers/github)
-- [Resend Documentation](https://resend.com/docs)
+- [Auth.js (NextAuth v5) Documentation](https://authjs.dev/)
+- [Google OAuth Setup](https://authjs.dev/getting-started/providers/google)
+- [Microsoft Entra ID Setup](https://authjs.dev/getting-started/providers/microsoft-entra-id)
+- [Azure Portal](https://portal.azure.com)
+- [Google Cloud Console](https://console.cloud.google.com)

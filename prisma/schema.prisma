@@ -28,6 +28,17 @@ enum EmailStatus {
   ANALYZED  // Email analysé pour extraction d'actions
 }
 
+enum EmailProvider {
+  GMAIL           // Gmail via OAuth (existant)
+  IMAP            // IMAP générique
+  MICROSOFT_GRAPH // Microsoft Graph API (Outlook, Hotmail, Live, M365)
+}
+
+enum IMAPAuthMethod {
+  PASSWORD // App Password (traditional IMAP auth)
+  OAUTH    // OAuth2 / XOAUTH2 (Microsoft, Google)
+}
+
 enum ActionStatus {
   TODO
   DONE
@@ -70,10 +81,10 @@ model Session {
 
 model User {
   id            String    @id @default(cuid())
-  name          String?
   email         String?   @unique
   emailVerified DateTime?
   image         String?
+  password      String?   // Hashed password for credentials auth
   createdAt     DateTime  @default(now()) @map(name: "created_at")
   updatedAt     DateTime  @default(now()) @map(name: "updated_at")
   role          UserRole  @default(USER)
@@ -88,15 +99,22 @@ model User {
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
-  // Gmail sync
-  lastGmailSync           DateTime? @map(name: "last_gmail_sync")
-  gmailHistoryId          String?   @map(name: "gmail_history_id")
-  lastEmailExtractionDate DateTime? @map(name: "last_email_extraction_date")
+  // Email provider preference (nullable - null means no provider configured)
+  emailProvider           EmailProvider? @map(name: "email_provider")
+
+  // Universal sync timestamp (used by all providers)
+  lastEmailSync           DateTime? @map(name: "last_email_sync")
+
+  // Microsoft Graph delta link (for incremental sync)
+  microsoftDeltaLink      String?   @db.Text @map(name: "microsoft_delta_link")
 
   // Notification preferences
   emailNotifications   Boolean   @default(true) @map(name: "email_notifications")
   lastNotificationSent DateTime? @map(name: "last_notification_sent")
   syncEnabled          Boolean   @default(true) @map(name: "sync_enabled")
+
+  // IMAP credentials
+  imapCredentials IMAPCredential[]
 
   @@map(name: "users")
 }
@@ -121,6 +139,7 @@ model Action {
   emailFrom        String
   emailReceivedAt  DateTime
   gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message Gmail pour créer un lien
+  imapUID          BigInt?      @map(name: "imap_uid") // UID IMAP pour créer un lien
   createdAt        DateTime     @default(now()) @map(name: "created_at")
   updatedAt        DateTime     @default(now()) @updatedAt @map(name: "updated_at")
 
@@ -138,9 +157,16 @@ model EmailMetadata {
   id             String   @id @default(cuid())
   userId         String
 
-  // Gmail identifiers
-  gmailMessageId String   @map(name: "gmail_message_id") // Gmail internal ID
-  gmailThreadId  String   @map(name: "gmail_thread_id")  // Gmail thread ID
+  // Source provider
+  emailProvider  EmailProvider @default(GMAIL) @map(name: "email_provider")
+
+  // Gmail identifiers (optional for IMAP)
+  gmailMessageId String?  @map(name: "gmail_message_id") // Gmail internal ID
+  gmailThreadId  String?  @map(name: "gmail_thread_id")  // Gmail thread ID
+
+  // IMAP identifiers (optional for Gmail)
+  imapUID        BigInt?  @map(name: "imap_uid")        // IMAP UID
+  imapMessageId  String?  @map(name: "imap_message_id") // Message-ID header
 
   // Métadonnées minimales
   from           String   // Expéditeur
@@ -159,9 +185,49 @@ model EmailMetadata {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gmailMessageId])
+  @@unique([userId, imapUID])
   @@index([userId])
   @@index([gmailMessageId])
+  @@index([imapUID])
   @@index([receivedAt])
   @@index([status])
   @@map(name: "email_metadata")
+}
+
+// Credentials IMAP (chiffrées)
+model IMAPCredential {
+  id              String   @id @default(cuid())
+  userId          String
+
+  // Configuration IMAP
+  imapHost        String   @map(name: "imap_host")     // ex: "imap.gmail.com"
+  imapPort        Int      @default(993) @map(name: "imap_port")
+  imapUsername    String   @map(name: "imap_username") // Email ou username IMAP
+  imapPassword    String?  @db.Text @map(name: "imap_password") // Chiffré AES-256 (App Password) - null for OAuth
+
+  // Authentication method
+  authMethod      IMAPAuthMethod @default(PASSWORD) @map(name: "auth_method")
+
+  // Configuration
+  imapFolder      String   @default("INBOX") @map(name: "imap_folder")
+  useTLS          Boolean  @default(true) @map(name: "use_tls")
+
+  // Tracking synchronisation
+  lastIMAPSync    DateTime? @map(name: "last_imap_sync")
+  lastUID         BigInt?   @map(name: "last_uid") // Dernier UID synchronisé
+
+  // Status connexion
+  isConnected     Boolean  @default(false) @map(name: "is_connected")
+  connectionError String?  @map(name: "connection_error")
+  lastErrorAt     DateTime? @map(name: "last_error_at")
+
+  createdAt       DateTime @default(now()) @map(name: "created_at")
+  updatedAt       DateTime @default(now()) @updatedAt @map(name: "updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, imapHost, imapUsername])
+  @@index([userId])
+  @@index([isConnected])
+  @@map(name: "imap_credentials")
 }

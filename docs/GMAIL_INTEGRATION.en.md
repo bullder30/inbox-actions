@@ -54,9 +54,9 @@ Gmail integration allows users to:
            ▼
 ┌─────────────────────────────────┐
 │   API Routes                    │
-│   - GET /api/gmail/sync         │
-│   - GET /api/gmail/status       │
-│   - POST /api/gmail/disconnect  │
+│   - GET /api/email/sync         │
+│   - GET /api/email/status       │
+│   - POST /api/email/disconnect  │
 └─────────────────────────────────┘
 ```
 
@@ -100,12 +100,12 @@ async function createGmailService(userId: string): Promise<GmailService | null>
 
 ### 2. API Routes
 
-**app/api/gmail/sync/route.ts**
+**app/api/email/sync/route.ts**
 
 Sync emails from Gmail:
 
 ```bash
-GET /api/gmail/sync?maxResults=100&query=is:unread
+GET /api/email/sync?maxResults=100&query=is:unread
 
 # Response
 {
@@ -116,12 +116,12 @@ GET /api/gmail/sync?maxResults=100&query=is:unread
 }
 ```
 
-**app/api/gmail/status/route.ts**
+**app/api/email/status/route.ts**
 
 Check Gmail connection status:
 
 ```bash
-GET /api/gmail/status
+GET /api/email/status
 
 # Response
 {
@@ -135,12 +135,12 @@ GET /api/gmail/status
 }
 ```
 
-**app/api/gmail/disconnect/route.ts**
+**app/api/email/disconnect/route.ts**
 
 Disconnect Gmail and delete all data:
 
 ```bash
-POST /api/gmail/disconnect
+POST /api/email/disconnect
 
 # Response
 {
@@ -324,10 +324,10 @@ pnpm dev
 http://localhost:3000/api/auth/signin/google
 
 # Sync Gmail
-curl http://localhost:3000/api/gmail/sync
+curl http://localhost:3000/api/email/sync
 
 # Check status
-curl http://localhost:3000/api/gmail/status
+curl http://localhost:3000/api/email/status
 ```
 
 ---
@@ -350,7 +350,7 @@ curl http://localhost:3000/api/gmail/status
 | GDPR Right | Implemented | How |
 |------------|-------------|-----|
 | Access (Art. 15) | Yes | GET /api/user/data |
-| Erasure (Art. 17) | Yes | POST /api/gmail/disconnect |
+| Erasure (Art. 17) | Yes | POST /api/email/disconnect |
 | Portability (Art. 20) | Yes | GET /api/user/export |
 | Revocation (Art. 7) | Yes | Gmail disconnection |
 
@@ -379,7 +379,7 @@ curl http://localhost:3000/api/gmail/status
 
 2. Synchronization
    ↓
-   GET /api/gmail/sync
+   GET /api/email/sync
    ↓
    GmailService.fetchNewEmails()
    ↓
@@ -399,7 +399,7 @@ curl http://localhost:3000/api/gmail/status
 
 4. Disconnection (optional)
    ↓
-   POST /api/gmail/disconnect
+   POST /api/email/disconnect
    ↓
    Google token revocation
    ↓
@@ -424,7 +424,7 @@ curl http://localhost:3000/api/gmail/status
 
 ### Code
 - [x] Gmail service created (lib/gmail/gmail-service.ts)
-- [x] API routes created (/api/gmail/*)
+- [x] API routes created (/api/email/*)
 - [x] Prisma schema updated
 - [x] NextAuth configured with Google Provider
 - [ ] Unit tests written

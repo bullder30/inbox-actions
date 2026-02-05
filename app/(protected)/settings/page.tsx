@@ -1,9 +1,10 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Mail, Moon, Sun, Monitor } from "lucide-react";
+import { Loader2, Moon, Sun, Monitor, Server, Zap } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
+import { useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -12,35 +13,88 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { IMAPConnectForm, IMAPStatus } from "@/components/imap";
+import { GraphStatus } from "@/components/microsoft-graph";
 
 export default function SettingsPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { theme, setTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [gmailConnected, setGmailConnected] = useState(false);
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [syncEnabled, setSyncEnabled] = useState(true);
-  const [disconnecting, setDisconnecting] = useState(false);
+
+  // IMAP state
+  const [imapConfigured, setImapConfigured] = useState(false);
+
+  // Microsoft Graph state - check if Microsoft OAuth is enabled
+  const [microsoftOAuthEnabled, setMicrosoftOAuthEnabled] = useState(false);
+  const [graphConfigured, setGraphConfigured] = useState(false);
 
   // Avoid hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Handle OAuth callback messages
+  useEffect(() => {
+    const microsoftConnected = searchParams.get("microsoft_connected");
+    const error = searchParams.get("error");
+    const errorDescription = searchParams.get("error_description");
+
+    if (microsoftConnected === "true") {
+      toast.success("Compte Microsoft connecté avec succès !");
+      // Clean URL
+      router.replace("/settings");
+    } else if (error) {
+      const message = errorDescription || getErrorMessage(error);
+      toast.error(`Erreur de connexion Microsoft : ${message}`);
+      // Clean URL
+      router.replace("/settings");
+    }
+  }, [searchParams, router]);
+
   useEffect(() => {
     loadSettings();
   }, []);
 
+  function getErrorMessage(error: string): string {
+    switch (error) {
+      case "microsoft_oauth_failed":
+        return "L'autorisation a été refusée ou annulée";
+      case "state_mismatch":
+        return "La requête de sécurité a expiré, veuillez réessayer";
+      case "token_exchange_failed":
+        return "Impossible d'obtenir les tokens, veuillez réessayer";
+      case "user_id_not_found":
+        return "Impossible d'identifier le compte Microsoft";
+      case "callback_error":
+        return "Erreur lors du traitement de la connexion";
+      default:
+        return error;
+    }
+  }
+
   async function loadSettings() {
     try {
       setLoading(true);
-      // Charger le statut Gmail
-      const gmailResponse = await fetch("/api/gmail/status");
-      if (gmailResponse.ok) {
-        const gmailData = await gmailResponse.json();
-        setGmailConnected(gmailData.connected);
+
+      // Charger le statut IMAP
+      const imapResponse = await fetch("/api/imap/status");
+      if (imapResponse.ok) {
+        const imapData = await imapResponse.json();
+        setImapConfigured(imapData.configured ?? false);
+      }
+
+      // Charger le statut Microsoft Graph
+      const graphResponse = await fetch("/api/microsoft-graph/status");
+      if (graphResponse.ok) {
+        const graphData = await graphResponse.json();
+        // Check if Microsoft OAuth is enabled on the server
+        setMicrosoftOAuthEnabled(graphData.microsoftOAuthEnabled ?? true);
+        setGraphConfigured(graphData.configured ?? false);
       }
 
       // Charger les préférences utilisateur
@@ -103,44 +157,29 @@ export default function SettingsPage() {
     }
   }
 
-  async function handleDisconnectGmail() {
-    if (!confirm("Voulez-vous vraiment révoquer l'accès Gmail ? Vos actions seront conservées mais vous ne pourrez plus synchroniser de nouveaux emails.")) {
-      return;
-    }
-
-    try {
-      setDisconnecting(true);
-      const response = await fetch("/api/gmail/disconnect", {
-        method: "POST",
-      });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de la déconnexion");
-      }
-
-      toast.success("Gmail déconnecté");
-      router.refresh();
-      loadSettings();
-    } catch (error) {
-      toast.error("Erreur lors de la déconnexion");
-      console.error(error);
-    } finally {
-      setDisconnecting(false);
-    }
-  }
-
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-heading text-2xl font-semibold">Paramètres</h1>
         <p className="mt-2 text-muted-foreground">
-          Configuration minimale de l&apos;application
+          Configuration de l&apos;application
         </p>
       </div>
 
       {loading ? (
         <div className="space-y-4">
-          {/* Skeleton 1 - Synchronisation automatique */}
+          {/* Skeleton 1 - Connexion Email */}
+          <Card>
+            <CardHeader>
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="mt-2 h-4 w-80" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-32 w-full" />
+            </CardContent>
+          </Card>
+
+          {/* Skeleton 2 - Synchronisation automatique */}
           <Card>
             <CardHeader>
               <Skeleton className="h-6 w-64" />
@@ -155,7 +194,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Skeleton 2 - Notifications par email */}
+          {/* Skeleton 3 - Notifications par email */}
           <Card>
             <CardHeader>
               <Skeleton className="h-6 w-56" />
@@ -167,17 +206,6 @@ export default function SettingsPage() {
                 <Skeleton className="h-6 w-11 rounded-full" />
               </div>
               <Skeleton className="h-9 w-28" />
-            </CardContent>
-          </Card>
-
-          {/* Skeleton 3 - Accès Gmail */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="mt-2 h-4 w-80" />
-            </CardHeader>
-            <CardContent>
-              <Skeleton className="h-9 w-52" />
             </CardContent>
           </Card>
 
@@ -198,12 +226,65 @@ export default function SettingsPage() {
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Option 1: Activer / désactiver scan */}
+          {/* Microsoft Graph API - Always show if Microsoft OAuth is enabled */}
+          {microsoftOAuthEnabled && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Zap className="size-5" />
+                  Microsoft (Outlook, Hotmail, Microsoft 365)
+                </CardTitle>
+                <CardDescription>
+                  Synchronisez vos emails Microsoft avec l&apos;API Graph (recommandé pour les comptes Microsoft)
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GraphStatus
+                  onStatusChange={() => {
+                    loadSettings();
+                  }}
+                />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* IMAP - For other providers or as alternative */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Server className="size-5" />
+                IMAP (Gmail, Yahoo, iCloud, etc.)
+              </CardTitle>
+              <CardDescription>
+                Configurez une connexion IMAP pour les autres fournisseurs email
+                {microsoftOAuthEnabled && " ou comme alternative à Microsoft Graph"}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {imapConfigured ? (
+                <IMAPStatus
+                  onDisconnect={() => {
+                    setImapConfigured(false);
+                    loadSettings();
+                  }}
+                />
+              ) : (
+                <IMAPConnectForm
+                  onSuccess={() => {
+                    setImapConfigured(true);
+                    loadSettings();
+                  }}
+                />
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Option 2: Activer / désactiver scan */}
           <Card>
             <CardHeader>
               <CardTitle>Synchronisation automatique</CardTitle>
               <CardDescription>
-                Activer ou désactiver la synchronisation automatique des emails Gmail
+                Activer ou désactiver la synchronisation automatique des emails
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -230,7 +311,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Option 2: Activer / désactiver email quotidien */}
+          {/* Option 3: Activer / désactiver email quotidien */}
           <Card>
             <CardHeader>
               <CardTitle>Notifications par email</CardTitle>
@@ -259,44 +340,6 @@ export default function SettingsPage() {
                   "Enregistrer"
                 )}
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Option 3: Révoquer accès Gmail */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Accès Gmail</CardTitle>
-              <CardDescription>
-                {gmailConnected
-                  ? "Révoquer l'accès à votre compte Gmail"
-                  : "Gmail n'est pas connecté"}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {gmailConnected ? (
-                <Button
-                  onClick={handleDisconnectGmail}
-                  disabled={disconnecting}
-                  variant="destructive"
-                  size="sm"
-                >
-                  {disconnecting ? (
-                    <>
-                      <Loader2 className="mr-2 size-4 animate-spin" />
-                      Déconnexion...
-                    </>
-                  ) : (
-                    <>
-                      <Mail className="mr-2 size-4" />
-                      Révoquer l&apos;accès Gmail
-                    </>
-                  )}
-                </Button>
-              ) : (
-                <p className="text-sm text-muted-foreground">
-                  Gmail n&apos;est pas actuellement connecté
-                </p>
-              )}
             </CardContent>
           </Card>
 

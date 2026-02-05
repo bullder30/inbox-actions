@@ -23,7 +23,7 @@ export default function TermsPage() {
               Conditions d&apos;utilisation
             </h1>
             <p className="text-sm text-muted-foreground">
-              Dernière mise à jour : 14 janvier 2026
+              Dernière mise à jour : 6 février 2026
             </p>
           </div>
 
@@ -46,11 +46,11 @@ export default function TermsPage() {
                 2. Description du service
               </h2>
               <p className="mb-4">
-                Inbox Actions est un service qui analyse vos emails Gmail pour en extraire
+                Inbox Actions est un service qui analyse vos emails pour en extraire
                 des actions à réaliser. Le service fonctionne de la manière suivante :
               </p>
               <ul className="list-inside list-disc space-y-2 pl-4">
-                <li>Connexion à votre compte Gmail via OAuth 2.0 (lecture seule)</li>
+                <li>Connexion à votre compte email via Microsoft Graph API ou IMAP (lecture seule)</li>
                 <li>Analyse automatique des emails pour détecter les demandes d&apos;action</li>
                 <li>Présentation des actions détectées dans une interface dédiée</li>
                 <li>Possibilité de marquer les actions comme terminées ou ignorées</li>
@@ -60,20 +60,26 @@ export default function TermsPage() {
             {/* Section 3 */}
             <section>
               <h2 className="mb-4 text-xl font-semibold text-foreground">
-                3. Accès Gmail et permissions
+                3. Accès aux emails et permissions
               </h2>
               <p className="mb-4">
-                Inbox Actions utilise l&apos;API Gmail avec les permissions suivantes :
+                Inbox Actions propose deux méthodes d&apos;accès aux emails :
               </p>
               <ul className="list-inside list-disc space-y-2 pl-4">
                 <li>
-                  <strong>gmail.readonly</strong> : Lecture seule de vos emails.
+                  <strong>Microsoft Graph API</strong> (Outlook, Hotmail, Microsoft 365) :
+                  Permission <code>Mail.Read</code> en lecture seule.
                   Nous ne pouvons pas envoyer, modifier ou supprimer vos emails.
+                </li>
+                <li>
+                  <strong>IMAP</strong> (Gmail, Yahoo, iCloud, Fastmail...) :
+                  Connexion avec un App Password. Accès en lecture seule au dossier INBOX.
+                  Les mots de passe sont chiffrés avec AES-256.
                 </li>
               </ul>
               <p className="mt-4">
                 Vous pouvez révoquer cet accès à tout moment depuis les paramètres
-                de votre compte Google ou directement dans l&apos;application.
+                de l&apos;application ou depuis votre fournisseur email.
               </p>
             </section>
 
@@ -147,8 +153,8 @@ export default function TermsPage() {
                 Vous pouvez supprimer votre compte à tout moment. La suppression entraîne :
               </p>
               <ul className="list-inside list-disc space-y-2 pl-4">
-                <li>La révocation de l&apos;accès Gmail</li>
-                <li>La suppression de toutes vos données (actions, métadonnées)</li>
+                <li>La révocation de l&apos;accès à vos emails (Microsoft Graph ou IMAP)</li>
+                <li>La suppression de toutes vos données (actions, métadonnées, credentials)</li>
                 <li>La suppression de votre compte utilisateur</li>
               </ul>
               <p className="mt-4">

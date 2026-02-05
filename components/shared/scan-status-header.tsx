@@ -20,7 +20,7 @@ export async function ScanStatusHeader() {
     prisma.user.findUnique({
       where: { id: user.id },
       select: {
-        lastGmailSync: true,
+        lastEmailSync: true,
       },
     }),
     // Statistiques sur les emails
@@ -41,23 +41,60 @@ export async function ScanStatusHeader() {
     select: {
       id: true,
       gmailMessageId: true,
+      imapUID: true,
     },
   });
 
-  const actionsCount = await prisma.action.groupBy({
-    by: ["gmailMessageId"],
-    where: {
-      userId: user.id,
-      gmailMessageId: { in: analyzedEmails.map((e) => e.gmailMessageId) },
-    },
-  });
+  // Séparer les emails Gmail et IMAP
+  const gmailMessageIds = analyzedEmails
+    .map((e) => e.gmailMessageId)
+    .filter((id): id is string => id !== null);
+  const imapUIDs = analyzedEmails
+    .map((e) => e.imapUID)
+    .filter((uid): uid is bigint => uid !== null);
 
-  const emailsWithActions = new Set(actionsCount.map((a) => a.gmailMessageId));
-  const ignoredEmailsCount = analyzedEmails.filter(
-    (e) => !emailsWithActions.has(e.gmailMessageId)
-  ).length;
+  // Récupérer les actions pour Gmail (si des gmailMessageIds existent)
+  const gmailActionsSet = new Set<string>();
+  if (gmailMessageIds.length > 0) {
+    const gmailActions = await prisma.action.groupBy({
+      by: ["gmailMessageId"],
+      where: {
+        userId: user.id,
+        gmailMessageId: { in: gmailMessageIds },
+      },
+    });
+    gmailActions.forEach((a) => {
+      if (a.gmailMessageId) gmailActionsSet.add(a.gmailMessageId);
+    });
+  }
 
-  const lastSync = userData?.lastGmailSync;
+  // Récupérer les actions pour IMAP (si des imapUIDs existent)
+  const imapActionsSet = new Set<string>();
+  if (imapUIDs.length > 0) {
+    const imapActions = await prisma.action.groupBy({
+      by: ["imapUID"],
+      where: {
+        userId: user.id,
+        imapUID: { in: imapUIDs },
+      },
+    });
+    imapActions.forEach((a) => {
+      if (a.imapUID) imapActionsSet.add(a.imapUID.toString());
+    });
+  }
+
+  // Compter les emails sans actions
+  const ignoredEmailsCount = analyzedEmails.filter((e) => {
+    if (e.gmailMessageId) {
+      return !gmailActionsSet.has(e.gmailMessageId);
+    }
+    if (e.imapUID) {
+      return !imapActionsSet.has(e.imapUID.toString());
+    }
+    return true; // Email sans identifiant = ignoré
+  }).length;
+
+  const lastSync = userData?.lastEmailSync ?? null;
   const totalEmails = emailStats._count;
   const periodStart = emailStats._min.receivedAt;
   const periodEnd = emailStats._max.receivedAt;

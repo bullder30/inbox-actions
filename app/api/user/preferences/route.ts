@@ -17,12 +17,14 @@ export async function GET() {
       select: {
         emailNotifications: true,
         syncEnabled: true,
+        emailProvider: true,
       },
     });
 
     return NextResponse.json({
       emailNotifications: userPrefs?.emailNotifications ?? true,
       syncEnabled: userPrefs?.syncEnabled ?? true,
+      emailProvider: userPrefs?.emailProvider ?? "GMAIL",
     });
   } catch (error) {
     console.error("Error fetching user preferences:", error);
@@ -42,10 +44,14 @@ export async function PATCH(request: Request) {
     }
 
     const body = await request.json();
-    const { emailNotifications, syncEnabled } = body;
+    const { emailNotifications, syncEnabled, emailProvider } = body;
 
     // Mise à jour des préférences
-    const updateData: { emailNotifications?: boolean; syncEnabled?: boolean } = {};
+    const updateData: {
+      emailNotifications?: boolean;
+      syncEnabled?: boolean;
+      emailProvider?: "GMAIL" | "IMAP";
+    } = {};
 
     if (typeof emailNotifications === "boolean") {
       updateData.emailNotifications = emailNotifications;
@@ -53,6 +59,10 @@ export async function PATCH(request: Request) {
 
     if (typeof syncEnabled === "boolean") {
       updateData.syncEnabled = syncEnabled;
+    }
+
+    if (emailProvider === "GMAIL" || emailProvider === "IMAP") {
+      updateData.emailProvider = emailProvider;
     }
 
     await prisma.user.update({
