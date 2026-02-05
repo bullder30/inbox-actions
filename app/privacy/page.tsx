@@ -24,7 +24,7 @@ export default function PrivacyPage() {
               Politique de confidentialité
             </h1>
             <p className="text-sm text-muted-foreground">
-              Dernière mise à jour : 14 janvier 2026
+              Dernière mise à jour : 6 février 2026
             </p>
           </div>
 
@@ -33,7 +33,7 @@ export default function PrivacyPage() {
             <div className="flex items-start gap-3 rounded-lg border bg-green-50/50 p-4 dark:bg-green-950/20">
               <ShieldCheck className="mt-0.5 size-5 shrink-0 text-green-600" />
               <div>
-                <p className="font-medium text-green-800 dark:text-green-400">Gmail lecture seule</p>
+                <p className="font-medium text-green-800 dark:text-green-400">Lecture seule</p>
                 <p className="text-sm text-green-700 dark:text-green-500">Nous ne pouvons pas modifier vos emails</p>
               </div>
             </div>
@@ -83,9 +83,9 @@ export default function PrivacyPage() {
 
               <h3 className="mb-2 mt-4 font-medium text-foreground">2.1 Données de compte</h3>
               <ul className="list-inside list-disc space-y-1 pl-4">
-                <li>Adresse email (via Google OAuth)</li>
-                <li>Nom (si fourni par Google)</li>
-                <li>Photo de profil (si fournie par Google)</li>
+                <li>Adresse email (via Google OAuth, Microsoft OAuth, ou inscription)</li>
+                <li>Mot de passe hashé (si inscription par email)</li>
+                <li>Photo de profil (si fournie par le provider OAuth)</li>
               </ul>
 
               <h3 className="mb-2 mt-4 font-medium text-foreground">2.2 Métadonnées d&apos;emails (temporaires)</h3>
@@ -94,14 +94,21 @@ export default function PrivacyPage() {
                 <li>Sujet de l&apos;email</li>
                 <li>Extrait court (200 caractères maximum)</li>
                 <li>Date de réception</li>
-                <li>Identifiant Gmail (pour lien vers l&apos;email original)</li>
+                <li>Identifiant du message (Microsoft Graph ID ou IMAP UID)</li>
+              </ul>
+
+              <h3 className="mb-2 mt-4 font-medium text-foreground">2.3 Credentials IMAP (si utilisé)</h3>
+              <ul className="list-inside list-disc space-y-1 pl-4">
+                <li>Serveur IMAP et port</li>
+                <li>Nom d&apos;utilisateur IMAP</li>
+                <li>App Password (chiffré AES-256, jamais en clair)</li>
               </ul>
               <p className="mt-2 rounded-lg border border-green-200 bg-green-50 p-3 text-sm text-green-800 dark:border-green-800 dark:bg-green-950/30 dark:text-green-400">
                 <strong>Important :</strong> Le contenu complet des emails n&apos;est JAMAIS stocké.
                 Il est lu temporairement en mémoire pour l&apos;analyse, puis immédiatement oublié.
               </p>
 
-              <h3 className="mb-2 mt-4 font-medium text-foreground">2.3 Actions créées</h3>
+              <h3 className="mb-2 mt-4 font-medium text-foreground">2.4 Actions créées</h3>
               <ul className="list-inside list-disc space-y-1 pl-4">
                 <li>Titre de l&apos;action</li>
                 <li>Type (envoyer, appeler, relancer, payer, valider)</li>
@@ -141,7 +148,7 @@ export default function PrivacyPage() {
               <p className="mb-4">Le traitement de vos données repose sur :</p>
               <ul className="list-inside list-disc space-y-2 pl-4">
                 <li>
-                  <strong>Votre consentement</strong> : Donné lors de la connexion OAuth Google
+                  <strong>Votre consentement</strong> : Donné lors de la connexion (OAuth ou IMAP)
                 </li>
                 <li>
                   <strong>L&apos;exécution du contrat</strong> : Nécessaire pour fournir le service
@@ -172,7 +179,7 @@ export default function PrivacyPage() {
                     </tr>
                     <tr>
                       <td className="py-2 pr-4">Métadonnées d&apos;emails</td>
-                      <td className="py-2">24h max (suppression chaque nuit à 23h)</td>
+                      <td className="py-2">24h max (suppression chaque nuit)</td>
                     </tr>
                     <tr>
                       <td className="py-2 pr-4">Actions créées</td>
@@ -180,7 +187,11 @@ export default function PrivacyPage() {
                     </tr>
                     <tr>
                       <td className="py-2 pr-4">Tokens OAuth</td>
-                      <td className="py-2">Jusqu&apos;à déconnexion Gmail</td>
+                      <td className="py-2">Jusqu&apos;à déconnexion du provider</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">Credentials IMAP</td>
+                      <td className="py-2">Jusqu&apos;à déconnexion IMAP</td>
                     </tr>
                   </tbody>
                 </table>
@@ -198,7 +209,7 @@ export default function PrivacyPage() {
               </p>
               <ul className="list-inside list-disc space-y-2 pl-4">
                 <li>
-                  <strong>Google</strong> : Pour l&apos;authentification OAuth (leurs conditions s&apos;appliquent)
+                  <strong>Google / Microsoft</strong> : Pour l&apos;authentification OAuth (leurs conditions s&apos;appliquent)
                 </li>
                 <li>
                   <strong>Hébergeur</strong> : Serveurs sécurisés pour le stockage des données
@@ -221,6 +232,8 @@ export default function PrivacyPage() {
               <ul className="list-inside list-disc space-y-2 pl-4">
                 <li>Chiffrement des données en transit (HTTPS/TLS)</li>
                 <li>Chiffrement des tokens OAuth stockés</li>
+                <li>Chiffrement AES-256 des mots de passe IMAP</li>
+                <li>Hashage bcrypt des mots de passe utilisateur</li>
                 <li>Accès restreint aux données (authentification requise)</li>
                 <li>Isolation des données par utilisateur</li>
                 <li>Suppression automatique des métadonnées anciennes</li>
@@ -253,7 +266,7 @@ export default function PrivacyPage() {
                   <strong>Droit d&apos;opposition</strong> : Vous opposer au traitement de vos données
                 </li>
                 <li>
-                  <strong>Droit de retrait du consentement</strong> : Révoquer l&apos;accès Gmail à tout moment
+                  <strong>Droit de retrait du consentement</strong> : Révoquer l&apos;accès email à tout moment
                 </li>
               </ul>
               <p className="mt-4">
