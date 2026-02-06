@@ -67,7 +67,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
           isSidebarExpanded ? "w-[220px] xl:w-[260px]" : "w-[68px]",
         )}
       >
-        <div className="sticky top-0 h-screen">
+        <div className="sticky top-0 h-dvh">
           <ScrollArea className="h-full overflow-y-auto">
             <aside
               className={cn(
@@ -75,7 +75,7 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                 isSidebarExpanded ? "w-[220px] xl:w-[260px]" : "w-[68px]",
               )}
             >
-            <div className="flex h-full max-h-screen flex-1 flex-col gap-2">
+            <div className="flex h-full max-h-dvh flex-1 flex-col gap-2">
               <div className="flex h-14 items-center p-4 lg:h-[60px]">
                 {isSidebarExpanded ? (
                   <Link href="/dashboard" className="flex items-center gap-2">
@@ -223,7 +223,7 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
         </SheetTrigger>
         <SheetContent side="left" className="flex flex-col p-0">
           <ScrollArea className="h-full overflow-y-auto">
-            <div className="flex h-screen flex-col">
+            <div className="flex h-dvh flex-col">
               <nav className="flex flex-1 flex-col gap-y-8 p-6 text-lg font-medium">
                 <Link
                   href="/dashboard"
