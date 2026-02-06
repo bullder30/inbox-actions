@@ -302,11 +302,6 @@ export function GraphStatus({ onStatusChange, showTitle = false }: GraphStatusPr
               addSuffix: true,
             })}
           </span>
-          {status.hasDeltaLink && (
-            <Badge variant="secondary" className="text-xs">
-              Delta sync actif
-            </Badge>
-          )}
         </div>
       )}
 
