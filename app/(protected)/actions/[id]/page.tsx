@@ -246,9 +246,9 @@ export default function ActionDetailPage({
             <div className="rounded-lg border bg-muted/50 p-4">
               <div className="flex items-start justify-between gap-4">
                 <p className="flex-1 text-sm italic">&ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;</p>
-                {action.gmailMessageId && (
+                {action.emailWebUrl && (
                   <a
-                    href={`https://mail.google.com/mail/u/0/#inbox/${action.gmailMessageId}`}
+                    href={action.emailWebUrl}
                     target="_blank"
                     rel="noopener noreferrer"
                   >

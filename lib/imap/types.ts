@@ -45,6 +45,9 @@ export interface EmailMetadataType {
   receivedAt: Date;
   labels: string[];
 
+  // URL vers l'email dans le webmail (si disponible)
+  webUrl?: string | null;
+
   // Provider info
   emailProvider: EmailProvider;
 }
@@ -191,4 +194,25 @@ export function detectProviderFromEmail(
  */
 export function isMicrosoftProvider(provider: string | null): boolean {
   return provider === "microsoft";
+}
+
+/**
+ * Generate a Gmail web URL from the Message-ID header
+ * Gmail supports searching by rfc822msgid
+ */
+export function generateGmailWebUrl(messageId: string | null): string | null {
+  if (!messageId) return null;
+
+  // Encode the Message-ID for URL (remove < > if present)
+  const cleanMessageId = messageId.replace(/^<|>$/g, "");
+  const encodedMessageId = encodeURIComponent(`rfc822msgid:${cleanMessageId}`);
+
+  return `https://mail.google.com/mail/u/0/#search/${encodedMessageId}`;
+}
+
+/**
+ * Check if an IMAP host is Gmail
+ */
+export function isGmailHost(host: string): boolean {
+  return host.toLowerCase() === "imap.gmail.com";
 }

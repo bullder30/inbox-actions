@@ -29,6 +29,7 @@ export async function GET() {
         subject: true,
         snippet: true,
         receivedAt: true,
+        webUrl: true,
       },
     });
 
@@ -91,6 +92,7 @@ export async function GET() {
         receivedAt: email.receivedAt,
         hasActions: false,
         reason: "Aucune action détectée",
+        webUrl: email.webUrl,
       }));
 
     return NextResponse.json({ emails: ignoredEmails });

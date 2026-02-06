@@ -138,8 +138,9 @@ model Action {
   sourceSentence   String       @db.Text
   emailFrom        String
   emailReceivedAt  DateTime
-  gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message Gmail pour créer un lien
-  imapUID          BigInt?      @map(name: "imap_uid") // UID IMAP pour créer un lien
+  gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message (Gmail ou Graph)
+  imapUID          BigInt?      @map(name: "imap_uid") // UID IMAP
+  emailWebUrl      String?      @map(name: "email_web_url") // URL vers l'email dans le webmail
   createdAt        DateTime     @default(now()) @map(name: "created_at")
   updatedAt        DateTime     @default(now()) @updatedAt @map(name: "updated_at")
 
@@ -176,6 +177,9 @@ model EmailMetadata {
 
   // Labels Gmail (stockés en JSON array)
   labels         String[] @default([])
+
+  // URL vers l'email dans le webmail (Microsoft Graph fournit webLink)
+  webUrl         String?  @map(name: "web_url")
 
   // Gestion du statut
   status         EmailStatus @default(EXTRACTED) // EXTRACTED -> ANALYZED

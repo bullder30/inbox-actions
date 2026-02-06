@@ -174,6 +174,7 @@ export async function runDailySyncJob() {
                   emailReceivedAt: emailMetadata.receivedAt,
                   gmailMessageId: emailMetadata.gmailMessageId, // null si IMAP
                   imapUID: emailMetadata.imapUID, // null si Gmail
+                  emailWebUrl: emailMetadata.webUrl, // URL vers l'email dans le webmail
                   dueDate: action.dueDate,
                   status: "TODO",
                 },

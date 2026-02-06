@@ -27,6 +27,7 @@ interface EmailMetadata {
   receivedAt: string;
   hasActions: boolean;
   reason: string;
+  webUrl: string | null;
 }
 
 export default function MissingActionPage() {
@@ -160,16 +161,18 @@ export default function MissingActionPage() {
                         <Badge variant="gradient" className="px-1.5 text-[10px] sm:px-2 sm:text-xs">
                           {email.reason}
                         </Badge>
-                        <a
-                          href={`https://mail.google.com/mail/u/0/#inbox/${email.gmailMessageId}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <Button variant="ghost" size="sm" className="size-7 p-0">
-                            <MailOpen className="size-3.5" />
-                          </Button>
-                        </a>
+                        {email.webUrl && (
+                          <a
+                            href={email.webUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Button variant="ghost" size="sm" className="size-7 p-0">
+                              <MailOpen className="size-3.5" />
+                            </Button>
+                          </a>
+                        )}
                       </div>
                     </div>
                     <CardDescription className="flex flex-wrap items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
@@ -215,9 +218,9 @@ export default function MissingActionPage() {
       {/* Dialog de création d'action */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
-          {selectedEmail && (
+          {selectedEmail?.webUrl && (
             <a
-              href={`https://mail.google.com/mail/u/0/#inbox/${selectedEmail.gmailMessageId}`}
+              href={selectedEmail.webUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="absolute right-10 top-3 z-10 sm:right-12 sm:top-4"

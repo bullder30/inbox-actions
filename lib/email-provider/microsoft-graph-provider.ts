@@ -41,6 +41,7 @@ export class MicrosoftGraphProvider implements IEmailProvider {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
+      webUrl: email.webUrl,
       emailProvider: "MICROSOFT_GRAPH" as EmailProvider,
     }));
   }
@@ -67,6 +68,7 @@ export class MicrosoftGraphProvider implements IEmailProvider {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
+      webUrl: email.webUrl,
       emailProvider: "MICROSOFT_GRAPH" as EmailProvider,
     }));
   }

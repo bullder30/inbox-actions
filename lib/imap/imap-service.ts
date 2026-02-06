@@ -17,6 +17,7 @@ import type {
   IMAPFolder,
   IMAPAuthMethod,
 } from "./types";
+import { generateGmailWebUrl, isGmailHost } from "./types";
 
 // ============================================================================
 // FONCTIONS UTILITAIRES
@@ -362,6 +363,11 @@ export class IMAPService {
           const snippet = subject ? extractSnippet(subject, 200) : "";
           const labels = message.flags ? Array.from(message.flags) : [];
 
+          // Generate webUrl for Gmail (using Message-ID search)
+          const webUrl = isGmailHost(this.config.host)
+            ? generateGmailWebUrl(messageId)
+            : null;
+
           const metadata: EmailMetadataType = {
             imapUID: uid,
             imapMessageId: messageId,
@@ -374,6 +380,7 @@ export class IMAPService {
             snippet: normalizeTypography(decodeHtmlEntities(snippet)),
             receivedAt,
             labels,
+            webUrl,
             emailProvider: "IMAP",
           };
 
@@ -392,6 +399,7 @@ export class IMAPService {
                 snippet: metadata.snippet,
                 receivedAt: metadata.receivedAt,
                 labels: metadata.labels,
+                webUrl: metadata.webUrl,
               },
             });
           } catch (createError) {
@@ -514,6 +522,7 @@ export class IMAPService {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
+      webUrl: email.webUrl,
       emailProvider: "IMAP",
     }));
   }

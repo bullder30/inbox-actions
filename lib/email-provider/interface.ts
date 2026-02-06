@@ -22,6 +22,9 @@ export interface EmailMetadata {
   receivedAt: Date;
   labels: string[];
 
+  // URL vers l'email dans le webmail (si disponible)
+  webUrl?: string | null;
+
   // Provider source
   emailProvider: EmailProvider;
 }

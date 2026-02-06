@@ -203,9 +203,9 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             <p className="min-w-0 flex-1 break-words text-sm italic">
               &ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;
             </p>
-            {action.gmailMessageId && (
+            {action.emailWebUrl && (
               <a
-                href={`https://mail.google.com/mail/u/0/#inbox/${action.gmailMessageId}`}
+                href={action.emailWebUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
