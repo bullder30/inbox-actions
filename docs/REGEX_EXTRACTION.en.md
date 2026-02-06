@@ -947,7 +947,7 @@ The system can process thousands of emails per second. The limit is the database
 ```typescript
 // app/api/email/analyze/route.ts
 
-const body = await gmailService.getEmailBodyForAnalysis(emailId);
+const body = await emailProvider.getEmailBodyForAnalysis(messageId);
 // ⚠️ Used ONLY in memory
 
 const extractedActions = extractActionsFromEmail({
@@ -1062,11 +1062,11 @@ return regexActions;
 
 ---
 
-## Link to Source Email (Gmail)
+## Link to Source Email
 
-Each extracted action keeps the Gmail message ID to allow direct access to the source email.
+Each extracted action keeps the webmail URL to allow direct access to the source email.
 
-### Storing the Gmail ID
+### Storing the Webmail URL
 
 ```typescript
 // When creating the action
@@ -1078,22 +1078,26 @@ await prisma.action.create({
     sourceSentence: action.sourceSentence,
     emailFrom: emailMetadata.from,
     emailReceivedAt: emailMetadata.receivedAt,
-    gmailMessageId: emailMetadata.gmailMessageId, // <- Gmail ID
+    emailWebUrl: emailMetadata.webUrl, // <- Webmail URL
     dueDate: action.dueDate,
     status: "TODO",
   },
 });
 ```
 
-### Generating the Gmail Link
+### URLs by Provider
 
-Link format: `https://mail.google.com/mail/u/0/#inbox/{messageId}`
+| Provider | Generated URL |
+|----------|---------------|
+| Microsoft Graph | `https://outlook.office365.com/...` (webLink from API) |
+| IMAP Gmail | `https://mail.google.com/mail/u/0/#search/...` (Message-ID search) |
+| Other IMAP | Not available |
 
 ```typescript
 // In the user interface
-{action.gmailMessageId && (
+{action.emailWebUrl && (
   <a
-    href={`https://mail.google.com/mail/u/0/#inbox/${action.gmailMessageId}`}
+    href={action.emailWebUrl}
     target="_blank"
     rel="noopener noreferrer"
   >
@@ -1110,7 +1114,7 @@ Link format: `https://mail.google.com/mail/u/0/#inbox/{messageId}`
 - Direct access to full email context
 - Easy verification of action interpretation
 - View attachments and thread
-- Compatible with old actions (optional field)
+- Compatible with Microsoft Graph and Gmail IMAP
 
 ---
 

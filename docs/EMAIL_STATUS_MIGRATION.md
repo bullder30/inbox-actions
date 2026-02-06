@@ -9,7 +9,7 @@
 
 ### Nouveau système
 - `status: EmailStatus` (EXTRACTED | ANALYZED)
-  - **EXTRACTED** : Email synchronisé depuis Gmail, métadonnées extraites
+  - **EXTRACTED** : Email synchronisé depuis le fournisseur (IMAP ou Microsoft Graph), métadonnées extraites
   - **ANALYZED** : Email analysé pour extraction d'actions
 - `lastEmailExtractionDate: DateTime` sur le User
   - Permet de ne pas réextraire les emails déjà traités
@@ -57,7 +57,7 @@ pnpm build
 
 ### Services
 
-**GmailService**
+**IEmailProvider** (interface implémentée par IMAPProvider et MicrosoftGraphProvider)
 - ❌ `getUnprocessedEmails()` → ✅ `getExtractedEmails()`
 - ❌ `markEmailAsProcessed()` → ✅ `markEmailAsAnalyzed()`
 
@@ -162,16 +162,14 @@ Horaires :
 Cette date permet d'optimiser la synchronisation :
 
 ```typescript
-// Dans gmail-service.ts - fetchNewEmails()
+// Dans le service email - fetchNewEmails()
 const user = await prisma.user.findUnique({
   where: { id: userId },
   select: { lastEmailExtractionDate: true },
 });
 
-// Requête Gmail : ne récupérer que les emails reçus après cette date
-const query = lastEmailExtractionDate
-  ? `after:${Math.floor(lastEmailExtractionDate.getTime() / 1000)}`
-  : undefined;
+// Requête filtrée : ne récupérer que les emails reçus après cette date
+// (implémentation spécifique à chaque provider : IMAP ou Microsoft Graph)
 ```
 
 ## Stratégie d'extraction des emails
@@ -183,18 +181,18 @@ const query = lastEmailExtractionDate
 L'extraction d'emails utilise une **stratégie incrémentale intelligente** :
 
 ```typescript
-// Dans gmail-service.ts - fetchNewEmails()
+// Dans le service email - fetchNewEmails()
 const user = await prisma.user.findUnique({
   where: { id: this.userId },
-  select: { lastGmailSync: true, gmailHistoryId: true },
+  select: { lastEmailSync: true },
 });
 
 let afterTimestamp: number;
 
-if (user?.lastGmailSync) {
+if (user?.lastEmailSync) {
   // Synchro existante : récupérer tous les emails depuis la dernière synchro
-  afterTimestamp = Math.floor(user.lastGmailSync.getTime() / 1000);
-  console.log(`Fetching emails since last sync: ${user.lastGmailSync.toISOString()}`);
+  afterTimestamp = Math.floor(user.lastEmailSync.getTime() / 1000);
+  console.log(`Fetching emails since last sync: ${user.lastEmailSync.toISOString()}`);
 } else {
   // Première synchro : récupérer uniquement les dernières 24h
   const last24Hours = new Date();
@@ -203,27 +201,27 @@ if (user?.lastGmailSync) {
   console.log(`First sync: fetching emails from last 24 hours`);
 }
 
-// Query Gmail avec filtre de date
-const gmailQuery = `after:${afterTimestamp}`;
+// Query avec filtre de date (implémentation spécifique au provider)
 ```
 
 ### Règles d'extraction
 
-1. **Première synchronisation** (`lastGmailSync` est null)
+1. **Première synchronisation** (`lastEmailSync` est null)
    - Récupère uniquement les emails des **dernières 24 heures**
    - Évite la récupération massive d'historique
    - Limite la charge initiale
 
-2. **Synchronisations suivantes** (`lastGmailSync` existe)
+2. **Synchronisations suivantes** (`lastEmailSync` existe)
    - Récupère **tous les emails depuis la dernière synchro**
    - Garantit qu'aucun email n'est manqué
    - Synchronisation incrémentale efficace
+   - Microsoft Graph utilise les delta queries pour plus de performance
 
 ### Avantages
 
 1. **Première synchro légère** : Seulement 24h d'emails au lieu de tout l'historique
 2. **Synchronisation continue** : Aucun email manqué après la première synchro
-3. **Performance optimale** : Charge minimale sur Gmail API
+3. **Performance optimale** : Charge minimale sur les APIs email
 4. **Expérience utilisateur** : Configuration rapide pour les nouveaux utilisateurs
 
 ### Évolution future
@@ -234,7 +232,7 @@ Une fonctionnalité permettra de **récupérer les emails entre 2 dates** pour :
 - Rattrapage manuel si nécessaire
 
 Cette fonctionnalité sera accessible via :
-- Interface utilisateur dans les paramètres Gmail
+- Interface utilisateur dans les paramètres email
 - Paramètre optionnel `dateRange` dans `fetchNewEmails()`
 
 ## Vérification post-migration

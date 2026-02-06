@@ -17,7 +17,7 @@ The system uses **Server-Sent Events (SSE)** combined with **Zustand** to update
 
 Cron Job (every 2 min)
     ↓
-Count new Gmail emails
+Count new emails
     ↓
 [Stored in temporary memory]
     ↓
@@ -102,13 +102,13 @@ export async function GET() {
         if (isClosed) return;
 
         try {
-          const gmailService = await createGmailService(userId);
-          if (!gmailService) {
+          const emailProvider = await createEmailProvider(userId);
+          if (!emailProvider) {
             sendEvent({ count: 0 });
             return;
           }
 
-          const count = await gmailService.countNewEmailsInGmail();
+          const count = await emailProvider.countNewEmails();
           sendEvent({ count });
         } catch (error) {
           console.error("[SSE] Error fetching count:", error);
@@ -250,7 +250,7 @@ export function PendingSyncCard({ lastSyncText }: PendingSyncCardProps) {
 
       // Step 1: Extract ALL emails since last sync
       toast.info("Extracting emails...");
-      const syncResult = await syncGmail();
+      const syncResult = await syncEmails();
 
       if (syncResult.count === 0) {
         toast.info("No new emails to extract");
@@ -261,7 +261,7 @@ export function PendingSyncCard({ lastSyncText }: PendingSyncCardProps) {
 
       // Step 2: Analyze ALL extracted emails
       toast.info("Analyzing emails...");
-      const analyzeResult = await analyzeGmail();
+      const analyzeResult = await analyzeEmails();
       toast.success(
         `${analyzeResult.extractedActions} action(s) created`
       );
@@ -310,26 +310,20 @@ export async function runCountNewEmailsJob() {
   console.log("[Cron] Count new emails job started");
 
   try {
+    // Get users with an email provider configured
     const users = await prisma.user.findMany({
       where: {
-        accounts: {
-          some: {
-            provider: "google",
-            scope: {
-              contains: "gmail.readonly",
-            },
-          },
-        },
+        emailProvider: { not: null },
       },
       select: { id: true, email: true },
     });
 
     for (const user of users) {
       try {
-        const gmailService = await createGmailService(user.id);
-        if (!gmailService) continue;
+        const emailProvider = await createEmailProvider(user.id);
+        if (!emailProvider) continue;
 
-        const newEmailsCount = await gmailService.countNewEmailsInGmail();
+        const newEmailsCount = await emailProvider.countNewEmails();
 
         // Log only if new emails
         if (newEmailsCount > 0) {
@@ -375,7 +369,7 @@ export async function runCountNewEmailsJob() {
 ### 3. Every 2 minutes (cron)
 
 ```
-1. Cron counts new Gmail emails
+1. Cron counts new emails
 2. Storage in memory (no DB)
 3. SSE retrieves this count on next cycle (30s)
 4. Client receives update
@@ -384,7 +378,7 @@ export async function runCountNewEmailsJob() {
 ### 4. When user clicks "Analyze"
 
 ```
-1. Extract all emails since lastGmailSync
+1. Extract all emails since lastEmailSync
 2. Analyze all extracted emails
 3. Create actions
 4. router.refresh() to update UI

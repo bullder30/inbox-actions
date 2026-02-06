@@ -20,7 +20,7 @@ The system uses **node-cron** to execute scheduled tasks automatically, both in 
 
 **Schedule**: `*/2 * * * *` (every 2 minutes)
 
-The `count-new-emails` job **only counts** new emails available in Gmail since the last sync (manual or automatic).
+The `count-new-emails` job **only counts** new emails available since the last sync (manual or automatic).
 
 **Important**: This job does **NOT sync** emails, it only counts.
 
@@ -43,7 +43,7 @@ The `count-new-emails` job **only counts** new emails available in Gmail since t
 
 The `daily-sync` job is a more complete version of auto-sync:
 
-1. **Synchronization**: Retrieves new Gmail emails (max 100 per run)
+1. **Synchronization**: Retrieves new emails (max 100 per run)
 2. **Analysis**: Analyzes `EXTRACTED` emails (max 50 per run)
 
 **Intentional limits**: 100 sync / 50 analyze for more aggressive daily processing
@@ -74,11 +74,11 @@ The "Pending" counter in the dashboard updates automatically in real-time thanks
 ### How it works
 
 ```
-[Cron every 2 min] -> Updates count in Gmail
+[Cron every 2 min] -> Updates email count
                        ↓
 [Dashboard component] -> Polling /api/email/pending-count every 30s
                        ↓
-[API] -> Calls countNewEmailsInGmail()
+[API] -> Calls emailProvider.countNewEmails()
                        ↓
 [Dashboard] -> Updates display automatically
 ```
@@ -86,7 +86,7 @@ The "Pending" counter in the dashboard updates automatically in real-time thanks
 **Advantages**:
 - Automatic update without page refresh
 - Light polling (30 seconds) to avoid overload
-- Count calculated in real-time via Gmail API
+- Count calculated in real-time via email provider
 - No database storage needed
 
 ## Automatic Startup
@@ -170,7 +170,7 @@ Jobs display detailed logs at each execution:
 **Count New Emails Job**:
 ```
 [COUNT-NEW-EMAILS JOB] 🔢 Starting...
-[COUNT-NEW-EMAILS JOB] Found 1 users with Gmail
+[COUNT-NEW-EMAILS JOB] Found 1 users with email configured
 [COUNT-NEW-EMAILS JOB] user@example.com: 3 new emails
 [COUNT-NEW-EMAILS JOB] ✨ Found 3 new emails (234ms)
 ```
@@ -181,7 +181,7 @@ Jobs display detailed logs at each execution:
 ```
 [CRON SERVICE] ⏰ Daily-sync job triggered
 [DAILY-SYNC JOB] 🚀 Starting...
-[DAILY-SYNC JOB] Found 1 users with Gmail connected
+[DAILY-SYNC JOB] Found 1 users with email configured
 [DAILY-SYNC JOB] Processing user: user@example.com
 [DAILY-SYNC JOB] ✅ Synced 15 emails for user@example.com
 [DAILY-SYNC JOB] 📊 user@example.com: 5 actions extracted
@@ -251,7 +251,7 @@ Each job execution displays statistics:
 ### Execution errors
 
 Errors are logged but don't stop cron. Check logs to identify issues:
-- Expired Gmail tokens
+- Expired OAuth tokens
 - Database connection issues
 - Email analysis errors
 
