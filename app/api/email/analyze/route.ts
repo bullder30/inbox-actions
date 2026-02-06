@@ -5,6 +5,7 @@ import { createEmailProvider } from "@/lib/email-provider/factory";
 import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
 import { prisma } from "@/lib/db";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
+import { MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -49,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     // Récupérer les options
     const body = await req.json().catch(() => ({}));
-    const maxEmails = body.maxEmails; // Pas de limite par défaut
+    const maxEmails = body.maxEmails ?? MAX_EMAILS_TO_ANALYZE;
 
     // Récupérer les emails extraits (EXTRACTED) non encore analysés
     const extractedEmails = await emailProvider.getExtractedEmails();
@@ -64,10 +65,8 @@ export async function POST(req: NextRequest) {
       });
     }
 
-    // Limiter au nombre max si spécifié, sinon traiter tous les emails
-    const emailsToProcess = maxEmails
-      ? extractedEmails.slice(0, maxEmails)
-      : extractedEmails;
+    // Limiter au nombre max configuré
+    const emailsToProcess = extractedEmails.slice(0, maxEmails);
 
     console.log(`[Analyze] Processing ${emailsToProcess.length} email(s) out of ${extractedEmails.length} extracted`);
 

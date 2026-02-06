@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createEmailProvider } from "@/lib/email-provider/factory";
+import { MAX_EMAILS_TO_SYNC } from "@/lib/config/sync";
 
 export const dynamic = "force-dynamic";
 
@@ -39,7 +40,7 @@ export async function GET(req: NextRequest) {
     // Options de synchronisation
     const { searchParams } = new URL(req.url);
     const maxResultsParam = searchParams.get("maxResults");
-    const maxResults = maxResultsParam ? parseInt(maxResultsParam) : undefined;
+    const maxResults = maxResultsParam ? parseInt(maxResultsParam) : MAX_EMAILS_TO_SYNC;
 
     // Récupérer les nouveaux emails
     const emails = await emailProvider.fetchNewEmails({
