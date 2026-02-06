@@ -33,7 +33,7 @@ export function BottomNav({ todoCount = 0 }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 z-50 flex justify-center px-4 pb-6 md:hidden" style={{ width: "100vw" }}>
+    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6 md:hidden" style={{ width: "100vw" }}>
       {/* Floating navigation bar with purple border */}
       <nav className="w-full max-w-md rounded-2xl border border-[#764ba2] bg-background/30 shadow-lg shadow-black/5 backdrop-blur-sm dark:bg-background/25 dark:shadow-black/20">
         <div className="flex h-14 items-center justify-around px-2">
@@ -55,7 +55,7 @@ export function BottomNav({ todoCount = 0 }: BottomNavProps) {
                   />
                 )}
                 <div className="relative z-10">
-                  <Icon className={cn("size-5 transition-transform text-[#764ba2]", isActive && "scale-110")} />
+                  <Icon className={cn("size-5 text-[#764ba2] transition-transform", isActive && "scale-110")} />
                   {item.showBadge && todoCount > 0 && (
                     <span
                       className="absolute -right-2.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-semibold text-white shadow-sm"
