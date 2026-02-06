@@ -353,13 +353,13 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent>
               {mounted ? (
-                <div className="flex flex-wrap gap-2">
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => setTheme("light")}
                     className={cn(
-                      "gap-2",
+                      "flex-1 gap-1.5",
                       theme === "light" && "border-primary bg-primary/10"
                     )}
                   >
@@ -371,7 +371,7 @@ export default function SettingsPage() {
                     size="sm"
                     onClick={() => setTheme("dark")}
                     className={cn(
-                      "gap-2",
+                      "flex-1 gap-1.5",
                       theme === "dark" && "border-primary bg-primary/10"
                     )}
                   >
@@ -383,7 +383,7 @@ export default function SettingsPage() {
                     size="sm"
                     onClick={() => setTheme("system")}
                     className={cn(
-                      "gap-2",
+                      "flex-1 gap-1.5",
                       theme === "system" && "border-primary bg-primary/10"
                     )}
                   >
