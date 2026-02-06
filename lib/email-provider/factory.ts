@@ -56,14 +56,9 @@ export async function createEmailProvider(
       return new IMAPProvider(imapService);
     }
 
-    // GMAIL provider is deprecated - users should configure IMAP instead
+    // GMAIL provider is deprecated - users should reconfigure with IMAP
     if (provider === "GMAIL") {
-      console.log("[EmailProvider] Gmail API is deprecated. User should configure IMAP instead.");
-      // Try IMAP as fallback
-      const imapService = await createIMAPService(userId);
-      if (imapService) {
-        return new IMAPProvider(imapService);
-      }
+      console.warn("[EmailProvider] Gmail API is deprecated (CASA). User should reconfigure with IMAP.");
       return null;
     }
 

@@ -29,8 +29,8 @@ enum EmailStatus {
 }
 
 enum EmailProvider {
-  GMAIL           // Gmail via OAuth (existant)
-  IMAP            // IMAP générique
+  GMAIL           // @deprecated - Utiliser IMAP à la place (CASA non requis)
+  IMAP            // IMAP générique (Gmail, Yahoo, iCloud, etc.)
   MICROSOFT_GRAPH // Microsoft Graph API (Outlook, Hotmail, Live, M365)
 }
 
