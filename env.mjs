@@ -17,6 +17,7 @@ export const env = createEnv({
     DATABASE_URL: z.string().min(1),
     RESEND_API_KEY: z.string().min(1).optional(),
     EMAIL_FROM: z.string().min(1).optional(),
+    EMAIL_SUPPORT: z.string().email().optional(),
     STRIPE_API_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
     CRON_SECRET: z.string().min(1).optional(),
@@ -45,6 +46,7 @@ export const env = createEnv({
     DATABASE_URL: process.env.DATABASE_URL,
     RESEND_API_KEY: process.env.RESEND_API_KEY,
     EMAIL_FROM: process.env.EMAIL_FROM,
+    EMAIL_SUPPORT: process.env.EMAIL_SUPPORT,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     // Auth providers
     NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED: process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED,
