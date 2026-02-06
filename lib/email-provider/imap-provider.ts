@@ -33,6 +33,7 @@ export class IMAPProvider implements IEmailProvider {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
+      webUrl: email.webUrl,
       emailProvider: "IMAP" as EmailProvider,
     }));
   }
@@ -59,6 +60,7 @@ export class IMAPProvider implements IEmailProvider {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
+      webUrl: email.webUrl,
       emailProvider: "IMAP" as EmailProvider,
     }));
   }

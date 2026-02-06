@@ -202,7 +202,7 @@ export class MicrosoftGraphService {
         const sinceDate = user?.lastEmailSync || new Date(Date.now() - 24 * 60 * 60 * 1000);
         const filter = `receivedDateTime ge ${sinceDate.toISOString()}`;
 
-        const endpoint = `/me/mailFolders/${folder}/messages?$top=${maxResults || DEFAULT_PAGE_SIZE}&$filter=${encodeURIComponent(filter)}&$orderby=receivedDateTime desc&$select=id,conversationId,subject,bodyPreview,from,receivedDateTime,parentFolderId,categories`;
+        const endpoint = `/me/mailFolders/${folder}/messages?$top=${maxResults || DEFAULT_PAGE_SIZE}&$filter=${encodeURIComponent(filter)}&$orderby=receivedDateTime desc&$select=id,conversationId,subject,bodyPreview,from,receivedDateTime,parentFolderId,categories,webLink`;
 
         let currentEndpoint: string | undefined = endpoint;
 
@@ -220,7 +220,7 @@ export class MicrosoftGraphService {
         }
 
         // Now get delta link for future incremental syncs
-        const deltaEndpoint = `/me/mailFolders/${folder}/messages/delta?$select=id,conversationId,subject,bodyPreview,from,receivedDateTime,parentFolderId,categories`;
+        const deltaEndpoint = `/me/mailFolders/${folder}/messages/delta?$select=id,conversationId,subject,bodyPreview,from,receivedDateTime,parentFolderId,categories,webLink`;
         const deltaResponse = await this.initializeDelta(deltaEndpoint);
         deltaLink = deltaResponse.deltaLink;
       }
@@ -260,6 +260,7 @@ export class MicrosoftGraphService {
               snippet: metadata.snippet,
               receivedAt: metadata.receivedAt,
               labels: metadata.labels,
+              webUrl: metadata.webUrl,
               status: "EXTRACTED",
             },
           });
@@ -369,6 +370,7 @@ export class MicrosoftGraphService {
       snippet,
       receivedAt: new Date(message.receivedDateTime),
       labels: message.categories || [],
+      webUrl: message.webLink || null,
     };
   }
 
@@ -425,6 +427,7 @@ export class MicrosoftGraphService {
       snippet: email.snippet,
       receivedAt: email.receivedAt,
       labels: email.labels,
+      webUrl: email.webUrl,
     }));
   }
 

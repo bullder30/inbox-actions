@@ -9,7 +9,7 @@
 
 ### New System
 - `status: EmailStatus` (EXTRACTED | ANALYZED)
-  - **EXTRACTED**: Email synced from Gmail, metadata extracted
+  - **EXTRACTED**: Email synced from provider (IMAP or Microsoft Graph), metadata extracted
   - **ANALYZED**: Email analyzed for action extraction
 - `lastEmailExtractionDate: DateTime` on User
   - Prevents re-extracting already processed emails
@@ -57,7 +57,7 @@ pnpm build
 
 ### Services
 
-**GmailService**
+**IEmailProvider** (interface implemented by IMAPProvider and MicrosoftGraphProvider)
 - `getUnprocessedEmails()` renamed to `getExtractedEmails()`
 - `markEmailAsProcessed()` renamed to `markEmailAsAnalyzed()`
 
@@ -162,16 +162,14 @@ Schedule:
 This date allows synchronization optimization:
 
 ```typescript
-// In gmail-service.ts - fetchNewEmails()
+// In email service - fetchNewEmails()
 const user = await prisma.user.findUnique({
   where: { id: userId },
   select: { lastEmailExtractionDate: true },
 });
 
-// Gmail query: only fetch emails received after this date
-const query = lastEmailExtractionDate
-  ? `after:${Math.floor(lastEmailExtractionDate.getTime() / 1000)}`
-  : undefined;
+// Filtered query: only fetch emails received after this date
+// (implementation specific to each provider: IMAP or Microsoft Graph)
 ```
 
 ## Email Extraction Strategy
@@ -183,18 +181,18 @@ const query = lastEmailExtractionDate
 Email extraction uses an **intelligent incremental strategy**:
 
 ```typescript
-// In gmail-service.ts - fetchNewEmails()
+// In email service - fetchNewEmails()
 const user = await prisma.user.findUnique({
   where: { id: this.userId },
-  select: { lastGmailSync: true, gmailHistoryId: true },
+  select: { lastEmailSync: true },
 });
 
 let afterTimestamp: number;
 
-if (user?.lastGmailSync) {
+if (user?.lastEmailSync) {
   // Existing sync: fetch all emails since last sync
-  afterTimestamp = Math.floor(user.lastGmailSync.getTime() / 1000);
-  console.log(`Fetching emails since last sync: ${user.lastGmailSync.toISOString()}`);
+  afterTimestamp = Math.floor(user.lastEmailSync.getTime() / 1000);
+  console.log(`Fetching emails since last sync: ${user.lastEmailSync.toISOString()}`);
 } else {
   // First sync: fetch only the last 24 hours
   const last24Hours = new Date();
@@ -203,27 +201,27 @@ if (user?.lastGmailSync) {
   console.log(`First sync: fetching emails from last 24 hours`);
 }
 
-// Gmail query with date filter
-const gmailQuery = `after:${afterTimestamp}`;
+// Query with date filter (implementation specific to provider)
 ```
 
 ### Extraction Rules
 
-1. **First synchronization** (`lastGmailSync` is null)
+1. **First synchronization** (`lastEmailSync` is null)
    - Only fetches emails from the **last 24 hours**
    - Avoids massive history retrieval
    - Limits initial load
 
-2. **Subsequent synchronizations** (`lastGmailSync` exists)
+2. **Subsequent synchronizations** (`lastEmailSync` exists)
    - Fetches **all emails since last sync**
    - Ensures no email is missed
    - Efficient incremental synchronization
+   - Microsoft Graph uses delta queries for better performance
 
 ### Benefits
 
 1. **Light first sync**: Only 24h of emails instead of entire history
 2. **Continuous synchronization**: No missed emails after first sync
-3. **Optimal performance**: Minimal load on Gmail API
+3. **Optimal performance**: Minimal load on email APIs
 4. **User experience**: Quick setup for new users
 
 ### Future Evolution
@@ -234,7 +232,7 @@ A feature will allow **fetching emails between 2 dates** for:
 - Manual catch-up if needed
 
 This feature will be accessible via:
-- User interface in Gmail settings
+- User interface in email settings
 - Optional `dateRange` parameter in `fetchNewEmails()`
 
 ## Post-Migration Verification

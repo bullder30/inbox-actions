@@ -41,6 +41,7 @@ export interface GraphMessage {
   parentFolderId?: string;
   isRead?: boolean;
   categories?: string[];
+  webLink?: string; // URL vers l'email dans Outlook
   // For tracking changes in delta query
   "@removed"?: {
     reason: "changed" | "deleted";
@@ -101,4 +102,5 @@ export interface GraphEmailMetadata {
   snippet: string;
   receivedAt: Date;
   labels: string[];
+  webUrl: string | null; // URL vers l'email dans Outlook
 }

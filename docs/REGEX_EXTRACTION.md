@@ -947,7 +947,7 @@ Le système peut traiter des milliers d'emails par seconde. La limite est la bas
 ```typescript
 // app/api/email/analyze/route.ts
 
-const body = await gmailService.getEmailBodyForAnalysis(emailId);
+const body = await emailProvider.getEmailBodyForAnalysis(messageId);
 // ⚠️ Utilisé UNIQUEMENT en mémoire
 
 const extractedActions = extractActionsFromEmail({
@@ -1062,11 +1062,11 @@ return regexActions;
 
 ---
 
-## Lien vers le mail source (Gmail)
+## Lien vers le mail source
 
-Chaque action extraite conserve l'ID du message Gmail pour permettre un accès direct à l'email source.
+Chaque action extraite conserve l'URL vers l'email source (webmail) pour permettre un accès direct.
 
-### Stockage de l'ID Gmail
+### Stockage de l'URL webmail
 
 ```typescript
 // Lors de la création de l'action
@@ -1078,22 +1078,26 @@ await prisma.action.create({
     sourceSentence: action.sourceSentence,
     emailFrom: emailMetadata.from,
     emailReceivedAt: emailMetadata.receivedAt,
-    gmailMessageId: emailMetadata.gmailMessageId, // ← ID Gmail
+    emailWebUrl: emailMetadata.webUrl, // ← URL vers le webmail
     dueDate: action.dueDate,
     status: "TODO",
   },
 });
 ```
 
-### Génération du lien Gmail
+### URLs par provider
 
-Format du lien : `https://mail.google.com/mail/u/0/#inbox/{messageId}`
+| Provider | URL générée |
+|----------|-------------|
+| Microsoft Graph | `https://outlook.office365.com/...` (webLink fourni par l'API) |
+| IMAP Gmail | `https://mail.google.com/mail/u/0/#search/...` (recherche par Message-ID) |
+| IMAP autres | Non disponible |
 
 ```typescript
 // Dans l'interface utilisateur
-{action.gmailMessageId && (
+{action.emailWebUrl && (
   <a
-    href={`https://mail.google.com/mail/u/0/#inbox/${action.gmailMessageId}`}
+    href={action.emailWebUrl}
     target="_blank"
     rel="noopener noreferrer"
   >
@@ -1110,7 +1114,7 @@ Format du lien : `https://mail.google.com/mail/u/0/#inbox/{messageId}`
 - ✅ Accès direct au contexte complet de l'email
 - ✅ Vérification facile de l'interprétation de l'action
 - ✅ Consultation des pièces jointes et du fil de discussion
-- ✅ Compatible avec les anciennes actions (champ optionnel)
+- ✅ Compatible avec Microsoft Graph et Gmail IMAP
 
 ---
 

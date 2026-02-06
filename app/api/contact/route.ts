@@ -27,7 +27,15 @@ export async function POST(req: Request) {
       );
     }
 
-    const supportEmail = env.SUPPORT_EMAIL || env.EMAIL_FROM;
+    const supportEmail = env.EMAIL_SUPPORT;
+
+    if (!supportEmail) {
+      console.error("[CONTACT API] EMAIL_SUPPORT not configured");
+      return NextResponse.json(
+        { error: "Service de contact non configuré" },
+        { status: 503 }
+      );
+    }
 
     await resend.emails.send({
       from: env.EMAIL_FROM,

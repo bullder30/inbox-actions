@@ -1,6 +1,6 @@
 # Scheduled Tasks Configuration (Cron Jobs)
 
-This document explains the automatic scheduled task system for Gmail synchronization and data cleanup.
+This document explains the automatic scheduled task system for email synchronization and data cleanup.
 
 ## Overview
 
@@ -8,7 +8,7 @@ The system uses **node-cron** to execute 3 automatic tasks:
 
 | Job | Frequency | Description | Time (Europe/Paris) |
 |-----|-----------|-------------|---------------------|
-| **count-new-emails** | Every 10 min | Counts new Gmail emails | Continuous |
+| **count-new-emails** | Every 10 min | Counts new emails | Continuous |
 | **daily-sync** | 1x per day | Syncs and analyzes emails | 8:00 AM |
 | **cleanup** | 1x per day | Deletes emails > 3 days | 11:00 PM |
 
@@ -117,7 +117,7 @@ The **count-new-emails** job logs appear **every 10 minutes** in your console:
 ```
 [CRON SERVICE] ⏰ Count-new-emails job triggered at 2026-01-13T08:10:00.000Z
 [COUNT-NEW-EMAILS JOB] 🔢 Starting...
-[COUNT-NEW-EMAILS JOB] Found 1 users with Gmail
+[COUNT-NEW-EMAILS JOB] Found 1 users with email configured
 [COUNT-NEW-EMAILS JOB] david@example.com: 17 new emails
 [COUNT-NEW-EMAILS JOB] ✨ Found 17 new emails (180ms)
 ```
@@ -133,7 +133,7 @@ Example logs during daily-sync execution:
 ```
 [CRON SERVICE] ⏰ Daily-sync job triggered
 [DAILY-SYNC JOB] 🚀 Starting...
-[DAILY-SYNC JOB] Found 1 users with Gmail connected
+[DAILY-SYNC JOB] Found 1 users with email configured
 [DAILY-SYNC JOB] Processing user: david@example.com
 [DAILY-SYNC JOB] ✅ Synced 17 emails for david@example.com
 [DAILY-SYNC JOB] 📊 david@example.com: 5 actions extracted
@@ -161,7 +161,7 @@ Logs only if new emails are detected:
 ```
 [CRON SERVICE] ⏰ Count-new-emails job triggered at 2026-01-13T08:10:00.000Z
 [COUNT-NEW-EMAILS JOB] 🔢 Starting...
-[COUNT-NEW-EMAILS JOB] Found 1 users with Gmail
+[COUNT-NEW-EMAILS JOB] Found 1 users with email configured
 [COUNT-NEW-EMAILS JOB] david@example.com: 17 new emails
 [COUNT-NEW-EMAILS JOB] ✨ Found 17 new emails (180ms)
 ```
@@ -177,13 +177,13 @@ Logs only if new emails are detected:
 
 ### 2. Daily-sync job (8:00 AM)
 
-**STEP 1: Gmail Synchronization**
-- Retrieves all users with connected Google account
+**STEP 1: Email Synchronization**
+- Retrieves all users with an email provider configured (IMAP or Microsoft Graph)
 - For each user:
-  - Creates a `GmailService`
-  - Automatically refreshes token if expired
+  - Creates the appropriate email provider via `createEmailProvider()`
+  - Automatically refreshes OAuth token if expired
   - Retrieves new emails (max 100 per run)
-  - Checks duplicates via `@@unique([userId, gmailMessageId])`
+  - Checks duplicates via unique constraints
   - Stores only metadata (GDPR compliant)
 
 **STEP 2: Analysis and action extraction**
@@ -396,13 +396,14 @@ pnpm dev
 - Use test endpoint to verify job works
 - Implement one of the sleep mode management solutions
 
-### "Gmail service unavailable"
+### "Email service unavailable"
 
-**Cause**: Expired Google token that can't be refreshed
+**Cause**: Expired OAuth token that can't be refreshed, or invalid IMAP configuration
 
 **Solution**:
-1. User must reconnect via `/dashboard/settings/gmail`
-2. Verify `access_type: "offline"` is configured in `auth.config.ts`
+1. User must reconfigure their email via `/settings`
+2. Verify `access_type: "offline"` is configured for OAuth providers
+3. Check IMAP credentials if applicable
 
 ### "CRON_SECRET not configured"
 
@@ -425,7 +426,7 @@ pnpm dev
 - Reduce `maxResults` from 100 to 50 in `daily-sync-job.ts`
 - Reduce email analysis limit from 50 to 25
 - Optimize Prisma queries with `createMany`
-- Check Gmail API connection speed
+- Check email API connection speed
 
 ### "missed execution" Warnings
 
@@ -437,7 +438,7 @@ pnpm dev
 **Causes**:
 - PC in sleep mode during scheduled time
 - Next.js busy recompiling (hot reload)
-- Blocking operation (very long Gmail sync)
+- Blocking operation (very long email sync)
 
 **Solution**:
 - The `recoverMissedExecutions: false` flag is already configured to avoid catch-ups
@@ -451,7 +452,7 @@ pnpm dev
 **Daily-sync**:
 - **Duration**: < 5s per user ideally (can vary based on email count)
 - **Success rate**: > 95% of users
-- **Emails synced**: Varies by Gmail activity
+- **Emails synced**: Varies by email activity
 - **Actions extracted**: ~5-10% of analyzed emails
 
 **Cleanup**:
@@ -475,8 +476,7 @@ pnpm dev
 - [ ] Cron monitoring dashboard in admin UI
 - [ ] Slack/email notifications on critical failure
 - [ ] Automatic retry logic for failed users
-- [ ] Use Gmail History API for more performant incremental sync
-- [ ] Gmail Push Notifications webhooks (real-time instead of polling)
+- [ ] Microsoft Graph webhooks for real-time notifications
 - [ ] Batch creation for actions (performance)
 - [ ] Prometheus/Grafana metrics
 

@@ -8,6 +8,7 @@ import { prisma } from "@/lib/db";
 import { createEmailProvider } from "@/lib/email-provider/factory";
 import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
+import { MAX_EMAILS_TO_SYNC, MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
 
 /**
  * Helper pour obtenir l'identifiant du message selon le provider
@@ -126,18 +127,18 @@ export async function runDailySyncJob() {
           continue;
         }
 
-        // ÉTAPE 1: Synchroniser les nouveaux emails (100 max pour le daily sync)
+        // ÉTAPE 1: Synchroniser les nouveaux emails
         const newEmails = await emailProvider.fetchNewEmails({
-          maxResults: 100,
+          maxResults: MAX_EMAILS_TO_SYNC,
           folder: "INBOX",
         });
 
         console.log(`[DAILY-SYNC JOB] ✅ Synced ${newEmails.length} emails for ${userEmail}`);
         stats.totalEmailsSynced += newEmails.length;
 
-        // ÉTAPE 2: Analyser les emails EXTRACTED (50 max pour le daily sync)
+        // ÉTAPE 2: Analyser les emails EXTRACTED
         const extractedEmails = await emailProvider.getExtractedEmails();
-        const emailsToAnalyze = extractedEmails.slice(0, 50);
+        const emailsToAnalyze = extractedEmails.slice(0, MAX_EMAILS_TO_ANALYZE);
 
         let actionsExtracted = 0;
 
@@ -174,6 +175,7 @@ export async function runDailySyncJob() {
                   emailReceivedAt: emailMetadata.receivedAt,
                   gmailMessageId: emailMetadata.gmailMessageId, // null si IMAP
                   imapUID: emailMetadata.imapUID, // null si Gmail
+                  emailWebUrl: emailMetadata.webUrl, // URL vers l'email dans le webmail
                   dueDate: action.dueDate,
                   status: "TODO",
                 },
