@@ -285,20 +285,22 @@ export class IMAPService {
       const mailbox = await client.getMailboxLock(folder);
 
       try {
-        // Déterminer la plage de UIDs à récupérer
-        let searchCriteria: string;
+        // Déterminer les critères de recherche
+        let searchQuery: Record<string, unknown>;
 
         if (credential?.lastUID) {
           // Récupérer les emails depuis le dernier UID + 1
           const startUID = credential.lastUID + BigInt(1);
-          searchCriteria = `${startUID}:*`;
+          searchQuery = { uid: `${startUID}:*` };
         } else {
-          // Première sync : récupérer les emails récents (dernières 24h)
-          searchCriteria = "*";
+          // Première sync : récupérer les emails des dernières 24h
+          const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+          searchQuery = { since: since24h };
+          console.log(`[IMAP] First sync: fetching emails since ${since24h.toISOString()}`);
         }
 
         // Rechercher les UIDs des messages
-        const uidsResult = await client.search({ uid: searchCriteria }, { uid: true });
+        const uidsResult = await client.search(searchQuery, { uid: true });
 
         // client.search peut retourner false si aucun résultat
         if (!uidsResult || uidsResult.length === 0) {
