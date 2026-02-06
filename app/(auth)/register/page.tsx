@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="relative flex h-screen flex-col items-center justify-center overflow-hidden px-4">
+    <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-4">
       <BackButton
         href="/"
         className="absolute left-4 top-4"
