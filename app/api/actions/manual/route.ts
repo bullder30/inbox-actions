@@ -21,6 +21,7 @@ export async function POST(request: Request) {
       emailFrom,
       emailReceivedAt,
       gmailMessageId,
+      emailWebUrl,
     } = body;
 
     // Validation
@@ -49,6 +50,7 @@ export async function POST(request: Request) {
         emailFrom,
         emailReceivedAt: new Date(emailReceivedAt),
         gmailMessageId: gmailMessageId || null,
+        emailWebUrl: emailWebUrl || null,
         status: "TODO",
       },
     });

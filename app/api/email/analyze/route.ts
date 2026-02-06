@@ -112,6 +112,7 @@ export async function POST(req: NextRequest) {
               emailReceivedAt: emailMetadata.receivedAt,
               gmailMessageId: emailMetadata.gmailMessageId, // Pour lien Gmail (null si IMAP)
               imapUID: emailMetadata.imapUID, // Pour IMAP (null si Gmail)
+              emailWebUrl: emailMetadata.webUrl, // URL vers l'email dans le webmail
               dueDate: action.dueDate,
               status: "TODO",
             },

@@ -97,6 +97,7 @@ export default function MissingActionPage() {
           emailFrom: selectedEmail.from,
           emailReceivedAt: selectedEmail.receivedAt,
           gmailMessageId: selectedEmail.gmailMessageId,
+          emailWebUrl: selectedEmail.webUrl,
         }),
       });
 
