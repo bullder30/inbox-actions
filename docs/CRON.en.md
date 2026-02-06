@@ -68,7 +68,7 @@ The "Pending" counter in the dashboard updates automatically in real-time thanks
 ### Architecture
 
 1. **Client component**: `PendingSyncCard` (React with `useState` and `useEffect`)
-2. **API endpoint**: `/api/gmail/pending-count` (GET)
+2. **API endpoint**: `/api/email/pending-count` (GET)
 3. **Polling**: Every 30 seconds (cron runs every 2 minutes)
 
 ### How it works
@@ -76,7 +76,7 @@ The "Pending" counter in the dashboard updates automatically in real-time thanks
 ```
 [Cron every 2 min] -> Updates count in Gmail
                        ↓
-[Dashboard component] -> Polling /api/gmail/pending-count every 30s
+[Dashboard component] -> Polling /api/email/pending-count every 30s
                        ↓
 [API] -> Calls countNewEmailsInGmail()
                        ↓

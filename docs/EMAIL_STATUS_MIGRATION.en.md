@@ -63,11 +63,11 @@ pnpm build
 
 ### API Routes
 
-**`/api/gmail/analyze`**
+**`/api/email/analyze`**
 - Uses `getExtractedEmails()` to retrieve emails to analyze
 - Marks emails as ANALYZED after processing
 
-**`/api/gmail/status`**
+**`/api/email/status`**
 - Returns `extractedCount` and `analyzedCount` instead of `unprocessedCount`
 
 **`/api/cron/daily-sync`**

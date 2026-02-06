@@ -54,15 +54,18 @@ export async function POST(
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
           },
         },
       },
     });
 
+    // Convertir BigInt en string pour la sérialisation JSON
     return NextResponse.json({
-      action: updatedAction,
+      action: {
+        ...updatedAction,
+        imapUID: updatedAction.imapUID?.toString() ?? null,
+      },
       message: "Action marquée comme ignorée",
     });
   } catch (error) {

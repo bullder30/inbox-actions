@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus } from "lucide-react";
+import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server, Zap } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
@@ -69,7 +69,7 @@ export default async function HomePage() {
             </div>
 
             <h1 className="font-heading text-4xl font-bold tracking-tight sm:text-5xl md:text-6xl lg:text-7xl">
-              Vos emails Gmail transformés en{" "}
+              Vos emails transformés en{" "}
               <span className="text-gradient_indigo-purple">actions claires</span>
             </h1>
 
@@ -82,7 +82,7 @@ export default async function HomePage() {
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto">
                   <Mail className="mr-2 size-5" />
-                  Connecter Gmail gratuitement
+                  Commencer gratuitement
                 </Button>
               </Link>
               <Link href="#features">
@@ -92,10 +92,20 @@ export default async function HomePage() {
               </Link>
             </div>
 
-            <div className="mt-8 flex flex-col items-center gap-2 text-sm text-muted-foreground">
+            <div className="mt-8 flex flex-col items-center gap-3 text-sm text-muted-foreground">
+              <div className="flex flex-wrap items-center justify-center gap-4">
+                <div className="flex items-center gap-2">
+                  <Zap className="size-4 text-blue-500" />
+                  <span>Microsoft Outlook (Graph API)</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Server className="size-4 text-purple-500" />
+                  <span>Gmail, Yahoo, iCloud, Fastmail (IMAP)</span>
+                </div>
+              </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-green-600" />
-                <span>Gmail lecture seule • RGPD • Chiffrement</span>
+                <span>Lecture seule • RGPD • Chiffrement AES-256</span>
               </div>
               <p className="text-xs">
                 Préfère manquer une action que vous stresser avec un doute
@@ -216,15 +226,41 @@ export default async function HomePage() {
               </p>
             </div>
 
-            {/* Feature 6 */}
+            {/* Feature 6 - Microsoft Graph */}
+            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
+                <Zap className="size-6 text-blue-500" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold">Microsoft Outlook sans friction</h3>
+              <p className="text-muted-foreground">
+                Connectez-vous avec votre compte Microsoft et c&apos;est tout !
+                <strong className="mt-2 block">Microsoft Graph API : aucune configuration IMAP requise.</strong>
+              </p>
+            </div>
+
+            {/* Feature 7 - IMAP */}
+            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
+              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-purple-500/10">
+                <Server className="size-6 text-purple-500" />
+              </div>
+              <h3 className="mb-2 text-xl font-semibold">IMAP universel</h3>
+              <p className="text-muted-foreground">
+                Gmail, Yahoo, iCloud, Fastmail, ProtonMail...
+                <br />
+                Connexion via <strong>IMAP avec App Password</strong> : simple, universel, sécurisé.
+                <strong className="mt-2 block">Vos mots de passe sont chiffrés AES-256.</strong>
+              </p>
+            </div>
+
+            {/* Feature 8 */}
             <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
               <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-indigo-500/10">
                 <ShieldCheck className="size-6 text-indigo-500" />
               </div>
-              <h3 className="mb-2 text-xl font-semibold">Gmail = référence optionnelle</h3>
+              <h3 className="mb-2 text-xl font-semibold">Email = référence optionnelle</h3>
               <p className="text-muted-foreground">
-                Toutes vos actions sont gérables ici. Gmail n&apos;est qu&apos;une option pour vérifier le contexte.
-                Vous ne retournez jamais dans Gmail pour travailler.
+                Toutes vos actions sont gérables ici. Votre boîte mail n&apos;est qu&apos;une option pour vérifier le contexte.
+                Vous ne retournez jamais dans votre boîte mail pour travailler.
               </p>
             </div>
           </div>
@@ -247,10 +283,19 @@ export default async function HomePage() {
                 1
               </div>
               <div>
-                <h3 className="mb-2 text-xl font-semibold">Connexion Gmail (lecture seule)</h3>
+                <h3 className="mb-2 text-xl font-semibold">Connexion simple</h3>
                 <p className="text-muted-foreground">
-                  Vous autorisez l&apos;accès en lecture seule à Gmail. Nous ne stockons jamais le contenu complet des emails.
-                  Seulement : expéditeur, sujet, extrait court (200 caractères max).
+                  <strong>Option A - Microsoft (recommandé) :</strong> Connectez-vous avec votre compte Microsoft.
+                  <br />
+                  L&apos;accès aux emails est automatique via Microsoft Graph API. Aucune configuration !
+                </p>
+                <p className="mt-2 text-muted-foreground">
+                  <strong>Option B - Autres providers :</strong> Créez un compte, puis configurez IMAP avec un <strong>App Password</strong>.
+                  <br />
+                  <span className="text-sm">Compatible avec Gmail, Yahoo, iCloud, Fastmail, ProtonMail...</span>
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).
                 </p>
               </div>
             </div>
@@ -263,7 +308,7 @@ export default async function HomePage() {
               <div>
                 <h3 className="mb-2 text-xl font-semibold">Scan automatique ou manuel</h3>
                 <p className="text-muted-foreground">
-                  Scan quotidien automatique à 8h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.
+                  Scan quotidien automatique à 7h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.
                   <strong className="mt-2 block">Sont automatiquement exclus :</strong>
                   newsletters, notifications automatiques, emails no-reply, footers de désinscription.
                 </p>
@@ -507,13 +552,13 @@ export default async function HomePage() {
               Réduisez votre stress email dès aujourd&apos;hui
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-lg text-muted-foreground">
-              Gratuit. Sans carte bancaire. Connexion Gmail en 30 secondes.
+              Gratuit. Sans carte bancaire. Microsoft : connexion instantanée. Autres : configuration IMAP simple.
             </p>
             <div className="mt-8 flex flex-col items-center justify-center gap-4 sm:flex-row">
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto">
                   <Mail className="mr-2 size-5" />
-                  Connecter Gmail maintenant
+                  Commencer maintenant
                 </Button>
               </Link>
               <Link href="/login">

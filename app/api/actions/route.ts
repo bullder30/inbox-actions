@@ -53,15 +53,20 @@ export async function GET(req: NextRequest) {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
           },
         },
       },
     });
 
+    // Convertir les BigInt en string pour la sérialisation JSON
+    const serializedActions = actions.map((action) => ({
+      ...action,
+      imapUID: action.imapUID?.toString() ?? null,
+    }));
+
     return NextResponse.json({
-      actions,
+      actions: serializedActions,
       count: actions.length,
     });
   } catch (error) {
@@ -160,7 +165,6 @@ export async function POST(req: NextRequest) {
         user: {
           select: {
             id: true,
-            name: true,
             email: true,
           },
         },

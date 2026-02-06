@@ -230,7 +230,7 @@ Vous avez dépassé les quotas Gmail API (1 milliard de requêtes par jour, 250 
 
 1. Attendez quelques minutes/heures
 2. Réduisez `maxResults` lors de la synchronisation
-3. Vérifiez les quotas dans [Google Cloud Console](https://console.cloud.google.com/apis/api/gmail.googleapis.com/quotas)
+3. Vérifiez les quotas dans [Google Cloud Console](https://console.cloud.google.com/apis/api/email.googleapis.com/quotas)
 
 ---
 
@@ -285,7 +285,7 @@ Si vous voyez ce message trop souvent (plusieurs fois par heure), cela peut indi
 ### Vérifier le statut Gmail
 
 ```bash
-curl http://localhost:3000/api/gmail/status \
+curl http://localhost:3000/api/email/status \
   -H "Cookie: your-session-cookie"
 ```
 

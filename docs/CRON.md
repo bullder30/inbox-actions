@@ -68,7 +68,7 @@ Le compteur "En attente" dans le dashboard se met à jour automatiquement en tem
 ### Architecture
 
 1. **Composant client** : `PendingSyncCard` (React avec `useState` et `useEffect`)
-2. **API endpoint** : `/api/gmail/pending-count` (GET)
+2. **API endpoint** : `/api/email/pending-count` (GET)
 3. **Polling** : Toutes les 30 secondes (le cron tourne toutes les 2 minutes)
 
 ### Fonctionnement
@@ -76,7 +76,7 @@ Le compteur "En attente" dans le dashboard se met à jour automatiquement en tem
 ```
 [Cron toutes les 2 min] → Met à jour le count dans Gmail
                           ↓
-[Composant dashboard] → Polling /api/gmail/pending-count toutes les 30s
+[Composant dashboard] → Polling /api/email/pending-count toutes les 30s
                           ↓
 [API] → Appelle countNewEmailsInGmail()
                           ↓

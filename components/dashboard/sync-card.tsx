@@ -3,7 +3,7 @@
 import { RefreshCw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { syncGmail, analyzeGmail } from "@/lib/api/gmail";
+import { syncGmail, analyzeGmail } from "@/lib/api/email";
 import { toast } from "sonner";
 import { useState } from "react";
 import { useRouter } from "next/navigation";

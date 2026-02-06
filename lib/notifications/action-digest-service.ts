@@ -18,7 +18,6 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
       where: { id: userId },
       select: {
         email: true,
-        name: true,
         emailNotifications: true,
         lastNotificationSent: true,
       },
@@ -65,7 +64,7 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
     // Pré-rendre l'email en HTML pour éviter les erreurs sur Vercel serverless
     const emailHtml = await render(
       ActionDigestEmail({
-        userName: user.name || "Utilisateur",
+        userName: user.email.split("@")[0] || "Utilisateur",
         totalTodo: stats.totalTodo,
         urgentCount: stats.urgentCount,
         overdueCount: stats.overdueCount,

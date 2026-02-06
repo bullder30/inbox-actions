@@ -17,7 +17,11 @@ import { UserAvatar } from "@/components/shared/user-avatar";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useState } from "react";
 
-export function UserAccountNav() {
+interface UserAccountNavProps {
+  todoCount?: number;
+}
+
+export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
   const { data: session } = useSession();
   const user = session?.user;
 
@@ -38,7 +42,7 @@ export function UserAccountNav() {
       <Drawer.Root open={open} onClose={closeDrawer}>
         <Drawer.Trigger onClick={() => setOpen(true)}>
           <UserAvatar
-            user={{ name: user.name || null, image: user.image || null }}
+            user={{ email: user.email || null, image: user.image || null }}
             className="size-9 border"
           />
         </Drawer.Trigger>
@@ -54,10 +58,9 @@ export function UserAccountNav() {
 
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col">
-                {user.name && <p className="font-medium">{user.name}</p>}
                 {user.email && (
-                  <p className="w-[200px] truncate text-muted-foreground">
-                    {user?.email}
+                  <p className="font-medium">
+                    {user.email}
                   </p>
                 )}
               </div>
@@ -70,7 +73,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Home className="size-4" />
+                  <Home className="size-4 text-[#764ba2]" />
                   <p className="text-sm">Accueil</p>
                 </Link>
               </li>
@@ -81,8 +84,18 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Inbox className="size-4" />
-                  <p className="text-sm">Actions</p>
+                  <Inbox className="size-4 text-[#764ba2]" />
+                  <p className="relative text-sm">
+                    Actions
+                    {todoCount > 0 && (
+                      <span
+                        className="absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                        style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                      >
+                        {todoCount > 9 ? "9+" : todoCount}
+                      </span>
+                    )}
+                  </p>
                 </Link>
               </li>
 
@@ -92,7 +105,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Settings className="size-4" />
+                  <Settings className="size-4 text-[#764ba2]" />
                   <p className="text-sm">Paramètres</p>
                 </Link>
               </li>
@@ -105,7 +118,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Mail className="size-4" />
+                  <Mail className="size-4 text-[#764ba2]" />
                   <p className="text-sm">Contact</p>
                 </Link>
               </li>
@@ -120,7 +133,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <FileText className="size-4" />
+                  <FileText className="size-4 text-[#764ba2]" />
                   <p className="text-sm">CGU</p>
                 </Link>
               </li>
@@ -131,7 +144,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Shield className="size-4" />
+                  <Shield className="size-4 text-[#764ba2]" />
                   <p className="text-sm">Confidentialité</p>
                 </Link>
               </li>
@@ -144,7 +157,7 @@ export function UserAccountNav() {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <ExternalLink className="size-4" />
+                  <ExternalLink className="size-4 text-[#764ba2]" />
                   <p className="text-sm">Licence AGPL-3.0</p>
                 </Link>
               </li>
@@ -161,7 +174,7 @@ export function UserAccountNav() {
                 }}
               >
                 <div className="flex w-full items-center gap-3 px-2.5 py-2">
-                  <LogOut className="size-4" />
+                  <LogOut className="size-4 text-[#764ba2]" />
                   <p className="text-sm">Se déconnecter</p>
                 </div>
               </li>
@@ -177,17 +190,16 @@ export function UserAccountNav() {
     <DropdownMenu open={open} onOpenChange={setOpen}>
       <DropdownMenuTrigger>
         <UserAvatar
-          user={{ name: user.name || null, image: user.image || null }}
+          user={{ email: user.email || null, image: user.image || null }}
           className="size-8 border"
         />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
         <div className="flex items-center justify-start gap-2 p-2">
           <div className="flex flex-col space-y-1 leading-none">
-            {user.name && <p className="font-medium">{user.name}</p>}
             {user.email && (
-              <p className="w-[200px] truncate text-sm text-muted-foreground">
-                {user?.email}
+              <p className="text-sm font-medium">
+                {user.email}
               </p>
             )}
           </div>
@@ -196,15 +208,25 @@ export function UserAccountNav() {
 
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="flex items-center space-x-2.5">
-            <Home className="size-4" />
+            <Home className="size-4 text-[#764ba2]" />
             <p className="text-sm">Accueil</p>
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/actions" className="flex items-center space-x-2.5">
-            <Inbox className="size-4" />
-            <p className="text-sm">Actions</p>
+            <Inbox className="size-4 text-[#764ba2]" />
+            <p className="relative text-sm">
+              Actions
+              {todoCount > 0 && (
+                <span
+                  className="absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
+                  style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                >
+                  {todoCount > 9 ? "9+" : todoCount}
+                </span>
+              )}
+            </p>
           </Link>
         </DropdownMenuItem>
 
@@ -213,7 +235,7 @@ export function UserAccountNav() {
             href="/settings"
             className="flex items-center space-x-2.5"
           >
-            <Settings className="size-4" />
+            <Settings className="size-4 text-[#764ba2]" />
             <p className="text-sm">Paramètres</p>
           </Link>
         </DropdownMenuItem>
@@ -221,7 +243,7 @@ export function UserAccountNav() {
 
         <DropdownMenuItem asChild>
           <Link href="/contact" className="flex items-center space-x-2.5">
-            <Mail className="size-4" />
+            <Mail className="size-4 text-[#764ba2]" />
             <p className="text-sm">Contact</p>
           </Link>
         </DropdownMenuItem>
@@ -232,14 +254,14 @@ export function UserAccountNav() {
 
         <DropdownMenuItem asChild>
           <Link href="/terms" className="flex items-center space-x-2.5">
-            <FileText className="size-4" />
+            <FileText className="size-4 text-[#764ba2]" />
             <p className="text-sm">CGU</p>
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/privacy" className="flex items-center space-x-2.5">
-            <Shield className="size-4" />
+            <Shield className="size-4 text-[#764ba2]" />
             <p className="text-sm">Confidentialité</p>
           </Link>
         </DropdownMenuItem>
@@ -251,7 +273,7 @@ export function UserAccountNav() {
             rel="noopener noreferrer"
             className="flex items-center space-x-2.5"
           >
-            <ExternalLink className="size-4" />
+            <ExternalLink className="size-4 text-[#764ba2]" />
             <p className="text-sm">Licence AGPL-3.0</p>
           </Link>
         </DropdownMenuItem>
@@ -267,7 +289,7 @@ export function UserAccountNav() {
           }}
         >
           <div className="flex items-center space-x-2.5">
-            <LogOut className="size-4" />
+            <LogOut className="size-4 text-[#764ba2]" />
             <p className="text-sm">Se déconnecter</p>
           </div>
         </DropdownMenuItem>

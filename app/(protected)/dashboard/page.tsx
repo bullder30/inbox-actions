@@ -19,6 +19,8 @@ import { fr } from "date-fns/locale";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
+export const dynamic = "force-dynamic";
+
 export const metadata = constructMetadata({
   title: "Tableau de bord – Inbox Actions",
   description: "Gérez vos actions et tâches extraites de vos emails.",
@@ -46,11 +48,11 @@ export default async function DashboardPage() {
       prisma.action.count({
         where: { userId: user.id, status: "IGNORED" },
       }),
-      // Statut Gmail + createdAt pour le message de bienvenue
+      // Statut sync + createdAt pour le message de bienvenue
       prisma.user.findUnique({
         where: { id: user.id },
         select: {
-          lastGmailSync: true,
+          lastEmailSync: true,
           createdAt: true,
           _count: {
             select: {
@@ -71,7 +73,6 @@ export default async function DashboardPage() {
           user: {
             select: {
               id: true,
-              name: true,
               email: true,
             },
           },
@@ -82,8 +83,8 @@ export default async function DashboardPage() {
   // Feature flag for email count
   const isEmailCountEnabled = process.env.FEATURE_EMAIL_COUNT === "true";
 
-  const lastSyncText = gmailStatus?.lastGmailSync
-    ? formatDistanceToNow(gmailStatus.lastGmailSync, {
+  const lastSyncText = gmailStatus?.lastEmailSync
+    ? formatDistanceToNow(gmailStatus.lastEmailSync, {
         locale: fr,
       })
     : "jamais";

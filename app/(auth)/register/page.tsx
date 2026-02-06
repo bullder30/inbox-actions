@@ -3,8 +3,7 @@ import { Metadata } from "next";
 import Link from "next/link";
 
 import { BackButton } from "@/components/shared/back-button";
-import { RegisterAuthForm } from "@/components/forms/register-auth-form";
-import { SiteFooter } from "@/components/layout/site-footer";
+import { UserAuthForm } from "@/components/forms/user-auth-form";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
 
 export const metadata: Metadata = {
@@ -14,54 +13,60 @@ export const metadata: Metadata = {
 
 export default function RegisterPage() {
   return (
-    <div className="flex min-h-screen flex-col">
-      <div className="container flex flex-1 flex-col items-center justify-center">
-        <BackButton
-          href="/"
-          className="absolute left-4 top-4 md:left-8 md:top-8"
-        />
-        <div className="mx-auto flex w-full flex-col justify-center space-y-6 sm:w-[350px]">
-          <div className="flex flex-col space-y-2 text-center">
-            <InboxActionsIcon size="lg" className="mx-auto" />
-            <h1 className="text-2xl font-semibold tracking-tight">
-              Créer un compte
+    <div className="relative flex h-dvh flex-col items-center justify-center overflow-hidden px-4">
+      <BackButton
+        href="/"
+        className="absolute left-4 top-4"
+      />
+      <div className="w-full max-w-[320px] space-y-4 sm:max-w-[350px] sm:space-y-6">
+        {/* Logo + Title */}
+        <div className="flex flex-col items-center gap-2">
+          <div className="flex items-center gap-2">
+            <InboxActionsIcon size="md" />
+            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+              Inbox Actions
             </h1>
-            <p className="text-sm text-muted-foreground">
-              Connectez-vous avec Google pour créer votre compte et accéder à vos emails
-            </p>
           </div>
-          <Suspense>
-            <RegisterAuthForm />
-          </Suspense>
-          <p className="px-8 text-center text-sm text-muted-foreground">
-            Vous avez déjà un compte ?{" "}
-            <Link
-              href="/login"
-              className="font-medium underline underline-offset-4 hover:text-primary"
-            >
-              Se connecter
-            </Link>
-          </p>
-          <p className="px-8 text-center text-xs text-muted-foreground">
-            En continuant, vous acceptez nos{" "}
-            <Link
-              href="/terms"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Conditions d&apos;utilisation
-            </Link>{" "}
-            et notre{" "}
-            <Link
-              href="/privacy"
-              className="underline underline-offset-4 hover:text-primary"
-            >
-              Politique de confidentialité
-            </Link>
-            .
+          <p className="text-center text-sm text-muted-foreground">
+            Créez votre compte pour commencer
           </p>
         </div>
+
+        {/* Auth Form */}
+        <Suspense>
+          <UserAuthForm mode="register" />
+        </Suspense>
+
+        {/* Login Link */}
+        <p className="text-center text-sm text-muted-foreground">
+          Vous avez déjà un compte ?{" "}
+          <Link
+            href="/login"
+            className="font-medium underline underline-offset-4 hover:text-primary"
+          >
+            Se connecter
+          </Link>
+        </p>
+
+        {/* Legal Links */}
+        <p className="text-center text-xs text-muted-foreground">
+          En continuant, vous acceptez nos{" "}
+          <Link
+            href="/terms"
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            CGU
+          </Link>{" "}
+          et notre{" "}
+          <Link
+            href="/privacy"
+            className="underline underline-offset-4 hover:text-primary"
+          >
+            Politique de confidentialité
+          </Link>
+          .
+        </p>
       </div>
-      <SiteFooter />
     </div>
   );
 }

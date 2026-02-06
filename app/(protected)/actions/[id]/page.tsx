@@ -19,6 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Check,
   X,
@@ -114,8 +115,64 @@ export default function ActionDetailPage({
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="size-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        {/* Back button skeleton */}
+        <Skeleton className="h-9 w-36" />
+
+        {/* Card skeleton */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-start justify-between gap-4">
+              <div className="flex-1 space-y-2">
+                <Skeleton className="h-7 w-3/4" />
+                <div className="flex items-center gap-2">
+                  <Skeleton className="size-4" />
+                  <Skeleton className="h-4 w-32" />
+                  <Skeleton className="size-4" />
+                  <Skeleton className="h-4 w-24" />
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="h-5 w-16 rounded-full" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+            </div>
+          </CardHeader>
+
+          <CardContent className="space-y-6">
+            {/* Phrase source skeleton */}
+            <div>
+              <Skeleton className="mb-2 h-4 w-24" />
+              <div className="rounded-lg border bg-muted/50 p-4">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="mt-2 h-4 w-2/3" />
+              </div>
+            </div>
+
+            {/* Échéance skeleton */}
+            <div>
+              <Skeleton className="mb-2 h-4 w-16" />
+              <Skeleton className="h-10 w-48 rounded-lg" />
+            </div>
+
+            {/* Métadonnées skeleton */}
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+              <div className="space-y-1">
+                <Skeleton className="h-4 w-16" />
+                <Skeleton className="h-5 w-32" />
+              </div>
+            </div>
+          </CardContent>
+
+          <CardFooter className="flex gap-2">
+            <Skeleton className="h-10 flex-1" />
+            <Skeleton className="h-10 flex-1" />
+          </CardFooter>
+        </Card>
       </div>
     );
   }

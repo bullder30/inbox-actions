@@ -126,7 +126,7 @@ export async function GET() {
 **Implémenté :**
 
 ```typescript
-// POST /api/gmail/disconnect
+// POST /api/email/disconnect
 // Supprime TOUTES les données Gmail de l'utilisateur
 
 await prisma.emailMetadata.deleteMany({

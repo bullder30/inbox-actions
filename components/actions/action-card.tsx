@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
-import { ActionWithUser } from "@/lib/api/actions";
+import { ActionWithUser, ActionWithUserPrisma } from "@/lib/api/actions";
 import {
   Card,
   CardContent,
@@ -31,7 +31,8 @@ import { toast } from "sonner";
 import { markActionAsDone, markActionAsIgnored } from "@/lib/api/actions";
 
 interface ActionCardProps {
-  action: ActionWithUser;
+  // Accepte les deux types: API (imapUID string) et Prisma (imapUID BigInt)
+  action: ActionWithUser | ActionWithUserPrisma;
   onUpdate?: () => void;
   variant?: "default" | "compact";
 }
