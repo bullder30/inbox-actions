@@ -59,7 +59,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
             <div className="flex items-center justify-start gap-2 p-2">
               <div className="flex flex-col">
                 {user.email && (
-                  <p className="w-[200px] truncate font-medium">
+                  <p className="font-medium">
                     {user.email}
                   </p>
                 )}
@@ -198,7 +198,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
         <div className="flex items-center justify-start gap-2 p-2">
           <div className="flex flex-col space-y-1 leading-none">
             {user.email && (
-              <p className="w-[200px] truncate text-sm font-medium">
+              <p className="text-sm font-medium">
                 {user.email}
               </p>
             )}
