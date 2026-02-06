@@ -18,6 +18,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -141,8 +142,25 @@ export function GraphStatus({ onStatusChange, showTitle = false }: GraphStatusPr
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-4">
-        <Loader2 className="size-5 animate-spin text-muted-foreground" />
+      <div className="space-y-4">
+        {showTitle && (
+          <div className="flex items-center gap-2">
+            <Skeleton className="size-5 rounded" />
+            <Skeleton className="h-5 w-36" />
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        <div className="flex items-center gap-2">
+          <Skeleton className="size-4 rounded" />
+          <Skeleton className="h-4 w-40" />
+        </div>
+        <div className="flex gap-2">
+          <Skeleton className="h-9 w-28" />
+          <Skeleton className="size-9" />
+        </div>
       </div>
     );
   }
