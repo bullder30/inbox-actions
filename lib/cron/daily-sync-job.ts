@@ -204,9 +204,14 @@ export async function runDailySyncJob() {
         // Envoyer la notification si des emails ont été extraits ou analysés
         // Ne pas bloquer le cron en cas d'erreur
         if (newEmails.length > 0 || actionsExtracted > 0) {
-          sendActionDigest(userId).catch((error) => {
-            console.error(`[DAILY-SYNC JOB] Error sending notification to ${userEmail}:`, error);
-          });
+          console.log(`[DAILY-SYNC JOB] 📧 Triggering sendActionDigest for ${userEmail} (fire-and-forget)`);
+          sendActionDigest(userId)
+            .then((sent) => {
+              console.log(`[DAILY-SYNC JOB] 📧 sendActionDigest result for ${userEmail}: ${sent}`);
+            })
+            .catch((error) => {
+              console.error(`[DAILY-SYNC JOB] 📧 sendActionDigest ERROR for ${userEmail}:`, error);
+            });
         }
       } catch (userError) {
         console.error(`[DAILY-SYNC JOB] ❌ Error for ${userEmail}:`, userError);
@@ -229,6 +234,8 @@ export async function runDailySyncJob() {
     if (stats.errors.length > 0) {
       console.warn(`[DAILY-SYNC JOB] Errors:`, stats.errors);
     }
+
+    console.log(`[DAILY-SYNC JOB] ⏱️ About to return result. Pending sendActionDigest promises may not resolve on Vercel serverless.`);
 
     return {
       success: true,
