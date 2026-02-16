@@ -442,9 +442,9 @@ export class IMAPService {
           error instanceof Error ? error.message : "Unknown error"
         }`
       );
-    } finally {
-      await this.disconnect();
     }
+    // Note: pas de disconnect() ici — la connexion est réutilisée
+    // L'appelant doit appeler disconnect() quand il a fini
   }
 
   /**
@@ -492,9 +492,9 @@ export class IMAPService {
     } catch (error) {
       console.error(`[IMAP] Error fetching email body for UID ${imapUID}:`, error);
       return null;
-    } finally {
-      await this.disconnect();
     }
+    // Note: pas de disconnect() ici — la connexion est réutilisée
+    // L'appelant doit appeler disconnect() quand il a fini
   }
 
   /**
