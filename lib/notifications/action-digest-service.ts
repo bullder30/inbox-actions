@@ -5,6 +5,9 @@ import { prisma } from "@/lib/db";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+// Diagnostic: log au chargement du module pour vérifier la config
+console.log(`[Notification] Module loaded. RESEND_API_KEY present: ${!!process.env.RESEND_API_KEY}, EMAIL_FROM: ${process.env.EMAIL_FROM || "(not set, fallback to onboarding@resend.dev)"}`);
+
 interface DigestStats {
   totalTodo: number;
   urgentCount: number;
@@ -12,6 +15,7 @@ interface DigestStats {
 }
 
 export async function sendActionDigest(userId: string): Promise<boolean> {
+  console.log(`[Notification] >>> sendActionDigest called for userId=${userId}`);
   try {
     // 1. Vérifier les préférences utilisateur
     const user = await prisma.user.findUnique({
@@ -24,12 +28,12 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
     });
 
     if (!user || !user.email) {
-      console.log(`[Notification] User ${userId}: no email`);
+      console.log(`[Notification] ❌ STOP: User ${userId} has no email`);
       return false;
     }
 
     if (!user.emailNotifications) {
-      console.log(`[Notification] User ${user.email}: notifications disabled`);
+      console.log(`[Notification] ❌ STOP: User ${user.email} has emailNotifications=false`);
       return false;
     }
 
@@ -40,7 +44,7 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
       const thirtyMinutes = 30 * 60 * 1000;
 
       if (timeSinceLastEmail < thirtyMinutes) {
-        console.log(`[Notification] User ${user.email}: too soon since last email`);
+        console.log(`[Notification] ❌ STOP: User ${user.email} cooldown active (last sent: ${user.lastNotificationSent?.toISOString()}, ${Math.round(timeSinceLastEmail / 1000)}s ago)`);
         return false;
       }
     }
@@ -50,7 +54,7 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
 
     // 4. Ne rien envoyer si aucune action en attente
     if (stats.totalTodo === 0) {
-      console.log(`[Notification] User ${user.email}: no pending actions`);
+      console.log(`[Notification] ❌ STOP: User ${user.email} has 0 TODO actions`);
       return false;
     }
 
@@ -73,6 +77,8 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
       })
     );
 
+    console.log(`[Notification] 📤 Sending email to ${user.email} via Resend (from: ${fromAddress}, stats: ${JSON.stringify(stats)})`);
+
     const { data, error } = await resend.emails.send({
       from: fromAddress,
       to: user.email,
@@ -81,11 +87,11 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
     });
 
     if (error) {
-      console.error(`[Notification] Resend error for ${user.email}:`, error);
+      console.error(`[Notification] ❌ Resend API error for ${user.email}:`, error);
       throw new Error(error.message || "Failed to send email");
     }
 
-    console.log(`[Notification] Resend success for ${user.email}:`, data);
+    console.log(`[Notification] ✅ Resend success for ${user.email}: messageId=${data?.id}`);
 
     // 6. Mettre à jour le timestamp d'envoi
     await prisma.user.update({
@@ -93,10 +99,10 @@ export async function sendActionDigest(userId: string): Promise<boolean> {
       data: { lastNotificationSent: now },
     });
 
-    console.log(`[Notification] ✅ Email sent to ${user.email} (${stats.totalTodo} actions)`);
+    console.log(`[Notification] ✅ DONE: Email sent to ${user.email} (${stats.totalTodo} actions)`);
     return true;
   } catch (error) {
-    console.error(`[Notification] Error sending email to user ${userId}:`, error);
+    console.error(`[Notification] ❌ EXCEPTION for userId=${userId}:`, error);
     return false;
   }
 }
