@@ -25,6 +25,8 @@ function getMessageId(email: { gmailMessageId?: string | null; imapUID?: bigint 
  * Méthode : Regex déterministes uniquement, pas d'IA opaque
  */
 export async function POST(req: NextRequest) {
+  let emailProvider: Awaited<ReturnType<typeof createEmailProvider>> = null;
+
   try {
     // Vérification de l'authentification
     const session = await auth();
@@ -36,7 +38,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
-    const emailProvider = await createEmailProvider(session.user.id);
+    emailProvider = await createEmailProvider(session.user.id);
 
     if (!emailProvider) {
       return NextResponse.json(
@@ -135,11 +137,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Envoyer la notification si des actions ont été extraites
-    // Ne pas attendre l'envoi pour répondre à l'utilisateur
     if (extractedActionsCount > 0) {
-      sendActionDigest(session.user.id).catch((error) => {
-        console.error("[Analyze] Error sending notification:", error);
-      });
+      try {
+        await sendActionDigest(session.user.id);
+      } catch (notifError) {
+        console.error("[Analyze] Error sending notification:", notifError);
+      }
     }
 
     return NextResponse.json({
@@ -155,5 +158,14 @@ export async function POST(req: NextRequest) {
       { error: "Erreur lors de l'analyse des emails" },
       { status: 500 }
     );
+  } finally {
+    // Fermer la connexion email (IMAP) proprement
+    if (emailProvider) {
+      try {
+        await emailProvider.disconnect();
+      } catch (disconnectError) {
+        console.warn("[Analyze] Error disconnecting:", disconnectError);
+      }
+    }
   }
 }
