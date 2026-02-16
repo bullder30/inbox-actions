@@ -133,26 +133,12 @@ export const {
       return session;
     },
 
-    async jwt({ token, account }) {
+    async jwt({ token }) {
       if (!token.sub) return token;
 
       const dbUser = await getUserById(token.sub);
 
-      if (!dbUser) {
-        if (account) {
-          // Sign-in initial : l'utilisateur vient d'être créé par le
-          // PrismaAdapter mais n'est peut-être pas encore visible.
-          // On garde le token intact pour ne pas bloquer le login.
-          return token;
-        }
-        // L'utilisateur n'existe plus en base → invalider le token
-        // Cela forcera une déconnexion au prochain accès
-        console.warn(`[Auth] User ${token.sub} not found in database, invalidating token`);
-        token.sub = undefined;
-        token.email = undefined;
-        token.role = undefined as any;
-        return token;
-      }
+      if (!dbUser) return token;
 
       token.email = dbUser.email;
       token.picture = dbUser.image;
