@@ -1,16 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
 
     if (!user?.id) {
       return NextResponse.json({ error: "Non autorisé" }, { status: 401 });
     }
+
+    const { searchParams } = new URL(req.url);
+    const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
+    const limit = Math.min(Number.isNaN(rawLimit) ? 20 : rawLimit, 100);
+    const rawOffset = parseInt(searchParams.get("offset") ?? "0", 10);
+    const offset = Number.isNaN(rawOffset) ? 0 : rawOffset;
 
     // Récupérer les emails analysés
     const analyzedEmails = await prisma.emailMetadata.findMany({
@@ -115,7 +121,10 @@ export async function GET() {
         mailboxLabel: email.mailboxId ? (mailboxLabelMap.get(email.mailboxId) ?? null) : null,
       }));
 
-    return NextResponse.json({ emails: ignoredEmails });
+    const total = ignoredEmails.length;
+    const page = ignoredEmails.slice(offset, offset + limit);
+
+    return NextResponse.json({ emails: page, total, hasMore: offset + limit < total });
   } catch (error) {
     console.error("Error fetching ignored emails:", error);
     return NextResponse.json(

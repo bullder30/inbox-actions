@@ -26,7 +26,8 @@ export type ActionWithUserPrisma = Action & {
 
 export type GetActionsResponse = {
   actions: ActionWithUser[];
-  count: number;
+  total: number;
+  hasMore: boolean;
 };
 
 export type CreateActionResponse = {
@@ -66,6 +67,8 @@ export type UpdateActionInput = Partial<{
 export type GetActionsParams = {
   status?: ActionStatus;
   type?: ActionType;
+  limit?: number;
+  offset?: number;
 };
 
 /**
@@ -81,6 +84,12 @@ export async function getActions(
   }
   if (params?.type) {
     searchParams.append("type", params.type);
+  }
+  if (params?.limit !== undefined) {
+    searchParams.append("limit", params.limit.toString());
+  }
+  if (params?.offset !== undefined) {
+    searchParams.append("offset", params.offset.toString());
   }
 
   const url = `/api/actions${searchParams.toString() ? `?${searchParams.toString()}` : ""}`;

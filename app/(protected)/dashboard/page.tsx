@@ -16,6 +16,8 @@ import { SyncCard } from "@/components/dashboard/sync-card";
 import { constructMetadata } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
+import { formatDistanceToNow } from "date-fns";
+import { fr } from "date-fns/locale";
 
 export const dynamic = "force-dynamic";
 
@@ -31,56 +33,55 @@ export default async function DashboardPage() {
     return null;
   }
 
-  // Récupérer les statistiques
-  const [todoCount, doneCount, ignoredCount, gmailStatus, mailboxCount, recentActions] =
-    await Promise.all([
-      // Compter les actions TODO
-      prisma.action.count({
-        where: { userId: user.id, status: "TODO" },
-      }),
-      // Compter les actions DONE
-      prisma.action.count({
-        where: { userId: user.id, status: "DONE" },
-      }),
-      // Compter les actions IGNORED
-      prisma.action.count({
-        where: { userId: user.id, status: "IGNORED" },
-      }),
-      // Statut sync + createdAt pour le message de bienvenue
-      prisma.user.findUnique({
-        where: { id: user.id },
-        select: {
-          createdAt: true,
-          _count: {
-            select: {
-              emailMetadata: true,
-            },
-          },
-        },
-      }),
-      // Nombre de boîtes mail configurées (IMAP + Microsoft Graph)
-      Promise.all([
-        prisma.iMAPCredential.count({ where: { userId: user.id } }),
-        prisma.microsoftGraphMailbox.count({ where: { userId: user.id, isActive: true } }),
-      ]).then(([imap, graph]) => imap + graph),
-      // Actions récentes TODO
-      prisma.action.findMany({
-        where: { userId: user.id, status: "TODO" },
-        orderBy: [
-          { dueDate: "asc" }, // Les plus urgentes d'abord
-          { createdAt: "desc" }, // Puis les plus récentes
-        ],
-        take: 5,
-        include: {
-          user: {
-            select: {
-              id: true,
-              email: true,
-            },
-          },
-        },
-      }),
-    ]);
+  // Toutes les requêtes en parallèle
+  const [
+    todoCount, doneCount, ignoredCount, gmailStatus, mailboxCount, recentActions,
+    imapSyncs, graphSyncs,
+  ] = await Promise.all([
+    // Compter les actions TODO
+    prisma.action.count({ where: { userId: user.id, status: "TODO" } }),
+    // Compter les actions DONE
+    prisma.action.count({ where: { userId: user.id, status: "DONE" } }),
+    // Compter les actions IGNORED
+    prisma.action.count({ where: { userId: user.id, status: "IGNORED" } }),
+    // Statut sync + createdAt pour le message de bienvenue
+    prisma.user.findUnique({
+      where: { id: user.id },
+      select: { createdAt: true, _count: { select: { emailMetadata: true } } },
+    }),
+    // Nombre de boîtes mail configurées (IMAP + Microsoft Graph)
+    Promise.all([
+      prisma.iMAPCredential.count({ where: { userId: user.id } }),
+      prisma.microsoftGraphMailbox.count({ where: { userId: user.id, isActive: true } }),
+    ]).then(([imap, graph]) => imap + graph),
+    // Actions récentes TODO
+    prisma.action.findMany({
+      where: { userId: user.id, status: "TODO" },
+      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
+      take: 5,
+      include: { user: { select: { id: true, email: true } } },
+    }),
+    // Dernière sync IMAP
+    prisma.iMAPCredential.findMany({
+      where: { userId: user.id },
+      select: { lastIMAPSync: true },
+    }),
+    // Dernière sync Microsoft Graph
+    prisma.microsoftGraphMailbox.findMany({
+      where: { userId: user.id, isActive: true },
+      select: { lastSync: true },
+    }),
+  ]);
+  const allSyncDates = [
+    ...imapSyncs.map((c) => c.lastIMAPSync),
+    ...graphSyncs.map((m) => m.lastSync),
+  ].filter((d): d is Date => d !== null);
+  const lastSyncDate = allSyncDates.length > 0
+    ? allSyncDates.reduce((a, b) => (a > b ? a : b))
+    : null;
+  const lastSyncText = lastSyncDate
+    ? formatDistanceToNow(lastSyncDate, { locale: fr, addSuffix: true })
+    : "jamais";
 
   // Feature flag for email count
   const isEmailCountEnabled = process.env.FEATURE_EMAIL_COUNT === "true";
@@ -141,9 +142,9 @@ export default async function DashboardPage() {
         />
         {hasMailboxes && (
           isEmailCountEnabled ? (
-            <PendingSyncCard lastSyncText="jamais" />
+            <PendingSyncCard lastSyncText={lastSyncText} />
           ) : (
-            <SyncCard lastSyncText="jamais" />
+            <SyncCard lastSyncText={lastSyncText} />
           )
         )}
       </div>

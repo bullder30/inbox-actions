@@ -754,7 +754,7 @@ export default auth((req) => {
 
 **Base endpoints:**
 - `POST /api/actions` - Create action (not implemented, use `/api/actions/manual`)
-- `GET /api/actions` - List actions with filters
+- `GET /api/actions` - List actions with filters + pagination (`limit`, `offset`, returns `{ actions, total, hasMore }`)
 - `GET /api/actions/[id]` - Get single action
 - `PUT /api/actions/[id]` - Update action
 - `DELETE /api/actions/[id]` - Delete action
