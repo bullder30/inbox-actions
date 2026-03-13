@@ -11,7 +11,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { createEmailProvider } from "@/lib/email-provider/factory";
+import { createAllEmailProviders } from "@/lib/email-provider/factory";
 
 export async function runCountNewEmailsJob() {
   const startTime = Date.now();
@@ -52,22 +52,25 @@ export async function runCountNewEmailsJob() {
       const userEmail = user.email || "unknown";
 
       try {
-        // Créer le provider email
-        const emailProvider = await createEmailProvider(userId);
+        // Créer tous les providers email de l'utilisateur (multi-boîtes)
+        const emailProviders = await createAllEmailProviders(userId);
 
-        if (!emailProvider) {
+        if (emailProviders.length === 0) {
           stats.failedUsers++;
           continue;
         }
 
-        // UNIQUEMENT compter les nouveaux emails (pas de synchronisation)
-        const newEmailsCount = await emailProvider.countNewEmails();
-
-        if (newEmailsCount > 0) {
-          console.log(`[COUNT-NEW-EMAILS JOB] ${userEmail}: ${newEmailsCount} new emails`);
+        // Compter les nouveaux emails sur toutes les boîtes (count cumulé)
+        let userCount = 0;
+        for (const provider of emailProviders) {
+          userCount += await provider.countNewEmails();
         }
 
-        stats.totalNewEmails += newEmailsCount;
+        if (userCount > 0) {
+          console.log(`[COUNT-NEW-EMAILS JOB] ${userEmail}: ${userCount} new emails (${emailProviders.length} mailbox(es))`);
+        }
+
+        stats.totalNewEmails += userCount;
         stats.successUsers++;
       } catch (userError) {
         console.error(`[COUNT-NEW-EMAILS JOB] Error for ${userEmail}:`, userError);
