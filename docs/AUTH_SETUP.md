@@ -6,6 +6,9 @@ Ce guide explique comment configurer les différentes méthodes d'authentificati
 
 - [Vue d'ensemble](#vue-densemble)
 - [Authentification Email/Mot de passe](#authentification-emailmot-de-passe)
+- [Vérification d'email](#vérification-demail)
+- [Réinitialisation du mot de passe](#réinitialisation-du-mot-de-passe)
+- [Acceptation des CGU](#acceptation-des-cgu)
 - [Google OAuth](#google-oauth)
 - [Microsoft OAuth](#microsoft-oauth)
 - [Configuration IMAP](#configuration-imap)
@@ -150,6 +153,60 @@ Disponible uniquement pour les comptes email/mot de passe.
 - Token stocké hashé dans `User.passwordResetToken` avec expiry `User.passwordResetExpiry`
 - Durée de validité : **1 heure**
 - Token et expiry sont effacés après utilisation
+
+---
+
+## Acceptation des CGU
+
+Tous les utilisateurs — quelle que soit la méthode d'authentification — doivent accepter les Conditions Générales d'Utilisation avant d'accéder à l'application.
+
+### Comportement par provider
+
+| Provider | Moment de l'acceptation |
+|----------|-------------------------|
+| **Email/Mot de passe** | Lors de l'inscription (checkbox dans le formulaire) |
+| **Google OAuth** | Au premier accès à une page protégée après la connexion |
+| **Microsoft OAuth** | Au premier accès à une page protégée après la connexion |
+
+### Flow OAuth
+
+```
+Connexion Google/Microsoft → /dashboard (ou toute page protégée)
+                                    ↓
+               (protected)/layout.tsx vérifie termsAcceptedAt
+                                    ↓
+              termsAcceptedAt = null → redirect /accept-terms
+                                    ↓
+                 Utilisateur coche la case et clique "Continuer"
+                                    ↓
+              POST /api/user/accept-terms → termsAcceptedAt = now()
+                                    ↓
+                             router.push("/dashboard")
+```
+
+### API endpoint
+
+| Endpoint | Méthode | Auth requise | Description |
+|----------|---------|--------------|-------------|
+| `/api/user/accept-terms` | POST | Oui | Enregistre l'acceptation (`termsAcceptedAt = now()`) |
+
+### Champ base de données
+
+```prisma
+model User {
+  // ...
+  termsAcceptedAt DateTime? @map(name: "terms_accepted_at")
+}
+```
+
+- `null` → CGU non acceptées → redirection vers `/accept-terms`
+- `DateTime` → CGU acceptées → accès autorisé
+
+### Page `/accept-terms`
+
+- Route publique (hors groupe `(protected)`)
+- Accessible uniquement après authentification (l'endpoint API vérifie la session)
+- Affiche les liens vers `/terms` et `/privacy`
 
 ---
 
