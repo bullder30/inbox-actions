@@ -99,9 +99,11 @@ export const {
             where: { identifier: user.email! },
           });
           if (!existingToken) {
-            sendVerificationEmail(user.email!).catch((err) =>
-              console.error("[Auth] Failed to send verification email:", err)
-            );
+            try {
+              await sendVerificationEmail(user.email!);
+            } catch (err) {
+              console.error("[Auth] Failed to send verification email:", err);
+            }
           }
         }
       }
