@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Clock,
   MailOpen,
+  Inbox,
 } from "lucide-react";
 import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
@@ -252,6 +253,15 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               month: "short",
             })}
           </span>
+          {action.mailboxLabel && (
+            <>
+              <span className="hidden sm:inline">•</span>
+              <span className="flex items-center gap-1">
+                <Inbox className="size-3 shrink-0" />
+                <span>{action.mailboxLabel}</span>
+              </span>
+            </>
+          )}
         </div>
       </CardContent>
 

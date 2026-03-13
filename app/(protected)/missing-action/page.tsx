@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Loader2, Mail, MailOpen, Plus } from "lucide-react";
+import { Clock, Inbox, Loader2, Mail, MailOpen, Plus } from "lucide-react";
 import { BackButton } from "@/components/shared/back-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -28,6 +28,7 @@ interface EmailMetadata {
   hasActions: boolean;
   reason: string;
   webUrl: string | null;
+  mailboxLabel: string | null;
 }
 
 export default function MissingActionPage() {
@@ -191,6 +192,15 @@ export default function MissingActionPage() {
                           })}
                         </span>
                       </div>
+                      {email.mailboxLabel && (
+                        <>
+                          <span className="hidden sm:inline">•</span>
+                          <div className="flex items-center gap-1">
+                            <Inbox className="size-3 shrink-0" />
+                            <span>{email.mailboxLabel}</span>
+                          </div>
+                        </>
+                      )}
                     </CardDescription>
                   </div>
                 </CardHeader>

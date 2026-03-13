@@ -1,14 +1,18 @@
 /**
- * Job de synchronisation quotidienne (Gmail et IMAP)
- * Exécuté tous les jours à 8h00
- * Plus agressif que l'auto-sync (100 emails sync, 50 emails analyze)
+ * Job de synchronisation quotidienne
+ * Exécuté tous les jours à 7h00
+ * Itère sur chaque mailbox configurée (IMAP ou Microsoft Graph)
  */
 
 import { prisma } from "@/lib/db";
-import { createEmailProvider } from "@/lib/email-provider/factory";
+import { createIMAPServiceById } from "@/lib/imap/imap-service";
+import { createMicrosoftGraphServiceByMailbox } from "@/lib/microsoft-graph/graph-service";
+import { IMAPProvider } from "@/lib/email-provider/imap-provider";
+import { MicrosoftGraphProvider } from "@/lib/email-provider/microsoft-graph-provider";
 import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 import { MAX_EMAILS_TO_SYNC, MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
+import type { IEmailProvider } from "@/lib/email-provider/interface";
 
 /**
  * Helper pour obtenir l'identifiant du message selon le provider
@@ -25,207 +29,129 @@ export async function runDailySyncJob() {
   console.log("[DAILY-SYNC JOB] 🚀 Starting...");
 
   try {
-    // Récupérer tous les utilisateurs avec sync activé et un provider email configuré
-    // Cas 1: Microsoft Graph connecté (account microsoft-entra-id avec access_token)
-    const usersWithMicrosoftGraph = await prisma.account.findMany({
-      where: {
-        provider: "microsoft-entra-id",
-        access_token: { not: null },
-        user: {
-          syncEnabled: true,
-          emailProvider: "MICROSOFT_GRAPH",
-        },
-      },
-      select: {
-        userId: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            emailProvider: true,
-          },
-        },
-      },
-      distinct: ["userId"],
-    });
+    // --- Collecter toutes les mailboxes à synchroniser ---
 
-    // Cas 2: IMAP connecté
-    const usersWithIMAP = await prisma.iMAPCredential.findMany({
+    // Cas 1: Credentials IMAP connectées (utilisateurs avec syncEnabled)
+    const imapCredentials = await prisma.iMAPCredential.findMany({
       where: {
         isConnected: true,
-        user: {
-          syncEnabled: true,
-          emailProvider: "IMAP",
-        },
+        user: { syncEnabled: true },
       },
       select: {
+        id: true,
+        label: true,
+        imapUsername: true,
         userId: true,
-        user: {
-          select: {
-            id: true,
-            email: true,
-            emailProvider: true,
-          },
-        },
+        user: { select: { id: true, email: true } },
       },
-      distinct: ["userId"],
     });
 
-    // Combiner les listes (éviter les doublons par userId)
-    const allUsersMap = new Map<string, { id: string; email: string | null; emailProvider: string | null }>();
+    // Cas 2: Boîtes Microsoft Graph actives (utilisateurs avec syncEnabled)
+    const graphMailboxes = await prisma.microsoftGraphMailbox.findMany({
+      where: {
+        isActive: true,
+        user: { syncEnabled: true },
+      },
+      select: {
+        id: true,
+        label: true,
+        email: true,
+        userId: true,
+        user: { select: { id: true, email: true } },
+      },
+    });
 
-    for (const account of usersWithMicrosoftGraph) {
-      allUsersMap.set(account.userId, {
-        id: account.user.id,
-        email: account.user.email,
-        emailProvider: account.user.emailProvider,
-      });
-    }
+    console.log(`[DAILY-SYNC JOB] Found ${imapCredentials.length} IMAP mailbox(es) and ${graphMailboxes.length} Microsoft Graph mailbox(es)`);
 
-    for (const credential of usersWithIMAP) {
-      if (!allUsersMap.has(credential.userId)) {
-        allUsersMap.set(credential.userId, {
-          id: credential.user.id,
-          email: credential.user.email,
-          emailProvider: credential.user.emailProvider,
-        });
-      }
-    }
-
-    const allUsers = Array.from(allUsersMap.values());
-
-    console.log(`[DAILY-SYNC JOB] Found ${allUsers.length} users with email connected and sync enabled`);
-    console.log(`[DAILY-SYNC JOB]   - Microsoft Graph: ${usersWithMicrosoftGraph.length} users`);
-    console.log(`[DAILY-SYNC JOB]   - IMAP: ${usersWithIMAP.length} users`);
-
-    // Stats globales
     const stats = {
-      totalUsers: allUsers.length,
-      successUsers: 0,
-      failedUsers: 0,
+      totalMailboxes: imapCredentials.length + graphMailboxes.length,
+      successMailboxes: 0,
+      failedMailboxes: 0,
       totalEmailsSynced: 0,
       totalActionsExtracted: 0,
       errors: [] as string[],
     };
 
-    // Traiter chaque utilisateur
-    for (const userData of allUsers) {
-      const userId = userData.id;
-      const userEmail = userData.email || "unknown";
-      const provider = userData.emailProvider;
-
-      let emailProvider: Awaited<ReturnType<typeof createEmailProvider>> = null;
+    // --- Traiter chaque mailbox IMAP ---
+    for (const credential of imapCredentials) {
+      const userEmail = credential.user.email || "unknown";
+      const mailboxLabel = credential.label || credential.imapUsername;
+      let provider: IEmailProvider | null = null;
 
       try {
-        console.log(`[DAILY-SYNC JOB] Processing user: ${userEmail} (${provider})`);
+        console.log(`[DAILY-SYNC JOB] Processing IMAP: ${mailboxLabel} (user: ${userEmail})`);
 
-        // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
-        emailProvider = await createEmailProvider(userId);
-
-        if (!emailProvider) {
-          console.warn(`[DAILY-SYNC JOB] ⚠️  Email service unavailable for ${userEmail}`);
-          stats.failedUsers++;
-          stats.errors.push(`${userEmail}: Email service unavailable (token expired or credentials invalid?)`);
+        const service = await createIMAPServiceById(credential.id, credential.userId);
+        if (!service) {
+          console.warn(`[DAILY-SYNC JOB] ⚠️  IMAP service unavailable for ${mailboxLabel}`);
+          stats.failedMailboxes++;
+          stats.errors.push(`${mailboxLabel}: IMAP service unavailable`);
           continue;
         }
 
-        // ÉTAPE 1: Synchroniser les nouveaux emails
-        const newEmails = await emailProvider.fetchNewEmails({
-          maxResults: MAX_EMAILS_TO_SYNC,
-          folder: "INBOX",
-        });
+        provider = new IMAPProvider(service, credential.id, mailboxLabel);
 
-        console.log(`[DAILY-SYNC JOB] ✅ Synced ${newEmails.length} emails for ${userEmail}`);
-        stats.totalEmailsSynced += newEmails.length;
+        const result = await syncAndAnalyzeMailbox(provider, credential.userId, mailboxLabel);
+        stats.totalEmailsSynced += result.synced;
+        stats.totalActionsExtracted += result.actions;
+        stats.successMailboxes++;
 
-        // ÉTAPE 2: Analyser les emails EXTRACTED
-        const extractedEmails = await emailProvider.getExtractedEmails();
-        const emailsToAnalyze = extractedEmails.slice(0, MAX_EMAILS_TO_ANALYZE);
-
-        let actionsExtracted = 0;
-
-        for (const emailMetadata of emailsToAnalyze) {
+        if (result.synced > 0 || result.actions > 0) {
           try {
-            const messageId = getMessageId(emailMetadata);
-
-            // Récupérer le corps de l'email
-            const body = await emailProvider.getEmailBodyForAnalysis(messageId);
-
-            if (!body) {
-              // Marquer comme analysé même si le body est vide
-              await emailProvider.markEmailAsAnalyzed(messageId);
-              continue;
-            }
-
-            // Extraire les actions avec REGEX
-            const extractedActions = extractActionsFromEmail({
-              from: emailMetadata.from,
-              subject: emailMetadata.subject,
-              body,
-              receivedAt: emailMetadata.receivedAt,
-            });
-
-            // Stocker les actions extraites (s'il y en a)
-            for (const action of extractedActions) {
-              await prisma.action.create({
-                data: {
-                  userId,
-                  title: action.title,
-                  type: action.type,
-                  sourceSentence: action.sourceSentence,
-                  emailFrom: emailMetadata.from,
-                  emailReceivedAt: emailMetadata.receivedAt,
-                  gmailMessageId: emailMetadata.gmailMessageId, // null si IMAP
-                  imapUID: emailMetadata.imapUID, // null si Gmail
-                  emailWebUrl: emailMetadata.webUrl, // URL vers l'email dans le webmail
-                  dueDate: action.dueDate,
-                  status: "TODO",
-                },
-              });
-
-              actionsExtracted++;
-            }
-
-            // Marquer l'email comme analysé
-            await emailProvider.markEmailAsAnalyzed(messageId);
-          } catch (emailError) {
-            const messageIdStr = emailMetadata.gmailMessageId || emailMetadata.imapUID?.toString() || "unknown";
-            console.error(
-              `[DAILY-SYNC JOB] Error analyzing email ${messageIdStr}:`,
-              emailError
-            );
-          }
-        }
-
-        console.log(
-          `[DAILY-SYNC JOB] 📊 ${userEmail}: ${actionsExtracted} actions extracted`
-        );
-        stats.totalActionsExtracted += actionsExtracted;
-        stats.successUsers++;
-
-        // Envoyer la notification si des emails ont été extraits ou analysés
-        if (newEmails.length > 0 || actionsExtracted > 0) {
-          try {
-            const sent = await sendActionDigest(userId);
-            console.log(`[DAILY-SYNC JOB] 📧 sendActionDigest for ${userEmail}: ${sent}`);
+            await sendActionDigest(credential.userId);
           } catch (notifError) {
             console.error(`[DAILY-SYNC JOB] 📧 sendActionDigest ERROR for ${userEmail}:`, notifError);
           }
         }
-      } catch (userError) {
-        console.error(`[DAILY-SYNC JOB] ❌ Error for ${userEmail}:`, userError);
-        stats.failedUsers++;
-        stats.errors.push(
-          `${userEmail}: ${userError instanceof Error ? userError.message : "Unknown error"}`
-        );
+      } catch (err) {
+        console.error(`[DAILY-SYNC JOB] ❌ Error for IMAP ${mailboxLabel}:`, err);
+        stats.failedMailboxes++;
+        stats.errors.push(`${mailboxLabel}: ${err instanceof Error ? err.message : "Unknown error"}`);
       } finally {
-        // Fermer la connexion email (IMAP) après avoir fini avec cet utilisateur
-        if (emailProvider) {
+        if (provider) {
+          try { await provider.disconnect(); } catch {}
+        }
+      }
+    }
+
+    // --- Traiter chaque mailbox Microsoft Graph ---
+    for (const mailbox of graphMailboxes) {
+      const userEmail = mailbox.user.email || "unknown";
+      const mailboxLabel = mailbox.label || mailbox.email || "Microsoft";
+      let provider: IEmailProvider | null = null;
+
+      try {
+        console.log(`[DAILY-SYNC JOB] Processing Graph: ${mailboxLabel} (user: ${userEmail})`);
+
+        const service = await createMicrosoftGraphServiceByMailbox(mailbox.id, mailbox.userId);
+        if (!service) {
+          console.warn(`[DAILY-SYNC JOB] ⚠️  Graph service unavailable for ${mailboxLabel}`);
+          stats.failedMailboxes++;
+          stats.errors.push(`${mailboxLabel}: Graph service unavailable (token expired?)`);
+          continue;
+        }
+
+        provider = new MicrosoftGraphProvider(service, mailbox.userId, mailboxLabel);
+
+        const result = await syncAndAnalyzeMailbox(provider, mailbox.userId, mailboxLabel);
+        stats.totalEmailsSynced += result.synced;
+        stats.totalActionsExtracted += result.actions;
+        stats.successMailboxes++;
+
+        if (result.synced > 0 || result.actions > 0) {
           try {
-            await emailProvider.disconnect();
-          } catch (disconnectError) {
-            console.warn(`[DAILY-SYNC JOB] ⚠️  Error disconnecting for ${userEmail}:`, disconnectError);
+            await sendActionDigest(mailbox.userId);
+          } catch (notifError) {
+            console.error(`[DAILY-SYNC JOB] 📧 sendActionDigest ERROR for ${userEmail}:`, notifError);
           }
+        }
+      } catch (err) {
+        console.error(`[DAILY-SYNC JOB] ❌ Error for Graph ${mailboxLabel}:`, err);
+        stats.failedMailboxes++;
+        stats.errors.push(`${mailboxLabel}: ${err instanceof Error ? err.message : "Unknown error"}`);
+      } finally {
+        if (provider) {
+          try { await provider.disconnect(); } catch {}
         }
       }
     }
@@ -234,7 +160,7 @@ export async function runDailySyncJob() {
 
     console.log(`[DAILY-SYNC JOB] ✨ Completed in ${duration}ms`);
     console.log(`[DAILY-SYNC JOB] Stats:`, {
-      users: `${stats.successUsers}/${stats.totalUsers}`,
+      mailboxes: `${stats.successMailboxes}/${stats.totalMailboxes}`,
       synced: stats.totalEmailsSynced,
       actions: stats.totalActionsExtracted,
     });
@@ -243,19 +169,85 @@ export async function runDailySyncJob() {
       console.warn(`[DAILY-SYNC JOB] Errors:`, stats.errors);
     }
 
-    return {
-      success: true,
-      stats,
-      duration,
-    };
+    return { success: true, stats, duration };
   } catch (error) {
     const duration = Date.now() - startTime;
     console.error("[DAILY-SYNC JOB] ❌ Fatal error:", error);
-
     return {
       success: false,
       error: error instanceof Error ? error.message : "Unknown error",
       duration,
     };
   }
+}
+
+/**
+ * Synchronise et analyse les emails d'une mailbox.
+ * Retourne les stats de synchro et d'extraction.
+ */
+async function syncAndAnalyzeMailbox(
+  provider: IEmailProvider,
+  userId: string,
+  mailboxLabel: string
+): Promise<{ synced: number; actions: number }> {
+  // ÉTAPE 1: Synchroniser les nouveaux emails
+  const newEmails = await provider.fetchNewEmails({
+    maxResults: MAX_EMAILS_TO_SYNC,
+    folder: "INBOX",
+  });
+  console.log(`[DAILY-SYNC JOB] ✅ Synced ${newEmails.length} emails for ${mailboxLabel}`);
+
+  // ÉTAPE 2: Analyser les emails EXTRACTED
+  const extractedEmails = await provider.getExtractedEmails();
+  const emailsToAnalyze = extractedEmails.slice(0, MAX_EMAILS_TO_ANALYZE);
+
+  let actionsExtracted = 0;
+
+  for (const emailMetadata of emailsToAnalyze) {
+    try {
+      const messageId = getMessageId(emailMetadata);
+      const body = await provider.getEmailBodyForAnalysis(messageId);
+
+      if (!body) {
+        await provider.markEmailAsAnalyzed(messageId);
+        continue;
+      }
+
+      const extractedActions = extractActionsFromEmail({
+        from: emailMetadata.from,
+        subject: emailMetadata.subject,
+        body,
+        receivedAt: emailMetadata.receivedAt,
+      });
+
+      for (const action of extractedActions) {
+        await prisma.action.create({
+          data: {
+            userId,
+            title: action.title,
+            type: action.type,
+            sourceSentence: action.sourceSentence,
+            emailFrom: emailMetadata.from,
+            emailReceivedAt: emailMetadata.receivedAt,
+            gmailMessageId: emailMetadata.gmailMessageId,
+            imapUID: emailMetadata.imapUID,
+            emailWebUrl: emailMetadata.webUrl,
+            dueDate: action.dueDate,
+            status: "TODO",
+            mailboxId: provider.mailboxId,
+            mailboxLabel: provider.mailboxLabel,
+          },
+        });
+        actionsExtracted++;
+      }
+
+      await provider.markEmailAsAnalyzed(messageId);
+    } catch (emailError) {
+      const msgId = emailMetadata.gmailMessageId || emailMetadata.imapUID?.toString() || "unknown";
+      console.error(`[DAILY-SYNC JOB] Error analyzing email ${msgId}:`, emailError);
+    }
+  }
+
+  console.log(`[DAILY-SYNC JOB] 📊 ${mailboxLabel}: ${actionsExtracted} actions extracted`);
+  return { synced: newEmails.length, actions: actionsExtracted };
 }

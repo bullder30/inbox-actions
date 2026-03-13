@@ -99,22 +99,14 @@ model User {
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
-  // Email provider preference (nullable - null means no provider configured)
-  emailProvider           EmailProvider? @map(name: "email_provider")
-
-  // Universal sync timestamp (used by all providers)
-  lastEmailSync           DateTime? @map(name: "last_email_sync")
-
-  // Microsoft Graph delta link (for incremental sync)
-  microsoftDeltaLink      String?   @db.Text @map(name: "microsoft_delta_link")
-
   // Notification preferences
   emailNotifications   Boolean   @default(true) @map(name: "email_notifications")
   lastNotificationSent DateTime? @map(name: "last_notification_sent")
   syncEnabled          Boolean   @default(true) @map(name: "sync_enabled")
 
-  // IMAP credentials
-  imapCredentials IMAPCredential[]
+  // Email mailboxes
+  imapCredentials       IMAPCredential[]
+  microsoftGraphMailboxes MicrosoftGraphMailbox[]
 
   @@map(name: "users")
 }
@@ -141,6 +133,8 @@ model Action {
   gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message (Gmail ou Graph)
   imapUID          BigInt?      @map(name: "imap_uid") // UID IMAP
   emailWebUrl      String?      @map(name: "email_web_url") // URL vers l'email dans le webmail
+  mailboxId        String?      @map(name: "mailbox_id")    // IMAPCredential.id ou MicrosoftGraphMailbox.id
+  mailboxLabel     String?      @map(name: "mailbox_label") // Label dénormalisé pour affichage
   createdAt        DateTime     @default(now()) @map(name: "created_at")
   updatedAt        DateTime     @default(now()) @updatedAt @map(name: "updated_at")
 
@@ -160,6 +154,9 @@ model EmailMetadata {
 
   // Source provider
   emailProvider  EmailProvider @default(GMAIL) @map(name: "email_provider")
+
+  // Mailbox source (IMAPCredential.id ou MicrosoftGraphMailbox.id)
+  mailboxId      String?  @map(name: "mailbox_id")
 
   // Gmail identifiers (optional for IMAP)
   gmailMessageId String?  @map(name: "gmail_message_id") // Gmail internal ID
@@ -189,8 +186,8 @@ model EmailMetadata {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, gmailMessageId])
-  @@unique([userId, imapUID])
   @@index([userId])
+  @@index([userId, imapUID, mailboxId])
   @@index([gmailMessageId])
   @@index([imapUID])
   @@index([receivedAt])
@@ -202,6 +199,9 @@ model EmailMetadata {
 model IMAPCredential {
   id              String   @id @default(cuid())
   userId          String
+
+  // Label optionnel pour identifier la boîte
+  label           String?  @map(name: "label") // ex: "Gmail perso", "Yahoo travail"
 
   // Configuration IMAP
   imapHost        String   @map(name: "imap_host")     // ex: "imap.gmail.com"
@@ -234,4 +234,42 @@ model IMAPCredential {
   @@index([userId])
   @@index([isConnected])
   @@map(name: "imap_credentials")
+}
+
+// Boîte Microsoft Graph par utilisateur
+// Stocke ses propres tokens OAuth (indépendant de l'Account Auth.js)
+model MicrosoftGraphMailbox {
+  id                 String   @id @default(cuid())
+  userId             String
+  microsoftAccountId String   @map(name: "microsoft_account_id") // OID Microsoft (pour déduplication)
+
+  // Label optionnel pour identifier la boîte
+  label     String?  @map(name: "label")  // ex: "Outlook pro"
+  email     String?  @map(name: "email")  // Email Microsoft pour affichage
+
+  // Tokens OAuth propres (indépendants de l'Account Auth.js)
+  accessToken  String?  @db.Text @map(name: "access_token")
+  refreshToken String?  @db.Text @map(name: "refresh_token")
+  expiresAt    Int?     @map(name: "expires_at")
+  tokenScope   String?  @map(name: "token_scope")
+
+  // État de synchronisation
+  deltaLink String?  @db.Text @map(name: "delta_link")
+  lastSync  DateTime? @map(name: "last_sync")
+
+  // Statut
+  isActive        Boolean   @default(true)  @map(name: "is_active")
+  isConnected     Boolean   @default(false) @map(name: "is_connected")
+  connectionError String?   @map(name: "connection_error")
+  lastErrorAt     DateTime? @map(name: "last_error_at")
+
+  createdAt DateTime @default(now()) @map(name: "created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map(name: "updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, microsoftAccountId])
+  @@index([userId])
+  @@index([isActive])
+  @@map(name: "microsoft_graph_mailboxes")
 }

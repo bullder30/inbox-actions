@@ -9,7 +9,8 @@ export const dynamic = "force-dynamic";
 import { z } from "zod";
 
 import { auth } from "@/auth";
-import { createMicrosoftGraphService } from "@/lib/microsoft-graph/graph-service";
+import { prisma } from "@/lib/db";
+import { createMicrosoftGraphServiceByMailbox } from "@/lib/microsoft-graph/graph-service";
 
 const syncSchema = z.object({
   maxResults: z.number().int().positive().max(500).optional().default(100),
@@ -35,26 +36,34 @@ export async function POST(req: NextRequest) {
       // Empty body, use defaults
     }
 
-    // Create Graph service
-    const graphService = await createMicrosoftGraphService(session.user.id);
+    // Sync all active Graph mailboxes for this user
+    const graphMailboxes = await prisma.microsoftGraphMailbox.findMany({
+      where: { userId: session.user.id, isActive: true },
+      select: { id: true },
+    });
 
-    if (!graphService) {
+    if (graphMailboxes.length === 0) {
       return NextResponse.json(
-        { error: "Microsoft Graph API not configured or not accessible" },
+        { error: "No Microsoft Graph mailbox configured" },
         { status: 404 }
       );
     }
 
-    // Synchronize emails
-    const emails = await graphService.fetchNewEmails({
-      maxResults: options.maxResults,
-      folder: options.folder,
-    });
+    let totalEmails = 0;
+    for (const mailbox of graphMailboxes) {
+      const graphService = await createMicrosoftGraphServiceByMailbox(mailbox.id, session.user.id);
+      if (!graphService) continue;
+      const emails = await graphService.fetchNewEmails({
+        maxResults: options.maxResults,
+        folder: options.folder,
+      });
+      totalEmails += emails.length;
+    }
 
     return NextResponse.json({
       success: true,
-      count: emails.length,
-      message: `Synchronized ${emails.length} new email(s) from Microsoft Graph`,
+      count: totalEmails,
+      message: `Synchronized ${totalEmails} new email(s) from Microsoft Graph`,
     });
   } catch (error) {
     console.error("[Graph Sync] Error:", error);

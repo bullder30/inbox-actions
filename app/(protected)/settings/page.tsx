@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Moon, Sun, Monitor, Server, Zap } from "lucide-react";
+import { Loader2, Moon, Sun, Monitor, Inbox, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 import { useSearchParams } from "next/navigation";
@@ -13,7 +13,8 @@ import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { IMAPConnectForm, IMAPStatus } from "@/components/imap";
+import { IMAPConnectForm, IMAPMailboxCard } from "@/components/imap";
+import type { IMAPMailboxData } from "@/components/imap";
 import { GraphStatus } from "@/components/microsoft-graph";
 
 export default function SettingsPage() {
@@ -26,12 +27,9 @@ export default function SettingsPage() {
   const [emailNotifications, setEmailNotifications] = useState(true);
   const [syncEnabled, setSyncEnabled] = useState(true);
 
-  // IMAP state
-  const [imapConfigured, setImapConfigured] = useState(false);
-
-  // Microsoft Graph state - check if Microsoft OAuth is enabled
-  const [microsoftOAuthEnabled, setMicrosoftOAuthEnabled] = useState(false);
-  const [graphConfigured, setGraphConfigured] = useState(false);
+  // Mailboxes state
+  const [imapMailboxes, setImapMailboxes] = useState<IMAPMailboxData[]>([]);
+  const [showAddIMAPForm, setShowAddIMAPForm] = useState(false);
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -46,12 +44,10 @@ export default function SettingsPage() {
 
     if (microsoftConnected === "true") {
       toast.success("Compte Microsoft connecté avec succès !");
-      // Clean URL
       router.replace("/settings");
     } else if (error) {
       const message = errorDescription || getErrorMessage(error);
       toast.error(`Erreur de connexion Microsoft : ${message}`);
-      // Clean URL
       router.replace("/settings");
     }
   }, [searchParams, router]);
@@ -81,20 +77,11 @@ export default function SettingsPage() {
     try {
       setLoading(true);
 
-      // Charger le statut IMAP
+      // Charger les boîtes IMAP
       const imapResponse = await fetch("/api/imap/status");
       if (imapResponse.ok) {
         const imapData = await imapResponse.json();
-        setImapConfigured(imapData.configured ?? false);
-      }
-
-      // Charger le statut Microsoft Graph
-      const graphResponse = await fetch("/api/microsoft-graph/status");
-      if (graphResponse.ok) {
-        const graphData = await graphResponse.json();
-        // Check if Microsoft OAuth is enabled on the server
-        setMicrosoftOAuthEnabled(graphData.microsoftOAuthEnabled ?? true);
-        setGraphConfigured(graphData.configured ?? false);
+        setImapMailboxes(imapData.mailboxes ?? []);
       }
 
       // Charger les préférences utilisateur
@@ -119,11 +106,7 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ emailNotifications }),
       });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de l'enregistrement");
-      }
-
+      if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
       toast.success("Préférences enregistrées");
       router.refresh();
     } catch (error) {
@@ -142,11 +125,7 @@ export default function SettingsPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ syncEnabled }),
       });
-
-      if (!response.ok) {
-        throw new Error("Erreur lors de l'enregistrement");
-      }
-
+      if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
       toast.success("Préférences enregistrées");
       router.refresh();
     } catch (error) {
@@ -155,6 +134,10 @@ export default function SettingsPage() {
     } finally {
       setSaving(false);
     }
+  }
+
+  function handleIMAPDisconnect(credentialId: string) {
+    setImapMailboxes((prev) => prev.filter((m) => m.id !== credentialId));
   }
 
   return (
@@ -168,7 +151,6 @@ export default function SettingsPage() {
 
       {loading ? (
         <div className="space-y-4">
-          {/* Skeleton 1 - Connexion Email */}
           <Card>
             <CardHeader>
               <Skeleton className="h-6 w-40" />
@@ -178,8 +160,6 @@ export default function SettingsPage() {
               <Skeleton className="h-32 w-full" />
             </CardContent>
           </Card>
-
-          {/* Skeleton 2 - Synchronisation automatique */}
           <Card>
             <CardHeader>
               <Skeleton className="h-6 w-64" />
@@ -193,93 +173,69 @@ export default function SettingsPage() {
               <Skeleton className="h-9 w-28" />
             </CardContent>
           </Card>
-
-          {/* Skeleton 3 - Notifications par email */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-56" />
-              <Skeleton className="mt-2 h-4 w-full max-w-lg" />
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <Skeleton className="h-5 w-60" />
-                <Skeleton className="h-6 w-11 rounded-full" />
-              </div>
-              <Skeleton className="h-9 w-28" />
-            </CardContent>
-          </Card>
-
-          {/* Skeleton 4 - Apparence */}
-          <Card>
-            <CardHeader>
-              <Skeleton className="h-6 w-32" />
-              <Skeleton className="mt-2 h-4 w-64" />
-            </CardHeader>
-            <CardContent>
-              <div className="flex gap-2">
-                <Skeleton className="h-9 w-20" />
-                <Skeleton className="h-9 w-24" />
-                <Skeleton className="h-9 w-24" />
-              </div>
-            </CardContent>
-          </Card>
         </div>
       ) : (
         <div className="space-y-4">
-          {/* Microsoft Graph API - Always show if Microsoft OAuth is enabled */}
-          {microsoftOAuthEnabled && (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Zap className="size-5" />
-                  Microsoft (Outlook, Hotmail, Microsoft 365)
-                </CardTitle>
-                <CardDescription>
-                  Synchronisez vos emails Microsoft avec l&apos;API Graph (recommandé pour les comptes Microsoft)
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <GraphStatus
-                  onStatusChange={() => {
-                    loadSettings();
-                  }}
-                />
-              </CardContent>
-            </Card>
-          )}
-
-          {/* IMAP - For other providers or as alternative */}
+          {/* ===== Boîtes mail connectées ===== */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Server className="size-5" />
-                IMAP (Gmail, Yahoo, iCloud, etc.)
+                <Inbox className="size-5" />
+                Boîtes mail connectées
               </CardTitle>
               <CardDescription>
-                Configurez une connexion IMAP pour les autres fournisseurs email
-                {microsoftOAuthEnabled && " ou comme alternative à Microsoft Graph"}
+                Connectez vos boîtes mail pour extraire automatiquement vos actions
               </CardDescription>
             </CardHeader>
-            <CardContent>
-              {imapConfigured ? (
-                <IMAPStatus
-                  onDisconnect={() => {
-                    setImapConfigured(false);
-                    loadSettings();
-                  }}
+            <CardContent className="space-y-3">
+              {/* Boîtes IMAP existantes */}
+              {imapMailboxes.map((mailbox) => (
+                <IMAPMailboxCard
+                  key={mailbox.id}
+                  mailbox={mailbox}
+                  onDisconnect={handleIMAPDisconnect}
+                  onUpdate={loadSettings}
                 />
+              ))}
+
+              {/* Microsoft Graph (Outlook, Hotmail, M365) */}
+              <GraphStatus onStatusChange={loadSettings} />
+
+              {/* Formulaire d'ajout IMAP */}
+              {showAddIMAPForm ? (
+                <div className="rounded-lg border p-4">
+                  <div className="mb-3 flex items-center justify-between">
+                    <span className="text-sm font-medium">Ajouter une boîte IMAP</span>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setShowAddIMAPForm(false)}
+                    >
+                      Annuler
+                    </Button>
+                  </div>
+                  <IMAPConnectForm
+                    onSuccess={() => {
+                      setShowAddIMAPForm(false);
+                      loadSettings();
+                    }}
+                  />
+                </div>
               ) : (
-                <IMAPConnectForm
-                  onSuccess={() => {
-                    setImapConfigured(true);
-                    loadSettings();
-                  }}
-                />
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={() => setShowAddIMAPForm(true)}
+                >
+                  <Plus className="size-4" />
+                  Ajouter une boîte IMAP<span className="hidden sm:inline"> (Gmail, Yahoo, iCloud…)</span>
+                </Button>
               )}
             </CardContent>
           </Card>
 
-          {/* Option 2: Activer / désactiver scan */}
+          {/* ===== Synchronisation automatique ===== */}
           <Card>
             <CardHeader>
               <CardTitle>Synchronisation automatique</CardTitle>
@@ -311,7 +267,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Option 3: Activer / désactiver email quotidien */}
+          {/* ===== Notifications par email ===== */}
           <Card>
             <CardHeader>
               <CardTitle>Notifications par email</CardTitle>
@@ -343,7 +299,7 @@ export default function SettingsPage() {
             </CardContent>
           </Card>
 
-          {/* Option 4: Thème */}
+          {/* ===== Apparence ===== */}
           <Card>
             <CardHeader>
               <CardTitle>Apparence</CardTitle>
@@ -358,10 +314,7 @@ export default function SettingsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setTheme("light")}
-                    className={cn(
-                      "flex-1 gap-1.5",
-                      theme === "light" && "border-primary bg-primary/10"
-                    )}
+                    className={cn("flex-1 gap-1.5", theme === "light" && "border-primary bg-primary/10")}
                   >
                     <Sun className="size-4" />
                     Clair
@@ -370,10 +323,7 @@ export default function SettingsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setTheme("dark")}
-                    className={cn(
-                      "flex-1 gap-1.5",
-                      theme === "dark" && "border-primary bg-primary/10"
-                    )}
+                    className={cn("flex-1 gap-1.5", theme === "dark" && "border-primary bg-primary/10")}
                   >
                     <Moon className="size-4" />
                     Sombre
@@ -382,10 +332,7 @@ export default function SettingsPage() {
                     variant="outline"
                     size="sm"
                     onClick={() => setTheme("system")}
-                    className={cn(
-                      "flex-1 gap-1.5",
-                      theme === "system" && "border-primary bg-primary/10"
-                    )}
+                    className={cn("flex-1 gap-1.5", theme === "system" && "border-primary bg-primary/10")}
                   >
                     <Monitor className="size-4" />
                     Système

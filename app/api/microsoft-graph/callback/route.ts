@@ -1,7 +1,7 @@
 /**
  * GET /api/microsoft-graph/callback
- * OAuth callback for Microsoft Graph email connection
- * Exchanges code for tokens and stores them for the user
+ * OAuth callback for Microsoft Graph email connection.
+ * Stores tokens directly in MicrosoftGraphMailbox (independent of Auth.js Account).
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -13,14 +13,12 @@ import { env } from "@/env.mjs";
 import { prisma } from "@/lib/db";
 import { cookies } from "next/headers";
 
-// OAuth state cookie name
 const STATE_COOKIE = "microsoft_graph_oauth_state";
 
 export async function GET(req: NextRequest) {
   try {
     const session = await auth();
     if (!session?.user?.id) {
-      // Redirect to login if not authenticated
       return NextResponse.redirect(new URL("/login", env.NEXT_PUBLIC_APP_URL));
     }
 
@@ -30,7 +28,6 @@ export async function GET(req: NextRequest) {
     const error = searchParams.get("error");
     const errorDescription = searchParams.get("error_description");
 
-    // Handle OAuth errors
     if (error) {
       console.error("[Graph Callback] OAuth error:", error, errorDescription);
       const redirectUrl = new URL("/settings", env.NEXT_PUBLIC_APP_URL);
@@ -45,7 +42,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Verify state for CSRF protection
+    // Verify CSRF state
     const cookieStore = await cookies();
     const storedState = cookieStore.get(STATE_COOKIE)?.value;
 
@@ -56,7 +53,6 @@ export async function GET(req: NextRequest) {
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Clear state cookie
     cookieStore.delete(STATE_COOKIE);
 
     // Exchange code for tokens
@@ -65,22 +61,14 @@ export async function GET(req: NextRequest) {
 
     const tokenResponse = await fetch(tokenUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
       body: new URLSearchParams({
         client_id: env.MICROSOFT_CLIENT_ID!,
         client_secret: env.MICROSOFT_CLIENT_SECRET!,
         code,
         redirect_uri: redirectUri,
         grant_type: "authorization_code",
-        scope: [
-          "openid",
-          "email",
-          "profile",
-          "offline_access",
-          "https://graph.microsoft.com/Mail.Read",
-        ].join(" "),
+        scope: ["openid", "email", "profile", "offline_access", "https://graph.microsoft.com/Mail.Read"].join(" "),
       }),
     });
 
@@ -94,106 +82,89 @@ export async function GET(req: NextRequest) {
 
     const tokens = await tokenResponse.json();
 
-    // Get user info from the id_token or access_token
-    // We need the Microsoft user's ID (oid) to link the account
-    let microsoftUserId: string | null = null;
+    // Extract Microsoft account ID and email from id_token
+    let microsoftAccountId: string | null = null;
     let userEmail: string | null = null;
 
-    // Decode id_token to get user info (it's a JWT)
     if (tokens.id_token) {
       try {
         const [, payload] = tokens.id_token.split(".");
         const decoded = JSON.parse(Buffer.from(payload, "base64").toString());
-        microsoftUserId = decoded.oid || decoded.sub;
+        microsoftAccountId = decoded.oid || decoded.sub;
         userEmail = decoded.email || decoded.preferred_username;
       } catch (e) {
         console.error("[Graph Callback] Failed to decode id_token:", e);
       }
     }
 
-    // If we couldn't get the ID from token, fetch user profile from Graph API
-    if (!microsoftUserId) {
+    // Fallback: fetch from Graph API if id_token decode failed
+    if (!microsoftAccountId) {
       const meResponse = await fetch("https://graph.microsoft.com/v1.0/me", {
-        headers: {
-          Authorization: `Bearer ${tokens.access_token}`,
-        },
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
       });
-
       if (meResponse.ok) {
         const meData = await meResponse.json();
-        microsoftUserId = meData.id;
+        microsoftAccountId = meData.id;
         userEmail = meData.mail || meData.userPrincipalName;
       }
     }
 
-    if (!microsoftUserId) {
-      console.error("[Graph Callback] Could not determine Microsoft user ID");
+    if (!microsoftAccountId) {
+      console.error("[Graph Callback] Could not determine Microsoft account ID");
       const redirectUrl = new URL("/settings", env.NEXT_PUBLIC_APP_URL);
       redirectUrl.searchParams.set("error", "user_id_not_found");
       return NextResponse.redirect(redirectUrl);
     }
 
-    // Check if user already has a Microsoft account linked
-    const existingAccount = await prisma.account.findFirst({
-      where: {
-        userId: session.user.id,
-        provider: "microsoft-entra-id",
-      },
+    // Vérifier que ce compte Microsoft n'est pas déjà utilisé par un autre utilisateur
+    const takenByOther = await prisma.microsoftGraphMailbox.findFirst({
+      where: { microsoftAccountId, userId: { not: session.user.id } },
     });
+    if (takenByOther) {
+      const redirectUrl = new URL("/settings", env.NEXT_PUBLIC_APP_URL);
+      redirectUrl.searchParams.set("error", "microsoft_oauth_failed");
+      redirectUrl.searchParams.set("error_description", "Ce compte Microsoft est déjà utilisé par un autre compte.");
+      return NextResponse.redirect(redirectUrl);
+    }
 
     const expiresAt = tokens.expires_in
       ? Math.floor(Date.now() / 1000) + tokens.expires_in
       : null;
 
-    if (existingAccount) {
-      // Update existing account with new tokens (including Mail.Read scope)
-      await prisma.account.update({
-        where: { id: existingAccount.id },
-        data: {
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token || existingAccount.refresh_token,
-          expires_at: expiresAt,
-          scope: tokens.scope,
-          id_token: tokens.id_token,
-          token_type: tokens.token_type,
-        },
-      });
-      console.log("[Graph Callback] Updated existing Microsoft account with Mail.Read scope");
-    } else {
-      // Create new account link
-      await prisma.account.create({
-        data: {
+    // Upsert MicrosoftGraphMailbox — tokens are stored here, not in Account
+    await prisma.microsoftGraphMailbox.upsert({
+      where: {
+        userId_microsoftAccountId: {
           userId: session.user.id,
-          type: "oauth",
-          provider: "microsoft-entra-id",
-          providerAccountId: microsoftUserId,
-          access_token: tokens.access_token,
-          refresh_token: tokens.refresh_token,
-          expires_at: expiresAt,
-          scope: tokens.scope,
-          id_token: tokens.id_token,
-          token_type: tokens.token_type,
+          microsoftAccountId,
         },
-      });
-      console.log("[Graph Callback] Created new Microsoft account link with Mail.Read scope");
-    }
-
-    // Automatically set Microsoft Graph as the email provider
-    // AND disconnect IMAP (mutual exclusivity)
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        emailProvider: "MICROSOFT_GRAPH",
+      },
+      create: {
+        userId: session.user.id,
+        microsoftAccountId,
+        email: userEmail,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token,
+        expiresAt,
+        tokenScope: tokens.scope,
+        isActive: true,
+        isConnected: true,
+      },
+      update: {
+        email: userEmail ?? undefined,
+        accessToken: tokens.access_token,
+        refreshToken: tokens.refresh_token || undefined,
+        expiresAt,
+        tokenScope: tokens.scope,
+        isActive: true,
+        isConnected: true,
+        connectionError: null,
+        lastErrorAt: null,
       },
     });
 
-    // Delete IMAP credentials (mutual exclusivity)
-    await prisma.iMAPCredential.deleteMany({
-      where: { userId: session.user.id },
-    });
-    console.log("[Graph Callback] IMAP credentials deleted (mutual exclusivity with Microsoft Graph)");
+    console.log(`[Graph Callback] Microsoft Graph mailbox upserted for user ${session.user.id} (microsoftAccountId: ${microsoftAccountId})`);
 
-    // Redirect to settings with success
     const redirectUrl = new URL("/settings", env.NEXT_PUBLIC_APP_URL);
     redirectUrl.searchParams.set("microsoft_connected", "true");
     return NextResponse.redirect(redirectUrl);

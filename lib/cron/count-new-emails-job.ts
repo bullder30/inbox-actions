@@ -19,18 +19,21 @@ export async function runCountNewEmailsJob() {
   console.log("[COUNT-NEW-EMAILS JOB] 🔢 Starting...");
 
   try {
-    // Récupérer tous les utilisateurs avec un email provider configuré
-    const usersWithEmail = await prisma.user.findMany({
+    // Récupérer tous les utilisateurs avec au moins une boîte mail configurée
+    const usersWithIMAPOrGraph = await prisma.user.findMany({
       where: {
-        emailProvider: { in: ["MICROSOFT_GRAPH", "IMAP"] },
         syncEnabled: true,
+        OR: [
+          { imapCredentials: { some: { isConnected: true } } },
+          { microsoftGraphMailboxes: { some: { isActive: true } } },
+        ],
       },
       select: {
         id: true,
         email: true,
-        emailProvider: true,
       },
     });
+    const usersWithEmail = usersWithIMAPOrGraph;
 
     console.log(`[COUNT-NEW-EMAILS JOB] Found ${usersWithEmail.length} users with email configured`);
 

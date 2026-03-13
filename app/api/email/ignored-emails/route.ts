@@ -30,6 +30,7 @@ export async function GET() {
         snippet: true,
         receivedAt: true,
         webUrl: true,
+        mailboxId: true,
       },
     });
 
@@ -71,6 +72,24 @@ export async function GET() {
       });
     }
 
+    // Construire un index mailboxId → label
+    const mailboxIds = Array.from(new Set(analyzedEmails.map((e) => e.mailboxId).filter((id): id is string => id !== null)));
+    const mailboxLabelMap = new Map<string, string>();
+    if (mailboxIds.length > 0) {
+      const [imapCreds, graphMailboxes] = await Promise.all([
+        prisma.iMAPCredential.findMany({
+          where: { id: { in: mailboxIds } },
+          select: { id: true, label: true, imapUsername: true },
+        }),
+        prisma.microsoftGraphMailbox.findMany({
+          where: { id: { in: mailboxIds } },
+          select: { id: true, label: true, email: true },
+        }),
+      ]);
+      for (const c of imapCreds) mailboxLabelMap.set(c.id, c.label ?? c.imapUsername);
+      for (const m of graphMailboxes) mailboxLabelMap.set(m.id, m.label ?? m.email ?? "Microsoft");
+    }
+
     // Filtrer pour ne garder que les emails sans actions (ignorés)
     const ignoredEmails = analyzedEmails
       .filter((email) => {
@@ -93,6 +112,7 @@ export async function GET() {
         hasActions: false,
         reason: "Aucune action détectée",
         webUrl: email.webUrl,
+        mailboxLabel: email.mailboxId ? (mailboxLabelMap.get(email.mailboxId) ?? null) : null,
       }));
 
     return NextResponse.json({ emails: ignoredEmails });

@@ -1,6 +1,7 @@
 /**
  * GET /api/microsoft-graph/status
- * Retrieves Microsoft Graph API connection status
+ * Returns the list of Microsoft Graph mailboxes for the current user,
+ * plus whether Microsoft OAuth is configured server-side.
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -10,7 +11,6 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
 import { env } from "@/env.mjs";
 import { prisma } from "@/lib/db";
-import { getMicrosoftGraphStatus } from "@/lib/microsoft-graph/graph-oauth-helper";
 
 export async function GET(req: NextRequest) {
   try {
@@ -19,96 +19,32 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Check if Microsoft OAuth is configured
     const microsoftOAuthEnabled = !!(
       env.MICROSOFT_CLIENT_ID &&
       env.MICROSOFT_CLIENT_SECRET &&
       env.MICROSOFT_TENANT_ID
     );
 
-    if (!microsoftOAuthEnabled) {
-      return NextResponse.json({
-        configured: false,
-        hasMailReadScope: false,
-        hasAccount: false,
-        microsoftOAuthEnabled: false,
-        message: "Microsoft OAuth is not configured on this server",
-      });
-    }
-
-    // Check Microsoft Graph access
-    const graphStatus = await getMicrosoftGraphStatus(session.user.id);
-
-    if (!graphStatus.hasAccount) {
-      return NextResponse.json({
-        configured: false,
-        hasMailReadScope: false,
-        hasAccount: false,
-        microsoftOAuthEnabled: true,
-        message: "No Microsoft account linked",
-      });
-    }
-
-    if (!graphStatus.hasMailReadScope) {
-      return NextResponse.json({
-        configured: false,
-        hasMailReadScope: false,
-        hasAccount: true,
-        microsoftOAuthEnabled: true,
-        message: "Microsoft account linked but Mail.Read scope not granted. Please re-connect to grant permission.",
-      });
-    }
-
-    // Get user sync status
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    const mailboxes = await prisma.microsoftGraphMailbox.findMany({
+      where: { userId: session.user.id, isActive: true },
       select: {
-        emailProvider: true,
-        lastEmailSync: true,
-        microsoftDeltaLink: true,
+        id: true,
+        label: true,
+        email: true,
+        isConnected: true,
+        connectionError: true,
+        lastSync: true,
+        createdAt: true,
       },
-    });
-
-    // Count synced emails
-    const emailCount = await prisma.emailMetadata.count({
-      where: {
-        userId: session.user.id,
-        emailProvider: "MICROSOFT_GRAPH",
-      },
-    });
-
-    // Count pending analysis
-    const pendingCount = await prisma.emailMetadata.count({
-      where: {
-        userId: session.user.id,
-        emailProvider: "MICROSOFT_GRAPH",
-        status: "EXTRACTED",
-      },
+      orderBy: { createdAt: "asc" },
     });
 
     return NextResponse.json({
-      configured: true,
-      hasMailReadScope: true,
-      hasAccount: true,
-      microsoftOAuthEnabled: true,
-      isConnected: graphStatus.isTokenValid,
-      isActiveProvider: user?.emailProvider === "MICROSOFT_GRAPH",
-      email: graphStatus.email,
-      lastSync: user?.lastEmailSync,
-      hasDeltaLink: !!user?.microsoftDeltaLink,
-      stats: {
-        totalEmails: emailCount,
-        pendingAnalysis: pendingCount,
-      },
+      microsoftOAuthEnabled,
+      mailboxes,
     });
   } catch (error) {
     console.error("[Graph Status] Error:", error);
-    return NextResponse.json(
-      {
-        error: "Failed to get status",
-        details: error instanceof Error ? error.message : "Unknown error",
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Failed to get status" }, { status: 500 });
   }
 }

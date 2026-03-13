@@ -6,11 +6,10 @@ export const dynamic = "force-dynamic";
 
 /**
  * GET /api/email/status
- * Vérifie si l'utilisateur a connecté un email (Gmail ou IMAP) et le statut de la synchronisation
+ * Retourne le statut global des boîtes mail connectées (IMAP + Microsoft Graph)
  */
 export async function GET() {
   try {
-    // Vérification de l'authentification
     const session = await auth();
     if (!session?.user?.id) {
       return NextResponse.json(
@@ -19,148 +18,60 @@ export async function GET() {
       );
     }
 
-    // Récupérer les informations utilisateur
-    const user = await prisma.user.findUnique({
-      where: { id: session.user.id },
+    const userId = session.user.id;
+
+    // Récupérer les credentials IMAP
+    const imapCredentials = await prisma.iMAPCredential.findMany({
+      where: { userId },
       select: {
-        emailProvider: true,
-        lastEmailSync: true,
+        id: true,
+        isConnected: true,
+        lastIMAPSync: true,
       },
     });
 
-    if (!user) {
-      return NextResponse.json(
-        { error: "Utilisateur non trouvé" },
-        { status: 404 }
-      );
+    // Récupérer les boîtes Microsoft Graph actives
+    const graphMailboxes = await prisma.microsoftGraphMailbox.findMany({
+      where: { userId, isActive: true },
+      select: { id: true, lastSync: true, isConnected: true },
+    });
+
+    const imapConnected = imapCredentials.some((c) => c.isConnected);
+    const graphConnected = graphMailboxes.length > 0;
+    const connected = imapConnected || graphConnected;
+
+    // Dernière sync globale (la plus récente parmi tous les providers)
+    const lastSyncCandidates: Date[] = [];
+    for (const c of imapCredentials) {
+      if (c.lastIMAPSync) lastSyncCandidates.push(c.lastIMAPSync);
     }
-
-    // Vérifier selon le provider configuré
-    if (user.emailProvider === "IMAP") {
-      // Vérifier les credentials IMAP
-      const imapCredential = await prisma.iMAPCredential.findFirst({
-        where: { userId: session.user.id },
-        select: {
-          isConnected: true,
-          connectionError: true,
-          lastIMAPSync: true,
-          lastErrorAt: true,
-        },
-      });
-
-      if (!imapCredential) {
-        return NextResponse.json({
-          connected: false,
-          provider: "IMAP",
-          message: "IMAP n'est pas configuré",
-        });
-      }
-
-      // Compter les emails en base
-      const emailCount = await prisma.emailMetadata.count({
-        where: { userId: session.user.id },
-      });
-
-      // Compter les emails extraits non encore analysés
-      const extractedCount = await prisma.emailMetadata.count({
-        where: {
-          userId: session.user.id,
-          status: "EXTRACTED",
-        },
-      });
-
-      // Compter les emails analysés
-      const analyzedCount = await prisma.emailMetadata.count({
-        where: {
-          userId: session.user.id,
-          status: "ANALYZED",
-        },
-      });
-
-      return NextResponse.json({
-        connected: imapCredential.isConnected,
-        provider: "IMAP",
-        hasScope: true, // IMAP n'a pas de scopes
-        tokenExpired: false, // IMAP utilise des mots de passe, pas de tokens
-        lastSync: imapCredential.lastIMAPSync,
-        emailCount,
-        extractedCount,
-        analyzedCount,
-        needsReconnection: !imapCredential.isConnected,
-        connectionError: imapCredential.connectionError,
-      });
+    for (const m of graphMailboxes) {
+      if (m.lastSync) lastSyncCandidates.push(m.lastSync);
     }
+    const lastSync = lastSyncCandidates.length
+      ? new Date(Math.max(...lastSyncCandidates.map((d) => d.getTime())))
+      : null;
 
-    // Check for Microsoft Graph
-    if (user.emailProvider === "MICROSOFT_GRAPH") {
-      const microsoftAccount = await prisma.account.findFirst({
-        where: {
-          userId: session.user.id,
-          provider: "microsoft-entra-id",
-        },
-        select: {
-          access_token: true,
-          expires_at: true,
-          scope: true,
-        },
-      });
+    // Compter les emails en base
+    const emailCount = await prisma.emailMetadata.count({ where: { userId } });
+    const extractedCount = await prisma.emailMetadata.count({
+      where: { userId, status: "EXTRACTED" },
+    });
+    const analyzedCount = await prisma.emailMetadata.count({
+      where: { userId, status: "ANALYZED" },
+    });
 
-      if (!microsoftAccount) {
-        return NextResponse.json({
-          connected: false,
-          provider: "MICROSOFT_GRAPH",
-          message: "Microsoft n'est pas connecté",
-        });
-      }
+    const graphTokenExpired = graphMailboxes.some((m) => !m.isConnected);
 
-      // Vérifier si le token est expiré
-      const now = Math.floor(Date.now() / 1000);
-      const isExpired = microsoftAccount.expires_at
-        ? microsoftAccount.expires_at < now
-        : false;
-
-      // Vérifier si le scope Mail.Read est présent
-      const hasMailScope = microsoftAccount.scope?.includes("Mail.Read") || false;
-
-      // Compter les emails en base
-      const emailCount = await prisma.emailMetadata.count({
-        where: { userId: session.user.id },
-      });
-
-      // Compter les emails extraits non encore analysés
-      const extractedCount = await prisma.emailMetadata.count({
-        where: {
-          userId: session.user.id,
-          status: "EXTRACTED",
-        },
-      });
-
-      // Compter les emails analysés
-      const analyzedCount = await prisma.emailMetadata.count({
-        where: {
-          userId: session.user.id,
-          status: "ANALYZED",
-        },
-      });
-
-      return NextResponse.json({
-        connected: true,
-        provider: "MICROSOFT_GRAPH",
-        hasMailScope,
-        tokenExpired: isExpired,
-        lastSync: user.lastEmailSync,
-        emailCount,
-        extractedCount,
-        analyzedCount,
-        needsReconnection: isExpired || !hasMailScope,
-      });
-    }
-
-    // No provider configured
     return NextResponse.json({
-      connected: false,
-      provider: null,
-      message: "Aucun fournisseur email configuré. Connectez-vous avec Microsoft ou configurez IMAP.",
+      connected,
+      imapConnected,
+      graphConnected,
+      lastSync,
+      emailCount,
+      extractedCount,
+      analyzedCount,
+      needsReconnection: graphConnected && graphTokenExpired,
     });
   } catch (error) {
     console.error("Error checking email status:", error);

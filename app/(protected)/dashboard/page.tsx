@@ -14,8 +14,6 @@ import { StatsCard } from "@/components/dashboard/stats-card";
 import { PendingSyncCard } from "@/components/dashboard/pending-sync-card";
 import { SyncCard } from "@/components/dashboard/sync-card";
 import { constructMetadata } from "@/lib/utils";
-import { formatDistanceToNow } from "date-fns";
-import { fr } from "date-fns/locale";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 
@@ -34,7 +32,7 @@ export default async function DashboardPage() {
   }
 
   // Récupérer les statistiques
-  const [todoCount, doneCount, ignoredCount, gmailStatus, recentActions] =
+  const [todoCount, doneCount, ignoredCount, gmailStatus, mailboxCount, recentActions] =
     await Promise.all([
       // Compter les actions TODO
       prisma.action.count({
@@ -52,7 +50,6 @@ export default async function DashboardPage() {
       prisma.user.findUnique({
         where: { id: user.id },
         select: {
-          lastEmailSync: true,
           createdAt: true,
           _count: {
             select: {
@@ -61,6 +58,11 @@ export default async function DashboardPage() {
           },
         },
       }),
+      // Nombre de boîtes mail configurées (IMAP + Microsoft Graph)
+      Promise.all([
+        prisma.iMAPCredential.count({ where: { userId: user.id } }),
+        prisma.microsoftGraphMailbox.count({ where: { userId: user.id, isActive: true } }),
+      ]).then(([imap, graph]) => imap + graph),
       // Actions récentes TODO
       prisma.action.findMany({
         where: { userId: user.id, status: "TODO" },
@@ -83,12 +85,7 @@ export default async function DashboardPage() {
   // Feature flag for email count
   const isEmailCountEnabled = process.env.FEATURE_EMAIL_COUNT === "true";
 
-  const lastSyncText = gmailStatus?.lastEmailSync
-    ? formatDistanceToNow(gmailStatus.lastEmailSync, {
-        locale: fr,
-      })
-    : "jamais";
-
+  const hasMailboxes = mailboxCount > 0;
   const totalActions = todoCount + doneCount + ignoredCount;
 
   return (
@@ -111,8 +108,8 @@ export default async function DashboardPage() {
         </AlertDescription>
       </Alert>
 
-      {/* Scan Status */}
-      <ScanStatusHeader />
+      {/* Scan Status + Sync — uniquement si une boîte est configurée */}
+      {hasMailboxes && <ScanStatusHeader />}
 
       {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -142,10 +139,12 @@ export default async function DashboardPage() {
           }
           icon={XCircle}
         />
-        {isEmailCountEnabled ? (
-          <PendingSyncCard lastSyncText={lastSyncText} />
-        ) : (
-          <SyncCard lastSyncText={lastSyncText} />
+        {hasMailboxes && (
+          isEmailCountEnabled ? (
+            <PendingSyncCard lastSyncText="jamais" />
+          ) : (
+            <SyncCard lastSyncText="jamais" />
+          )
         )}
       </div>
 

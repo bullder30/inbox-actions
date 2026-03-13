@@ -15,13 +15,18 @@ import type {
 
 export class MicrosoftGraphProvider implements IEmailProvider {
   readonly providerType: EmailProvider = "MICROSOFT_GRAPH";
+  readonly mailboxId: string;
+  readonly mailboxLabel: string | null;
   private userId: string;
 
   constructor(
     private service: MicrosoftGraphService,
-    userId: string
+    userId: string,
+    mailboxLabel: string | null = null
   ) {
     this.userId = userId;
+    this.mailboxId = service.mailboxId;
+    this.mailboxLabel = mailboxLabel;
   }
 
   async fetchNewEmails(options?: FetchOptions): Promise<EmailMetadata[]> {
@@ -88,14 +93,14 @@ export class MicrosoftGraphProvider implements IEmailProvider {
   }
 
   async getStatus(): Promise<ConnectionStatus> {
-    const user = await prisma.user.findUnique({
-      where: { id: this.userId },
-      select: { lastEmailSync: true },
+    const mailbox = await prisma.microsoftGraphMailbox.findUnique({
+      where: { id: this.mailboxId },
+      select: { lastSync: true },
     });
 
     return {
       isConnected: true,
-      lastSync: user?.lastEmailSync || null,
+      lastSync: mailbox?.lastSync || null,
       lastError: null,
       provider: "MICROSOFT_GRAPH",
     };

@@ -1,6 +1,6 @@
 /**
  * POST /api/imap/disconnect
- * Déconnecte et supprime les credentials IMAP
+ * Déconnecte et supprime une credential IMAP spécifique
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -17,36 +17,34 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    // Supprimer les credentials IMAP de l'utilisateur
+    const body = await req.json().catch(() => ({}));
+    const credentialId = body.credentialId as string | undefined;
+
+    if (!credentialId) {
+      return NextResponse.json(
+        { error: "credentialId is required" },
+        { status: 400 }
+      );
+    }
+
+    // Supprimer uniquement la credential spécifiée, en vérifiant que l'utilisateur en est propriétaire
     const deleted = await prisma.iMAPCredential.deleteMany({
-      where: { userId: session.user.id },
+      where: {
+        id: credentialId,
+        userId: session.user.id,
+      },
     });
 
     if (deleted.count === 0) {
       return NextResponse.json(
-        { error: "No IMAP credentials found" },
+        { error: "Credential not found" },
         { status: 404 }
       );
     }
 
-    // Remettre le provider email à Gmail par défaut
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: { emailProvider: "GMAIL" },
-    });
-
-    // Optionnel : supprimer aussi les métadonnées d'emails IMAP
-    // (décommenter si vous voulez un nettoyage complet)
-    // await prisma.emailMetadata.deleteMany({
-    //   where: {
-    //     userId: session.user.id,
-    //     emailProvider: "IMAP",
-    //   },
-    // });
-
     return NextResponse.json({
       success: true,
-      message: "IMAP credentials disconnected successfully",
+      message: "IMAP credential disconnected successfully",
     });
   } catch (error) {
     console.error("[IMAP Disconnect] Error:", error);
