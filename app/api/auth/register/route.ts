@@ -49,6 +49,7 @@ export async function POST(req: NextRequest) {
       data: {
         email,
         password: hashedPassword,
+        termsAcceptedAt: new Date(),
       },
     });
 

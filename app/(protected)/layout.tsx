@@ -24,6 +24,13 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
 
   if (!user) redirect("/login");
 
+  // Vérifier que l'utilisateur a accepté les CGU (requis pour tous les providers)
+  const dbUser = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { termsAcceptedAt: true },
+  });
+  if (!dbUser?.termsAcceptedAt) redirect("/accept-terms");
+
   // Récupérer le nombre d'actions TODO pour le badge
   const todoCount = await prisma.action.count({
     where: {

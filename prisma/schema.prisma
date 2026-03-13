@@ -103,6 +103,9 @@ model User {
   passwordResetToken  String?   @unique @map(name: "password_reset_token")
   passwordResetExpiry DateTime? @map(name: "password_reset_expiry")
 
+  // Legal
+  termsAcceptedAt DateTime? @map(name: "terms_accepted_at")
+
   // Notification preferences
   emailNotifications   Boolean   @default(true) @map(name: "email_notifications")
   lastNotificationSent DateTime? @map(name: "last_notification_sent")
