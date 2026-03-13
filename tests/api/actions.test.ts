@@ -67,6 +67,7 @@ describe("API Actions - GET /api/actions", () => {
 
   it("devrait retourner la liste des actions de l'utilisateur", async () => {
     vi.mocked(auth).mockResolvedValue(mockSession as any);
+    vi.mocked(prisma.action.count).mockResolvedValue(1);
     vi.mocked(prisma.action.findMany).mockResolvedValue([mockAction] as any);
 
     const req = createMockRequest("http://localhost:3000/api/actions");
@@ -75,7 +76,7 @@ describe("API Actions - GET /api/actions", () => {
 
     expect(response.status).toBe(200);
     expect(data.actions).toHaveLength(1);
-    expect(data.count).toBe(1);
+    expect(data.total).toBe(1);
     expect(data.actions[0].title).toBe("Test Action");
 
     // Vérifier que le filtre userId est appliqué

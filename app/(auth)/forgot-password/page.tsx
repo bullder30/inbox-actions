@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Metadata } from "next";
 
 import { BackButton } from "@/components/shared/back-button";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";

@@ -29,6 +29,13 @@ vi.mock("@/lib/db", () => ({
     user: {
       findUnique: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+    },
+    verificationToken: {
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
     },
     microsoftGraphMailbox: {
       findMany: vi.fn(),

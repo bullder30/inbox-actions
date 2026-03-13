@@ -62,15 +62,94 @@ Inbox Actions sépare l'authentification à l'application de l'accès aux emails
 
 L'authentification par email/mot de passe est toujours disponible. Aucune configuration supplémentaire n'est requise.
 
-### Utilisation
+### Inscription
 
 1. Aller sur `/register`
-2. Entrer nom, email, mot de passe
-3. Le compte est créé avec un mot de passe hashé (bcrypt)
+2. Entrer email, mot de passe (+ confirmation), accepter les CGU
+3. Le compte est créé avec un mot de passe hashé (bcrypt, 12 rounds)
+4. Un email de vérification est envoyé automatiquement via Resend
+
+### Connexion
+
+1. Aller sur `/login`
+2. Entrer email + mot de passe
+3. Toggle show/hide password disponible
 
 ### Lien avec OAuth
 
 Si un utilisateur s'inscrit par email/mot de passe puis se connecte avec Google/Microsoft (même email), les comptes sont automatiquement liés.
+
+---
+
+## Vérification d'email
+
+Les utilisateurs inscrits par email/mot de passe doivent vérifier leur adresse email. Les utilisateurs OAuth (Google, Microsoft) sont automatiquement vérifiés.
+
+### Flow
+
+```
+Inscription → Email de vérification envoyé → Bannière sur le dashboard
+                                                      ↓
+                              Clic sur le lien → /verify-email?token=...
+                                                      ↓
+                                          emailVerified = now()
+                                          Redirection → /dashboard
+```
+
+### API endpoints
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/auth/send-verification` | POST | Renvoie l'email de vérification (auth requise) |
+| `/api/auth/verify-email` | POST | Valide le token et set `emailVerified` |
+
+### Token
+
+- Stocké dans le modèle `VerificationToken` (Auth.js natif)
+- Durée de validité : **24 heures**
+- Token unique SHA-256 (32 bytes random hex)
+- L'ancien token est supprimé à chaque nouveau renvoi
+
+### Bannière dashboard
+
+Si `User.emailVerified = null`, une bannière orange s'affiche avec un bouton "Renvoyer l'email". La bannière disparaît dès la vérification.
+
+---
+
+## Réinitialisation du mot de passe
+
+Disponible uniquement pour les comptes email/mot de passe.
+
+### Flow
+
+```
+/login → "Mot de passe oublié ?" → /forgot-password
+              ↓
+     Saisie de l'email
+              ↓
+     Email avec lien sécurisé (1h)
+              ↓
+     /reset-password?token=...
+              ↓
+     Nouveau mot de passe + confirmation
+              ↓
+     Redirection → /login
+```
+
+### API endpoints
+
+| Endpoint | Méthode | Description |
+|----------|---------|-------------|
+| `/api/auth/forgot-password` | POST | Génère le token et envoie l'email |
+| `/api/auth/reset-password` | POST | Valide le token et met à jour le mot de passe |
+
+### Sécurité
+
+- **Anti-énumération** : la route `forgot-password` retourne toujours `200` même si l'email n'existe pas
+- Les utilisateurs OAuth (sans mot de passe) reçoivent `200` sans email envoyé
+- Token stocké hashé dans `User.passwordResetToken` avec expiry `User.passwordResetExpiry`
+- Durée de validité : **1 heure**
+- Token et expiry sont effacés après utilisation
 
 ---
 
