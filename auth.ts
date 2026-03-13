@@ -21,7 +21,8 @@ function CustomPrismaAdapter(): Adapter {
       const user = await prisma.user.create({
         data: {
           email: userData.email,
-          emailVerified: userData.emailVerified,
+          // OAuth providers have already verified the email — always set it
+          emailVerified: userData.emailVerified ?? new Date(),
           image: userData.image,
         },
       });
@@ -54,7 +55,7 @@ export const {
     updateAge: 24 * 60 * 60, // 24 heures (rafraîchit le token si actif depuis > 24h)
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Si c'est une connexion OAuth (Google ou Microsoft)
       if (account?.provider === "google" || account?.provider === "microsoft-entra-id") {
         // Vérifier si un utilisateur existe déjà avec cet email
@@ -86,6 +87,15 @@ export const {
               },
             });
             console.log(`[Auth] Compte ${account.provider} lié à l'utilisateur existant: ${user.email}`);
+          }
+
+          // Marquer l'email comme vérifié si ce n'est pas encore le cas
+          // (l'OAuth provider a déjà vérifié l'email)
+          if (!existingUser.emailVerified) {
+            await prisma.user.update({
+              where: { id: existingUser.id },
+              data: { emailVerified: new Date() },
+            });
           }
         }
       }
