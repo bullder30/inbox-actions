@@ -29,6 +29,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true });
     }
 
+    // Rate limit: silently succeed if a token was issued less than 60 seconds ago
+    if (user.passwordResetExpiry) {
+      const cooldownMs = 60 * 1000;
+      const tokenAge = Date.now() - (user.passwordResetExpiry.getTime() - 60 * 60 * 1000);
+      if (tokenAge < cooldownMs) {
+        return NextResponse.json({ success: true });
+      }
+    }
+
     const token = randomBytes(32).toString("hex");
     const expiry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 

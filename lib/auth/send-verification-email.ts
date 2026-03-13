@@ -8,7 +8,7 @@ export async function sendVerificationEmail(email: string): Promise<void> {
   await prisma.verificationToken.deleteMany({ where: { identifier: email } });
 
   const token = randomBytes(32).toString("hex");
-  const expires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+  const expires = new Date(Date.now() + 60 * 60 * 1000); // 1 hour
 
   await prisma.verificationToken.create({
     data: { identifier: email, token, expires },
@@ -24,7 +24,7 @@ export async function sendVerificationEmail(email: string): Promise<void> {
     html: `
       <p>Bonjour,</p>
       <p>Merci de vous être inscrit sur Inbox Actions. Veuillez vérifier votre adresse email en cliquant sur le bouton ci-dessous.</p>
-      <p>Ce lien est valable <strong>24 heures</strong>.</p>
+      <p>Ce lien est valable <strong>1 heure</strong>.</p>
       <p><a href="${verifyUrl}" style="background:#000;color:#fff;padding:12px 24px;text-decoration:none;border-radius:6px;display:inline-block">Vérifier mon email</a></p>
       <p>Si vous n'avez pas créé de compte, ignorez cet email.</p>
       <p>L'équipe Inbox Actions</p>

@@ -34,22 +34,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      // If user exists but has no password (OAuth only), allow setting password
-      if (!existingUser.password) {
-        const hashedPassword = await hash(password, 12);
-        await prisma.user.update({
-          where: { email },
-          data: {
-            password: hashedPassword,
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Mot de passe ajouté à votre compte existant",
-        });
-      }
-
+      // Always reject — merging credentials into an OAuth account must be done
+      // from an authenticated session (settings page), never from a public endpoint.
       return NextResponse.json(
         { error: "Un compte existe déjà avec cet email" },
         { status: 409 }

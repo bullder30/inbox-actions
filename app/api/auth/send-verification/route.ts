@@ -27,6 +27,22 @@ export async function POST() {
       return NextResponse.json({ error: "Email déjà vérifié" }, { status: 400 });
     }
 
+    // Rate limit: silently succeed if a token was issued less than 60 seconds ago.
+    // Token lifetime is 1h, so a fresh token has expires > now + 59min.
+    const existingToken = await prisma.verificationToken.findFirst({
+      where: { identifier: dbUser.email },
+      select: { expires: true },
+    });
+
+    if (existingToken?.expires) {
+      const TOKEN_LIFETIME_MS = 60 * 60 * 1000;
+      const COOLDOWN_MS = 60 * 1000;
+      const ageMs = TOKEN_LIFETIME_MS - (existingToken.expires.getTime() - Date.now());
+      if (ageMs < COOLDOWN_MS) {
+        return NextResponse.json({ success: true });
+      }
+    }
+
     await sendVerificationEmail(dbUser.email);
 
     return NextResponse.json({ success: true });

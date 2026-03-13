@@ -9,6 +9,7 @@ vi.mock("@/auth", () => ({
 // Mock Prisma
 vi.mock("@/lib/db", () => ({
   prisma: {
+    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
     action: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
@@ -33,6 +34,7 @@ vi.mock("@/lib/db", () => ({
     },
     verificationToken: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       delete: vi.fn(),
       deleteMany: vi.fn(),

@@ -8,6 +8,8 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
 
+// $transaction is mocked in setup.ts as: (ops) => Promise.all(ops)
+
 function createPostRequest(body: unknown): NextRequest {
   return new NextRequest("http://localhost:3000/api/auth/verify-email", {
     method: "POST",
@@ -91,14 +93,15 @@ describe("POST /api/auth/verify-email", () => {
     });
   });
 
-  it("devrait exécuter user.update et token.delete en parallèle", async () => {
+  it("devrait exécuter user.update et token.delete dans une transaction atomique", async () => {
     vi.mocked(prisma.verificationToken.findUnique).mockResolvedValue(mockRecord);
     vi.mocked(prisma.user.update).mockResolvedValue({} as any);
     vi.mocked(prisma.verificationToken.delete).mockResolvedValue(mockRecord);
 
     await POST(createPostRequest({ token: validToken }));
 
-    // Les deux opérations doivent avoir été appelées exactement une fois
+    // Les deux opérations sont passées à $transaction
+    expect((prisma as any).$transaction).toHaveBeenCalledTimes(1);
     expect(prisma.user.update).toHaveBeenCalledTimes(1);
     expect(prisma.verificationToken.delete).toHaveBeenCalledTimes(1);
   });

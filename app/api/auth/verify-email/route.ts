@@ -33,7 +33,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Ce lien a expiré" }, { status: 400 });
     }
 
-    await Promise.all([
+    await prisma.$transaction([
       prisma.user.update({
         where: { email: record.identifier },
         data: { emailVerified: new Date() },
