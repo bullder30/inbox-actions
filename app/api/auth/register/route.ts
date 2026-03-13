@@ -3,6 +3,7 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/auth/send-verification-email";
 
 export const dynamic = "force-dynamic";
 
@@ -64,6 +65,11 @@ export async function POST(req: NextRequest) {
         password: hashedPassword,
       },
     });
+
+    // Send verification email (non-blocking — registration succeeds even if email fails)
+    sendVerificationEmail(email).catch((err) =>
+      console.error("[Register] Failed to send verification email:", err)
+    );
 
     return NextResponse.json({
       success: true,

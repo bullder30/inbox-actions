@@ -13,6 +13,7 @@ import packageJson from "@/package.json";
 import { StatsCard } from "@/components/dashboard/stats-card";
 import { PendingSyncCard } from "@/components/dashboard/pending-sync-card";
 import { SyncCard } from "@/components/dashboard/sync-card";
+import { EmailVerificationBanner } from "@/components/dashboard/email-verification-banner";
 import { constructMetadata } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
@@ -47,7 +48,7 @@ export default async function DashboardPage() {
     // Statut sync + createdAt pour le message de bienvenue
     prisma.user.findUnique({
       where: { id: user.id },
-      select: { createdAt: true, _count: { select: { emailMetadata: true } } },
+      select: { createdAt: true, emailVerified: true, _count: { select: { emailMetadata: true } } },
     }),
     // Nombre de boîtes mail configurées (IMAP + Microsoft Graph)
     Promise.all([
@@ -100,6 +101,9 @@ export default async function DashboardPage() {
         heading="Tableau de bord"
         text="Bienvenue ! Voici un aperçu de vos actions extraites de vos emails."
       />
+
+      {/* Email verification banner — only for credentials users who haven't verified yet */}
+      {gmailStatus && !gmailStatus.emailVerified && <EmailVerificationBanner />}
 
       {/* MVP Banner */}
       <Alert variant="default" className="border-blue-200 bg-blue-50 dark:border-blue-900 dark:bg-blue-950">
