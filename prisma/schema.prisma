@@ -99,6 +99,10 @@ model User {
   stripePriceId          String?   @map(name: "stripe_price_id")
   stripeCurrentPeriodEnd DateTime? @map(name: "stripe_current_period_end")
 
+  // Password reset
+  passwordResetToken  String?   @unique @map(name: "password_reset_token")
+  passwordResetExpiry DateTime? @map(name: "password_reset_expiry")
+
   // Notification preferences
   emailNotifications   Boolean   @default(true) @map(name: "email_notifications")
   lastNotificationSent DateTime? @map(name: "last_notification_sent")
