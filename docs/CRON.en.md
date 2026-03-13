@@ -8,17 +8,17 @@ The system uses **node-cron** to execute scheduled tasks automatically, both in 
 
 ### Main Files
 
-- **`lib/cron/count-new-emails-job.ts`**: New email counting job (every 2 minutes)
-- **`lib/cron/daily-sync-job.ts`**: Complete daily sync job (8:00 AM)
-- **`lib/cron/cleanup-job.ts`**: Obsolete metadata cleanup job (9:00 AM)
+- **`lib/cron/count-new-emails-job.ts`**: New email counting job (every 10 minutes)
+- **`lib/cron/daily-sync-job.ts`**: Complete daily sync job (7:00 AM)
+- **`lib/cron/cleanup-job.ts`**: Obsolete metadata cleanup job (3:00 AM)
 - **`lib/cron/cron-service.ts`**: Cron management service (start, stop)
 - **`instrumentation.ts`**: Next.js entry point to start crons at server launch
 
 ## Scheduled Jobs
 
-### 1. Count New Emails Job (every 2 minutes)
+### 1. Count New Emails Job (every 10 minutes)
 
-**Schedule**: `*/2 * * * *` (every 2 minutes)
+**Schedule**: `*/10 * * * *` (every 10 minutes)
 
 The `count-new-emails` job **only counts** new emails available since the last sync (manual or automatic).
 
@@ -26,7 +26,7 @@ The `count-new-emails` job **only counts** new emails available since the last s
 
 **Actual synchronization is done via**:
 - The "Analyze" button in the dashboard (manual)
-- The daily-sync job (automatic, every day at 8:00 AM)
+- The daily-sync job (automatic, every day at 7:00 AM)
 
 **Real-time dashboard update**:
 - **Server-Sent Events (SSE)** system combined with **Zustand**
@@ -37,9 +37,9 @@ The `count-new-emails` job **only counts** new emails available since the last s
 
 **Objective**: Keep the "Pending" counter up to date in real-time without polling
 
-### 2. Daily-Sync Job (every day at 8:00 AM)
+### 2. Daily-Sync Job (every day at 7:00 AM)
 
-**Schedule**: `0 8 * * *` (every day at 8:00 AM)
+**Schedule**: `0 7 * * *` (every day at 7:00 AM)
 
 The `daily-sync` job is a more complete version of auto-sync:
 
@@ -48,9 +48,9 @@ The `daily-sync` job is a more complete version of auto-sync:
 
 **Intentional limits**: 100 sync / 50 analyze for more aggressive daily processing
 
-### 3. Cleanup Job (every day at 9:00 AM)
+### 3. Cleanup Job (every day at 3:00 AM)
 
-**Schedule**: `0 9 * * *` (every day at 9:00 AM)
+**Schedule**: `0 3 * * *` (every day at 3:00 AM)
 
 The `cleanup` job cleans up obsolete email metadata:
 
@@ -69,12 +69,12 @@ The "Pending" counter in the dashboard updates automatically in real-time thanks
 
 1. **Client component**: `PendingSyncCard` (React with `useState` and `useEffect`)
 2. **API endpoint**: `/api/email/pending-count` (GET)
-3. **Polling**: Every 30 seconds (cron runs every 2 minutes)
+3. **Polling**: Every 30 seconds (cron runs every 10 minutes)
 
 ### How it works
 
 ```
-[Cron every 2 min] -> Updates email count
+[Cron every 10 min] -> Updates email count
                        ↓
 [Dashboard component] -> Polling /api/email/pending-count every 30s
                        ↓
@@ -108,9 +108,9 @@ This function is called by Next.js at server startup (dev and production).
 ```
 [INSTRUMENTATION] Starting cron jobs...
 [CRON SERVICE] 🚀 Starting cron jobs...
-[CRON SERVICE] ✅ Count-new-emails job scheduled (every 2 minutes)
-[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)
-[CRON SERVICE] ✅ Cleanup job scheduled (every day at 9:00 AM)
+[CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)
+[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)
+[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM)
 ```
 
 ## Configuration
@@ -122,7 +122,7 @@ By default, cron uses the **Europe/Paris** timezone. To change it:
 ```typescript
 // lib/cron/cron-service.ts
 cron.schedule(
-  "*/2 * * * *",
+  "*/10 * * * *",
   async () => { ... },
   {
     timezone: "America/New_York", // Change here
@@ -136,7 +136,7 @@ To change execution frequency, edit the cron pattern in `lib/cron/cron-service.t
 
 ```typescript
 // Examples:
-"*/2 * * * *"   // Every 2 minutes
+"*"*/2 * * * *"   // Every 2 minutes
 "*/5 * * * *"   // Every 5 minutes
 "*/10 * * * *"  // Every 10 minutes
 "0 * * * *"     // Every hour
@@ -158,9 +158,9 @@ You will see in the logs:
 ```
 [INSTRUMENTATION] Starting cron jobs...
 [CRON SERVICE] 🚀 Starting cron jobs...
-[CRON SERVICE] ✅ Count-new-emails job scheduled (every 2 minutes)
-[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)
-[CRON SERVICE] ✅ Cleanup job scheduled (every day at 9:00 AM)
+[CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)
+[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)
+[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM)
 ```
 
 ### Logs
@@ -261,15 +261,15 @@ Errors are logged but don't stop cron. Check logs to identify issues:
 
 To avoid timeouts, each job processes a limited number of items per execution:
 
-**Count New Emails Job** (every 2 minutes):
+**Count New Emails Job** (every 10 minutes):
 - Only counts, no limit needed
 - Light and fast operation
 
-**Daily-Sync Job** (every day at 8:00 AM):
+**Daily-Sync Job** (every day at 7:00 AM):
 - **Synchronization**: Maximum 100 new emails per user
 - **Analysis**: Maximum 50 EXTRACTED emails per user
 
-**Cleanup Job** (every day at 9:00 AM):
+**Cleanup Job** (every day at 3:00 AM):
 - No limit: processes all obsolete emails according to retention rules
 
 If you have more emails to process than the limits, they will be processed on the next run.
@@ -283,9 +283,9 @@ Crons run in the same process as Next.js. In production on Vercel, this doesn't 
 | Job | Frequency | Schedule | Action | Objective |
 |-----|-----------|----------|--------|-----------|
 | **count-new-emails** | Every 2 min | - | Count only | Keep "Pending" counter up to date |
-| **daily-sync** | 1x per day | 8:00 AM | Sync (100) + Analyze (50) | Complete daily sync |
-| **cleanup** | 1x per day | 9:00 AM | Delete obsolete emails | Clean up obsolete data |
+| **daily-sync** | 1x per day | 7:00 AM | Sync (100) + Analyze (50) | Complete daily sync |
+| **cleanup** | 1x per day | 3:00 AM | Delete obsolete emails | Clean up obsolete data |
 
 **Important note**: Actual email synchronization only happens via:
 - The "Analyze" button in the dashboard (manual)
-- The daily-sync job (automatic, 8:00 AM)
+- The daily-sync job (automatic, 7:00 AM)

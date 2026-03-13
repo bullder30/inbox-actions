@@ -90,8 +90,8 @@ inbox-actions/
 │   │   │   ├── sync/        # Manual sync
 │   │   │   └── activate/    # Activate Graph provider
 │   │   ├── cron/                 # Scheduled tasks
-│   │   │   ├── daily-sync/      # Daily sync job (8h00)
-│   │   │   ├── cleanup-metadata/ # Cleanup job (23h00)
+│   │   │   ├── daily-sync/      # Daily sync job (7h00)
+│   │   │   ├── cleanup-metadata/ # Cleanup job (3h00)
 │   │   │   └── test-trigger/    # Manual trigger for testing
 │   │   ├── user/                 # User management
 │   │   │   └── preferences/     # User preferences API
@@ -312,7 +312,7 @@ pnpm test:regex  # Test regex patterns against examples
 **File:** `lib/cron/daily-sync-job.ts` (182 lines)
 
 **Frequency:** Once per day at 8:00 AM
-**Schedule:** `0 8 * * *` (Europe/Paris)
+**Schedule:** `0 7 * * *` (Europe/Paris)
 **Purpose:** Comprehensive email sync + action extraction + notification
 
 **Process:**
@@ -360,7 +360,7 @@ pnpm test:regex  # Test regex patterns against examples
 **File:** `lib/cron/cleanup-job.ts`
 
 **Frequency:** Once per day at 11:00 PM
-**Schedule:** `0 23 * * *` (Europe/Paris)
+**Schedule:** `0 3 * * *` (Europe/Paris)
 **Purpose:** Delete ALL email metadata (MVP: retention = 0)
 
 **Strategy (MVP):**
@@ -1765,11 +1765,11 @@ The git status shows many deleted/modified files - this is expected from the ref
     "crons": [
       {
         "path": "/api/cron/daily-sync",
-        "schedule": "0 8 * * *"
+        "schedule": "0 7 * * *"
       },
       {
         "path": "/api/cron/cleanup-metadata",
-        "schedule": "0 23 * * *"
+        "schedule": "0 3 * * *"
       }
     ]
   }
