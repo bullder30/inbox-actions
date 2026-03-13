@@ -5,6 +5,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 
 import { prisma } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/auth/send-verification-email";
 import { getUserById } from "@/lib/user";
 
 // Custom adapter that removes the 'name' field since it was removed from the User model
@@ -21,8 +22,7 @@ function CustomPrismaAdapter(): Adapter {
       const user = await prisma.user.create({
         data: {
           email: userData.email,
-          // OAuth providers have already verified the email — always set it
-          emailVerified: userData.emailVerified ?? new Date(),
+          emailVerified: userData.emailVerified,
           image: userData.image,
         },
       });
@@ -88,14 +88,20 @@ export const {
             });
             console.log(`[Auth] Compte ${account.provider} lié à l'utilisateur existant: ${user.email}`);
           }
+        }
 
-          // Marquer l'email comme vérifié si ce n'est pas encore le cas
-          // (l'OAuth provider a déjà vérifié l'email)
-          if (!existingUser.emailVerified) {
-            await prisma.user.update({
-              where: { id: existingUser.id },
-              data: { emailVerified: new Date() },
-            });
+        // Envoyer l'email de vérification si l'email n'est pas encore vérifié
+        // (nouvel utilisateur OAuth ou utilisateur existant non vérifié)
+        const dbUser = existingUser ?? await prisma.user.findUnique({ where: { email: user.email! } });
+        if (dbUser && !dbUser.emailVerified) {
+          // Envoyer seulement s'il n'y a pas déjà un token en cours (évite le spam au re-login)
+          const existingToken = await prisma.verificationToken.findFirst({
+            where: { identifier: user.email! },
+          });
+          if (!existingToken) {
+            sendVerificationEmail(user.email!).catch((err) =>
+              console.error("[Auth] Failed to send verification email:", err)
+            );
           }
         }
       }
