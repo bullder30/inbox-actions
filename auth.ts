@@ -26,6 +26,17 @@ function CustomPrismaAdapter(): Adapter {
           image: userData.image,
         },
       });
+
+      // Send verification email for new OAuth users (signIn callback runs BEFORE createUser,
+      // so it cannot be done there for new users)
+      if (!user.emailVerified && user.email) {
+        try {
+          await sendVerificationEmail(user.email);
+        } catch (err) {
+          console.error("[Auth] Failed to send verification email on user creation:", err);
+        }
+      }
+
       return { ...user, id: user.id, email: user.email!, emailVerified: user.emailVerified };
     },
   };
