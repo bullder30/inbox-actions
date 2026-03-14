@@ -145,6 +145,12 @@ const EXCLUSION_PATTERNS = {
     /do-?not-?reply@/i,
     /notifications?@/i,
     /newsletter@/i,
+    /jobs?-?listings?@/i,   // LinkedIn job alerts
+    /alerts?@/i,            // Alertes automatiques génériques
+    /digest@/i,             // Digest automatiques
+    /updates?@/i,           // Mises à jour automatiques
+    /marketing@/i,          // Emails marketing
+    /promo(?:tions?)?@/i,   // Promotions
   ],
 
   // Sujets à exclure
