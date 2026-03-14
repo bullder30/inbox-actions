@@ -6,7 +6,6 @@ import { ActionCard } from "@/components/actions/action-card";
 import { ActionCardSkeletonList } from "@/components/actions/action-card-skeleton";
 import { ActionWithUser } from "@/lib/api/actions";
 import { EmptyState } from "@/components/actions/empty-state";
-import { Loader2 } from "lucide-react";
 import { getActions } from "@/lib/api/actions";
 import { toast } from "sonner";
 
@@ -103,11 +102,7 @@ export default function ActionsPage() {
           ))}
           {/* Sentinelle : quand elle devient visible, on charge la page suivante */}
           <div ref={sentinelRef} className="h-1" />
-          {loadingMore && (
-            <div className="flex justify-center py-4">
-              <Loader2 className="size-5 animate-spin text-muted-foreground" />
-            </div>
-          )}
+          {loadingMore && <ActionCardSkeletonList count={2} />}
         </div>
       )}
     </>

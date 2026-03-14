@@ -1,6 +1,7 @@
 "use client";
 
 import { Clock, Inbox, Loader2, Mail, MailOpen, Plus } from "lucide-react";
+
 import { BackButton } from "@/components/shared/back-button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -16,7 +17,7 @@ import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
-import { MissingActionSkeleton } from "@/components/actions/missing-action-skeleton";
+import { MissingActionCardSkeletonList, MissingActionSkeleton } from "@/components/actions/missing-action-skeleton";
 
 interface EmailMetadata {
   id: string;
@@ -263,11 +264,7 @@ export default function MissingActionPage() {
             ))}
             {/* Sentinelle infinite scroll */}
             <div ref={sentinelRef} className="h-1" />
-            {loadingMore && (
-              <div className="flex justify-center py-4">
-                <Loader2 className="size-5 animate-spin text-muted-foreground" />
-              </div>
-            )}
+            {loadingMore && <MissingActionCardSkeletonList count={2} />}
           </div>
         </div>
       )}
