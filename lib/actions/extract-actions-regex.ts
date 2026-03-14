@@ -178,6 +178,11 @@ const WEAK_CONDITIONAL_PATTERNS = [
   /si\s+jamais/i,
   /quand\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
   /lorsque\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
+  // Contextes hypothétiques / offres de service (pas une demande directe)
+  /en\s+cas\s+de/i,
+  /n['']hésitez\s+pas/i,
+  /si\s+vous\s+avez\s+(?:des\s+)?(?:questions?|besoin)/i,
+  /pour\s+(?:toute\s+)?(?:question|information|renseignement)/i,
 ];
 
 // ============================================================================
