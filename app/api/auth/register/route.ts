@@ -3,6 +3,7 @@ import { hash } from "bcryptjs";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/auth/send-verification-email";
 
 export const dynamic = "force-dynamic";
 
@@ -33,22 +34,8 @@ export async function POST(req: NextRequest) {
     });
 
     if (existingUser) {
-      // If user exists but has no password (OAuth only), allow setting password
-      if (!existingUser.password) {
-        const hashedPassword = await hash(password, 12);
-        await prisma.user.update({
-          where: { email },
-          data: {
-            password: hashedPassword,
-          },
-        });
-
-        return NextResponse.json({
-          success: true,
-          message: "Mot de passe ajouté à votre compte existant",
-        });
-      }
-
+      // Always reject — merging credentials into an OAuth account must be done
+      // from an authenticated session (settings page), never from a public endpoint.
       return NextResponse.json(
         { error: "Un compte existe déjà avec cet email" },
         { status: 409 }
@@ -62,8 +49,16 @@ export async function POST(req: NextRequest) {
       data: {
         email,
         password: hashedPassword,
+        termsAcceptedAt: new Date(),
       },
     });
+
+    // Send verification email (awaited so it completes before the response is sent)
+    try {
+      await sendVerificationEmail(email);
+    } catch (err) {
+      console.error("[Register] Failed to send verification email:", err);
+    }
 
     return NextResponse.json({
       success: true,

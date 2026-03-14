@@ -4,10 +4,10 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 
 ## Project Overview
 
-**Inbox Actions** is a Next.js 14 SaaS application that extracts actionable tasks from Gmail emails using deterministic regex patterns. The application is based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt), heavily customized with most marketing/blog/docs features removed to focus on the core action extraction functionality.
+**Inbox Actions** is a Next.js 14 SaaS application that extracts actionable tasks from emails using deterministic regex patterns. The application is based on [next-saas-stripe-starter](https://github.com/mickasmt/next-saas-stripe-starter) by [@mickasmt](https://github.com/mickasmt), heavily customized with most marketing/blog/docs features removed to focus on the core action extraction functionality.
 
 **Core Value Proposition:**
-- Connect Gmail account (read-only OAuth)
+- Connect email account via IMAP (Gmail, Yahoo, iCloud) or Microsoft Graph (Outlook, Hotmail, M365)
 - Automatically extract actionable tasks from emails
 - Organize actions by type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE)
 - Track due dates and completion status
@@ -28,9 +28,11 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 
 ### Authentication & APIs
 - **Auth.js v5** (NextAuth) - Authentication framework
-  - Google OAuth provider (active)
-  - Resend magic links (commented, to implement)
-- **Gmail API** (googleapis) - Email access (read-only)
+  - Google OAuth provider (for login)
+  - Microsoft OAuth provider (for login + email access via Graph API)
+  - Credentials provider (email/password)
+- **IMAP** (imapflow) - Email access for Gmail, Yahoo, iCloud, etc.
+- **Microsoft Graph API** - Email access for Outlook, Hotmail, Microsoft 365
 - **Stripe** - Payment processing
 - **Resend** - Transactional emails
 
@@ -73,18 +75,23 @@ inbox-actions/
 │   │   │   │   ├── done/    # Mark as done
 │   │   │   │   └── ignore/  # Ignore action
 │   │   │   └── manual/      # Create manual action
-│   │   ├── gmail/            # Gmail integration endpoints (7 endpoints)
+│   │   ├── email/            # Email integration endpoints
 │   │   │   ├── sync/        # Sync new emails
 │   │   │   ├── analyze/     # Extract actions from emails
-│   │   │   ├── status/      # Check Gmail connection status
-│   │   │   ├── stats/       # Email statistics
+│   │   │   ├── status/      # Check email connection status
 │   │   │   ├── pending-count/    # Count pending emails
 │   │   │   ├── pending-stream/   # Real-time updates stream
-│   │   │   ├── disconnect/       # Disconnect Gmail
-│   │   │   └── ignored-emails/   # Manage ignored emails
+│   │   │   └── disconnect/       # Disconnect email
+│   │   ├── imap/             # IMAP configuration endpoints
+│   │   │   ├── connect/     # Connect IMAP account
+│   │   │   └── status/      # IMAP connection status
+│   │   ├── microsoft-graph/  # Microsoft Graph endpoints
+│   │   │   ├── status/      # Graph connection status
+│   │   │   ├── sync/        # Manual sync
+│   │   │   └── activate/    # Activate Graph provider
 │   │   ├── cron/                 # Scheduled tasks
-│   │   │   ├── daily-sync/      # Daily sync job (8h00)
-│   │   │   ├── cleanup-metadata/ # Cleanup job (23h00)
+│   │   │   ├── daily-sync/      # Daily sync job (7h00)
+│   │   │   ├── cleanup-metadata/ # Cleanup job (3h00)
 │   │   │   └── test-trigger/    # Manual trigger for testing
 │   │   ├── user/                 # User management
 │   │   │   └── preferences/     # User preferences API
@@ -92,8 +99,14 @@ inbox-actions/
 │   ├── layout.tsx                # Root layout with providers
 │   └── page.tsx                  # Landing page
 ├── lib/                          # Business logic and utilities
-│   ├── gmail/
-│   │   └── gmail-service.ts     # Gmail API service (541 lines)
+│   ├── imap/
+│   │   └── imap-service.ts      # IMAP service (ImapFlow)
+│   ├── microsoft-graph/
+│   │   └── graph-service.ts     # Microsoft Graph API service
+│   ├── email-provider/
+│   │   ├── factory.ts           # Provider factory
+│   │   ├── imap-provider.ts     # IMAP provider implementation
+│   │   └── microsoft-graph-provider.ts  # Graph provider implementation
 │   ├── actions/
 │   │   └── extract-actions-regex.ts  # Regex-based extraction (573 lines)
 │   ├── cron/                    # Cron job implementations
@@ -104,8 +117,7 @@ inbox-actions/
 │   ├── notifications/
 │   │   └── action-digest-service.ts  # Email digest service (142 lines)
 │   ├── api/                     # API client utilities
-│   │   ├── actions.ts          # Actions API client (195 lines)
-│   │   └── gmail.ts            # Gmail API client
+│   │   └── actions.ts          # Actions API client (195 lines)
 │   ├── stores/                  # Zustand state stores
 │   ├── db.ts                    # Prisma client singleton
 │   ├── session.ts               # Session helpers
@@ -167,50 +179,51 @@ inbox-actions/
 
 ### 1. Email → Action Extraction Pipeline
 
-#### Step 1: Gmail Integration
+#### Step 1: Email Provider Integration
 
-**File:** `lib/gmail/gmail-service.ts` (541 lines)
+**Architecture:** Factory pattern with two providers
+- `lib/email-provider/factory.ts` - Provider factory
+- `lib/email-provider/imap-provider.ts` - IMAP implementation
+- `lib/email-provider/microsoft-graph-provider.ts` - Microsoft Graph implementation
 
-**Authentication:**
-- OAuth2 with Google using read-only scope: `gmail.readonly`
-- Offline access with automatic refresh token handling
-- Token refresh via `refreshGoogleToken()` function
+**Supported Providers:**
+- **IMAP**: Gmail, Yahoo, iCloud, Fastmail, ProtonMail (via App Passwords)
+- **Microsoft Graph**: Outlook.com, Hotmail.com, Live.com, Microsoft 365
 
 **Data Compliance (RGPD):**
 - Stores ONLY email metadata in database
 - Email body fetched temporarily for analysis (never stored)
-- Minimal data: gmailMessageId, threadId, from, subject, snippet, receivedAt, labels
+- Minimal data: from, subject, snippet, receivedAt, labels, webUrl
 
 **Synchronization Strategy:**
 - First sync: Last 24 hours
-- Subsequent syncs: From `lastGmailSync` timestamp
-- Pagination support (max 500 emails per request)
-- Duplicate prevention via `@@unique([userId, gmailMessageId])`
+- Subsequent syncs: From `lastEmailSync` timestamp
+- Microsoft Graph: Delta queries for incremental sync
+- IMAP: UID-based sync with lastUID tracking
+- Duplicate prevention via unique constraints
 
-**Key Methods:**
+**Key Interface:**
 ```typescript
-class GmailService {
+interface IEmailProvider {
+  providerType: "IMAP" | "MICROSOFT_GRAPH";
+
   // Fetch new emails (metadata only)
-  async fetchNewEmails(options?: { maxResults?: number; labelIds?: string[] })
+  fetchNewEmails(options?: { maxResults?: number; folder?: string }): Promise<EmailMetadata[]>
 
   // Get email body temporarily (not stored)
-  async getEmailBodyForAnalysis(gmailMessageId: string): Promise<string>
+  getEmailBodyForAnalysis(messageId: string | bigint): Promise<string | null>
 
   // Get emails ready for analysis (status: EXTRACTED)
-  async getExtractedEmails(): Promise<EmailMetadata[]>
+  getExtractedEmails(): Promise<EmailMetadata[]>
 
   // Mark email as analyzed
-  async markEmailAsAnalyzed(gmailMessageId: string): Promise<void>
-
-  // Count new emails in Gmail (for UI)
-  async countNewEmailsInGmail(): Promise<number>
+  markEmailAsAnalyzed(messageId: string | bigint): Promise<void>
 }
 ```
 
 **Token Management:**
-- Automatic refresh when expired
-- Updates Account table with new tokens
-- Graceful error handling for expired/revoked access
+- Microsoft Graph: OAuth2 with automatic refresh
+- IMAP: App Passwords (stored encrypted) or OAuth2 for Microsoft
 
 #### Step 2: Action Extraction (Regex-Based)
 
@@ -299,7 +312,7 @@ pnpm test:regex  # Test regex patterns against examples
 **File:** `lib/cron/daily-sync-job.ts` (182 lines)
 
 **Frequency:** Once per day at 8:00 AM
-**Schedule:** `0 8 * * *` (Europe/Paris)
+**Schedule:** `0 7 * * *` (Europe/Paris)
 **Purpose:** Comprehensive email sync + action extraction + notification
 
 **Process:**
@@ -347,7 +360,7 @@ pnpm test:regex  # Test regex patterns against examples
 **File:** `lib/cron/cleanup-job.ts`
 
 **Frequency:** Once per day at 11:00 PM
-**Schedule:** `0 23 * * *` (Europe/Paris)
+**Schedule:** `0 3 * * *` (Europe/Paris)
 **Purpose:** Delete ALL email metadata (MVP: retention = 0)
 
 **Strategy (MVP):**
@@ -741,7 +754,7 @@ export default auth((req) => {
 
 **Base endpoints:**
 - `POST /api/actions` - Create action (not implemented, use `/api/actions/manual`)
-- `GET /api/actions` - List actions with filters
+- `GET /api/actions` - List actions with filters + pagination (`limit`, `offset`, returns `{ actions, total, hasMore }`)
 - `GET /api/actions/[id]` - Get single action
 - `PUT /api/actions/[id]` - Update action
 - `DELETE /api/actions/[id]` - Delete action
@@ -1752,11 +1765,11 @@ The git status shows many deleted/modified files - this is expected from the ref
     "crons": [
       {
         "path": "/api/cron/daily-sync",
-        "schedule": "0 8 * * *"
+        "schedule": "0 7 * * *"
       },
       {
         "path": "/api/cron/cleanup-metadata",
-        "schedule": "0 23 * * *"
+        "schedule": "0 3 * * *"
       }
     ]
   }

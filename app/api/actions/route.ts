@@ -11,6 +11,8 @@ export const dynamic = "force-dynamic";
  * Query params optionnels:
  * - status: TODO | DONE | IGNORED
  * - type: SEND | CALL | FOLLOW_UP | PAY | VALIDATE
+ * - limit: nombre d'actions par page (défaut: 20, max: 100)
+ * - offset: décalage pour la pagination (défaut: 0)
  */
 export async function GET(req: NextRequest) {
   try {
@@ -41,23 +43,36 @@ export async function GET(req: NextRequest) {
       where.type = type as ActionType;
     }
 
-    // Récupération des actions
-    const actions = await prisma.action.findMany({
-      where,
-      orderBy: [
-        { status: "asc" }, // TODO d'abord
-        { dueDate: "asc" }, // Puis par date d'échéance
-        { createdAt: "desc" }, // Puis les plus récentes
-      ],
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
+    // Pagination
+    const rawLimit = parseInt(searchParams.get("limit") ?? "20", 10);
+    const limit = Math.min(Number.isNaN(rawLimit) ? 20 : rawLimit, 100);
+    const rawOffset = parseInt(searchParams.get("offset") ?? "0", 10);
+    const offset = Number.isNaN(rawOffset) ? 0 : rawOffset;
+
+    const orderBy = [
+      { status: "asc" as const },
+      { dueDate: "asc" as const },
+      { createdAt: "desc" as const },
+    ];
+
+    // Récupération du total + page en parallèle
+    const [total, actions] = await Promise.all([
+      prisma.action.count({ where }),
+      prisma.action.findMany({
+        where,
+        orderBy,
+        skip: offset,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              email: true,
+            },
           },
         },
-      },
-    });
+      }),
+    ]);
 
     // Convertir les BigInt en string pour la sérialisation JSON
     const serializedActions = actions.map((action) => ({
@@ -67,7 +82,8 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({
       actions: serializedActions,
-      count: actions.length,
+      total,
+      hasMore: offset + limit < total,
     });
   } catch (error) {
     console.error("Error fetching actions:", error);

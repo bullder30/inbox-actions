@@ -66,6 +66,16 @@ export interface IEmailProvider {
   readonly providerType: EmailProvider;
 
   /**
+   * L'identifiant de la boîte mail source (IMAPCredential.id ou MicrosoftGraphMailbox.id)
+   */
+  readonly mailboxId: string;
+
+  /**
+   * Le label de la boîte mail (pour affichage dans les action cards)
+   */
+  readonly mailboxLabel: string | null;
+
+  /**
    * Récupère les nouveaux emails depuis le dernier sync
    * Stocke uniquement les métadonnées minimales (RGPD compliant)
    */

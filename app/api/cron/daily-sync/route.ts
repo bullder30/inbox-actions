@@ -50,7 +50,7 @@ export async function GET(req: NextRequest) {
         success: true,
         duration: result.duration,
         stats: result.stats,
-        message: `Processed ${result.stats?.successUsers}/${result.stats?.totalUsers} users successfully`,
+        message: `Processed ${result.stats?.successMailboxes}/${result.stats?.totalMailboxes} mailboxes successfully`,
       });
     } else {
       return NextResponse.json(

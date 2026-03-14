@@ -15,13 +15,22 @@ export async function ScanStatusHeader() {
     return null;
   }
 
+  // Vérifier qu'au moins une boîte est configurée (IMAP ou Microsoft Graph)
+  const [imapCount, graphCount] = await Promise.all([
+    prisma.iMAPCredential.count({ where: { userId: user.id } }),
+    prisma.microsoftGraphMailbox.count({ where: { userId: user.id, isActive: true } }),
+  ]);
+  if (imapCount + graphCount === 0) return null;
+
   // Récupérer les données de scan
-  const [userData, emailStats] = await Promise.all([
-    prisma.user.findUnique({
-      where: { id: user.id },
-      select: {
-        lastEmailSync: true,
-      },
+  const [imapCredentials, graphMailbox, emailStats] = await Promise.all([
+    prisma.iMAPCredential.findMany({
+      where: { userId: user.id },
+      select: { lastIMAPSync: true },
+    }),
+    prisma.microsoftGraphMailbox.findFirst({
+      where: { userId: user.id, isActive: true },
+      select: { lastSync: true },
     }),
     // Statistiques sur les emails
     prisma.emailMetadata.aggregate({
@@ -31,6 +40,18 @@ export async function ScanStatusHeader() {
       _max: { receivedAt: true },
     }),
   ]);
+
+  // Calculer la dernière sync (la plus récente parmi toutes les boîtes)
+  const lastSyncCandidates: Date[] = [];
+  for (const c of imapCredentials) {
+    if (c.lastIMAPSync) lastSyncCandidates.push(c.lastIMAPSync);
+  }
+  if (graphMailbox?.lastSync) lastSyncCandidates.push(graphMailbox.lastSync);
+  const userData = {
+    lastEmailSync: lastSyncCandidates.length
+      ? new Date(Math.max(...lastSyncCandidates.map((d) => d.getTime())))
+      : null,
+  };
 
   // Compter les emails ignorés (emails analysés sans actions créées)
   const analyzedEmails = await prisma.emailMetadata.findMany({

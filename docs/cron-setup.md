@@ -9,8 +9,8 @@ Le système utilise **node-cron** pour exécuter 3 tâches automatiques :
 | Job | Fréquence | Description | Heure (Europe/Paris) |
 |-----|-----------|-------------|----------------------|
 | **count-new-emails** | Toutes les 10 min | Compte les nouveaux emails | Continu |
-| **daily-sync** | 1x par jour | Synchronise et analyse les emails | 8h00 |
-| **cleanup** | 1x par jour | Supprime les emails > 3 jours | 23h00 |
+| **daily-sync** | 1x par jour | Synchronise et analyse les emails | 7h00 |
+| **cleanup** | 1x par jour | Supprime les emails > 3 jours | 3h00 |
 
 **Caractéristiques** :
 - ✅ Démarrage automatique via `instrumentation.ts`
@@ -64,8 +64,8 @@ export async function register() {
 [INSTRUMENTATION] Starting cron jobs...
 [CRON SERVICE] 🚀 Starting cron jobs...
 [CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)
-[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)
-[CRON SERVICE] ✅ Cleanup job scheduled (every day at 11:00 PM)
+[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)
+[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM Paris)
 [INSTRUMENTATION] Cron jobs started successfully
 ```
 
@@ -126,7 +126,7 @@ Si vous ne voyez pas ces logs, les crons ne sont pas actifs.
 
 ## 📊 Logs détaillés
 
-### Daily-sync job (8h00)
+### Daily-sync job (7h00)
 
 Exemple de logs lors de l'exécution du daily-sync :
 
@@ -141,7 +141,7 @@ Exemple de logs lors de l'exécution du daily-sync :
 [DAILY-SYNC JOB] Stats: { users: '1/1', synced: 17, actions: 5 }
 ```
 
-### Cleanup job (23h00)
+### Cleanup job (3h00)
 
 Exemple de logs lors de l'exécution du cleanup :
 
@@ -175,7 +175,7 @@ Logs uniquement si des nouveaux emails sont détectés :
 - **Action** : Compte uniquement, NE synchronise PAS les emails
 - **Performance** : Très rapide (~100-200ms)
 
-### 2. Daily-sync job (8h00)
+### 2. Daily-sync job (7h00)
 
 **ÉTAPE 1 : Synchronisation email**
 - Récupère tous les utilisateurs avec un provider email configuré (IMAP ou Microsoft Graph)
@@ -198,7 +198,7 @@ Logs uniquement si des nouveaux emails sont détectés :
 - Envoie un email digest à l'utilisateur si des actions ont été extraites
 - Non bloquant (erreur de notification n'empêche pas le job)
 
-### 3. Cleanup job (23h00)
+### 3. Cleanup job (3h00)
 
 **Stratégie de suppression simplifiée** :
 - Supprime **tous les emails** (ANALYZED ou EXTRACTED) plus vieux que **3 jours**
@@ -252,13 +252,13 @@ L'endpoint `/api/cron/test-trigger` est **sans authentification** pour faciliter
 ### Le problème
 
 **Les crons ne s'exécutent PAS si le PC est en veille/hibernation** :
-- À 8h00 → daily-sync ne s'exécute pas si le PC dort
-- À 23h00 → cleanup ne s'exécute pas si le PC dort
+- À 7h00 → daily-sync ne s'exécute pas si le PC dort
+- À 3h00 → cleanup ne s'exécute pas si le PC dort
 - Node.js est gelé quand le PC est en veille
 
 **Symptômes** :
 ```
-[NODE-CRON] [WARN] missed execution at Tue Jan 13 2026 08:00:00 GMT+0100!
+[NODE-CRON] [WARN] missed execution at Tue Jan 13 2026 07:00:00 GMT+0100!
 Possible blocking IO or high CPU user at the same process used by node-cron.
 ```
 
@@ -285,7 +285,7 @@ Créer des tâches Windows qui **réveillent automatiquement le PC** pour exécu
 
 2. Créer une tâche pour **daily-sync** :
    - Nom : `Inbox Actions - Daily Sync`
-   - Déclencheur : Tous les jours à 8h00
+   - Déclencheur : Tous les jours à 7h00
    - Action : Programme/script
      ```
      powershell.exe
@@ -298,7 +298,7 @@ Créer des tâches Windows qui **réveillent automatiquement le PC** pour exécu
 
 3. Créer une tâche pour **cleanup** :
    - Nom : `Inbox Actions - Cleanup`
-   - Déclencheur : Tous les jours à 23h00
+   - Déclencheur : Tous les jours à 3h00
    - Action : Programme/script
      ```
      powershell.exe
@@ -487,8 +487,8 @@ pnpm dev
 | `instrumentation.ts` | Point d'entrée : démarre les crons au boot |
 | `lib/cron/cron-service.ts` | Service principal : configure et démarre les 3 jobs |
 | `lib/cron/count-new-emails-job.ts` | Job de comptage (10 min) |
-| `lib/cron/daily-sync-job.ts` | Job de sync quotidien (8h00) |
-| `lib/cron/cleanup-job.ts` | Job de nettoyage (23h00) |
+| `lib/cron/daily-sync-job.ts` | Job de sync quotidien (7h00) |
+| `lib/cron/cleanup-job.ts` | Job de nettoyage (3h00) |
 | `app/api/cron/test-trigger/route.ts` | Endpoint de test manuel |
 | `app/api/cron/daily-sync/route.ts` | Endpoint HTTP pour external crons |
 | `app/api/cron/cleanup-metadata/route.ts` | Endpoint HTTP pour external crons |

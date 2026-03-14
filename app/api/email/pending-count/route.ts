@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/auth";
-import { createEmailProvider } from "@/lib/email-provider/factory";
+import { createAllEmailProviders } from "@/lib/email-provider/factory";
 
 export const dynamic = "force-dynamic";
 
@@ -18,24 +18,20 @@ export async function GET() {
       );
     }
 
-    // Créer le provider email (Gmail ou IMAP selon la config utilisateur)
-    const emailProvider = await createEmailProvider(session.user.id);
+    // Créer tous les providers (multi-boîtes)
+    const providers = await createAllEmailProviders(session.user.id);
 
-    if (!emailProvider) {
-      return NextResponse.json({
-        count: 0,
-        connected: false,
-      });
+    if (providers.length === 0) {
+      return NextResponse.json({ count: 0, connected: false });
     }
 
-    // Compter les nouveaux emails
-    const count = await emailProvider.countNewEmails();
+    // Compter les nouveaux emails sur toutes les boîtes
+    let count = 0;
+    for (const provider of providers) {
+      count += await provider.countNewEmails();
+    }
 
-    return NextResponse.json({
-      count,
-      connected: true,
-      provider: emailProvider.providerType,
-    });
+    return NextResponse.json({ count, connected: true });
   } catch (error) {
     console.error("Error getting pending count:", error);
     return NextResponse.json(

@@ -18,6 +18,7 @@ export { MicrosoftGraphProvider } from "./microsoft-graph-provider";
 // Factory
 export {
   createEmailProvider,
-  createIMAPProvider,
+  createAllEmailProviders,
+  createIMAPProviderById,
   createMicrosoftGraphProvider,
 } from "./factory";

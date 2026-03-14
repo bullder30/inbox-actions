@@ -32,6 +32,7 @@ export function MissingActionSkeleton() {
                   <div className="flex flex-wrap items-center gap-1.5 text-xs sm:gap-2 sm:text-xs">
                     <Skeleton className="h-4 w-40" />
                     <Skeleton className="h-4 w-24" />
+                    <Skeleton className="h-4 w-28" />
                   </div>
                 </div>
               </CardHeader>

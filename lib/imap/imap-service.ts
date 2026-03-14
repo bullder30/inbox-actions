@@ -130,6 +130,10 @@ export class IMAPService {
     this.credentialId = credentialId;
   }
 
+  get id(): string {
+    return this.credentialId;
+  }
+
   /**
    * Crée une connexion IMAP
    */
@@ -329,13 +333,12 @@ export class IMAPService {
         }, { uid: true })) {
           const uid = BigInt(message.uid);
 
-          // Vérifier si l'email existe déjà en base
-          const existing = await prisma.emailMetadata.findUnique({
+          // Vérifier si l'email existe déjà en base (scoped par mailbox)
+          const existing = await prisma.emailMetadata.findFirst({
             where: {
-              userId_imapUID: {
-                userId: this.userId,
-                imapUID: uid,
-              },
+              userId: this.userId,
+              imapUID: uid,
+              mailboxId: this.credentialId,
             },
           });
 
@@ -392,6 +395,7 @@ export class IMAPService {
               data: {
                 userId: this.userId,
                 emailProvider: "IMAP",
+                mailboxId: this.credentialId,
                 imapUID: uid,
                 imapMessageId: messageId,
                 from: metadata.from,
@@ -412,24 +416,15 @@ export class IMAPService {
         }
 
         // Mettre à jour le dernier UID synchronisé
-        const now = new Date();
         if (lastProcessedUID) {
           await prisma.iMAPCredential.update({
             where: { id: this.credentialId },
             data: {
               lastUID: lastProcessedUID,
-              lastIMAPSync: now,
+              lastIMAPSync: new Date(),
             },
           });
         }
-
-        // Mettre à jour le user
-        await prisma.user.update({
-          where: { id: this.userId },
-          data: {
-            lastEmailSync: now,
-          },
-        });
 
         return emailsMetadata;
       } finally {
@@ -504,7 +499,7 @@ export class IMAPService {
     const emails = await prisma.emailMetadata.findMany({
       where: {
         userId: this.userId,
-        emailProvider: "IMAP",
+        mailboxId: this.credentialId,
         status: "EXTRACTED",
       },
       orderBy: {
@@ -531,12 +526,11 @@ export class IMAPService {
    * Marque un email comme analysé (ANALYZED)
    */
   async markEmailAsAnalyzed(imapUID: bigint): Promise<void> {
-    await prisma.emailMetadata.update({
+    await prisma.emailMetadata.updateMany({
       where: {
-        userId_imapUID: {
-          userId: this.userId,
-          imapUID,
-        },
+        userId: this.userId,
+        imapUID,
+        mailboxId: this.credentialId,
       },
       data: {
         status: "ANALYZED",
@@ -629,8 +623,124 @@ export class IMAPService {
 // ============================================================================
 
 /**
- * Factory function pour créer une instance de IMAPService
- * Récupère automatiquement les credentials depuis la base de données
+ * Factory function pour créer une instance de IMAPService pour une credential spécifique
+ */
+export async function createIMAPServiceById(
+  credentialId: string,
+  userId: string
+): Promise<IMAPService | null> {
+  try {
+    const credential = await prisma.iMAPCredential.findUnique({
+      where: { id: credentialId },
+      select: {
+        id: true,
+        userId: true,
+        imapHost: true,
+        imapPort: true,
+        imapUsername: true,
+        imapPassword: true,
+        imapFolder: true,
+        useTLS: true,
+        authMethod: true,
+      },
+    });
+
+    if (!credential || credential.userId !== userId) {
+      console.debug("[IMAP] Credential not found or unauthorized:", credentialId);
+      return null;
+    }
+
+    if (credential.authMethod === "OAUTH") {
+      console.error("[IMAP] OAuth IMAP is deprecated. Use Microsoft Graph API instead.");
+      return null;
+    }
+
+    if (!credential.imapPassword) {
+      console.error("[IMAP] No password found for credential:", credentialId);
+      return null;
+    }
+
+    const { decryptPassword } = await import("./imap-credentials");
+    let password: string;
+    try {
+      password = decryptPassword(credential.imapPassword);
+    } catch {
+      console.error("[IMAP] Failed to decrypt password for credential:", credentialId);
+      return null;
+    }
+
+    const config: IMAPConfig = {
+      host: credential.imapHost,
+      port: credential.imapPort,
+      username: credential.imapUsername,
+      password,
+      authMethod: "PASSWORD",
+      folder: credential.imapFolder,
+      useTLS: credential.useTLS,
+    };
+
+    return new IMAPService(config, userId, credential.id);
+  } catch (error) {
+    console.error("[IMAP] Error creating IMAP service by ID:", error);
+    return null;
+  }
+}
+
+/**
+ * Factory function pour créer toutes les instances IMAPService actives d'un utilisateur
+ */
+export async function createAllIMAPServices(
+  userId: string
+): Promise<IMAPService[]> {
+  try {
+    const credentials = await prisma.iMAPCredential.findMany({
+      where: { userId, isConnected: true },
+      select: {
+        id: true,
+        imapHost: true,
+        imapPort: true,
+        imapUsername: true,
+        imapPassword: true,
+        imapFolder: true,
+        useTLS: true,
+        authMethod: true,
+      },
+    });
+
+    const services: IMAPService[] = [];
+    const { decryptPassword } = await import("./imap-credentials");
+
+    for (const credential of credentials) {
+      if (credential.authMethod === "OAUTH") continue;
+      if (!credential.imapPassword) continue;
+
+      try {
+        const password = decryptPassword(credential.imapPassword);
+        const config: IMAPConfig = {
+          host: credential.imapHost,
+          port: credential.imapPort,
+          username: credential.imapUsername,
+          password,
+          authMethod: "PASSWORD",
+          folder: credential.imapFolder,
+          useTLS: credential.useTLS,
+        };
+        services.push(new IMAPService(config, userId, credential.id));
+      } catch {
+        console.error("[IMAP] Failed to decrypt password for credential:", credential.id);
+      }
+    }
+
+    return services;
+  } catch (error) {
+    console.error("[IMAP] Error creating all IMAP services:", error);
+    return [];
+  }
+}
+
+/**
+ * Factory function pour créer une instance de IMAPService (première credential)
+ * @deprecated Préférer createIMAPServiceById ou createAllIMAPServices
  */
 export async function createIMAPService(
   userId: string

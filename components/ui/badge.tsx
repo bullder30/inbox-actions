@@ -17,6 +17,8 @@ const badgeVariants = cva(
         outline: "text-foreground",
         gradient:
           "border-transparent text-white [background:linear-gradient(135deg,#667eea_0%,#764ba2_100%)]",
+        success:
+          "border-transparent bg-green-500 text-white",
       },
     },
     defaultVariants: {

@@ -6,6 +6,7 @@ import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
+import { ScrollReveal } from "@/components/shared/scroll-reveal";
 import packageJson from "@/package.json";
 
 export default async function HomePage() {
@@ -103,6 +104,10 @@ export default async function HomePage() {
                   <span>Gmail, Yahoo, iCloud, Fastmail (IMAP)</span>
                 </div>
               </div>
+              <div className="flex items-center gap-2 text-xs">
+                <CheckCircle2 className="size-4 text-green-500" />
+                <span>Plusieurs boîtes mail simultanées — Microsoft et IMAP au choix</span>
+              </div>
               <div className="flex items-center gap-2">
                 <ShieldCheck className="size-5 text-green-600" />
                 <span>Lecture seule • RGPD • Chiffrement AES-256</span>
@@ -119,25 +124,33 @@ export default async function HomePage() {
       <section className="border-b bg-muted/30 py-16">
         <MaxWidthWrapper>
           <div className="mx-auto max-w-3xl text-center">
-            <h2 className="font-heading text-2xl font-bold sm:text-3xl">
-              Notre promesse : Zéro zone grise
-            </h2>
-            <p className="mt-4 text-muted-foreground">
-              Inbox Actions ne vous cache jamais rien. Vous voyez toujours :
-            </p>
+            <ScrollReveal variant="fade-up">
+              <h2 className="font-heading text-2xl font-bold sm:text-3xl">
+                Notre promesse : Zéro zone grise
+              </h2>
+              <p className="mt-4 text-muted-foreground">
+                Inbox Actions ne vous cache jamais rien. Vous voyez toujours :
+              </p>
+            </ScrollReveal>
             <div className="mt-8 grid gap-4 sm:grid-cols-3">
-              <div className="rounded-lg border bg-card p-4">
-                <CheckCircle2 className="mx-auto size-8 text-green-600" />
-                <p className="mt-2 font-medium">Quand le dernier scan a eu lieu</p>
-              </div>
-              <div className="rounded-lg border bg-card p-4">
-                <CheckCircle2 className="mx-auto size-8 text-green-600" />
-                <p className="mt-2 font-medium">Combien d&apos;emails ont été analysés</p>
-              </div>
-              <div className="rounded-lg border bg-card p-4">
-                <CheckCircle2 className="mx-auto size-8 text-green-600" />
-                <p className="mt-2 font-medium">Pourquoi certains ont été ignorés</p>
-              </div>
+              <ScrollReveal variant="fade-up" delay={0}>
+                <div className="rounded-lg border bg-card p-4">
+                  <CheckCircle2 className="mx-auto size-8 text-green-600" />
+                  <p className="mt-2 font-medium">Quand le dernier scan a eu lieu</p>
+                </div>
+              </ScrollReveal>
+              <ScrollReveal variant="fade-up" delay={100}>
+                <div className="rounded-lg border bg-card p-4">
+                  <CheckCircle2 className="mx-auto size-8 text-green-600" />
+                  <p className="mt-2 font-medium">Combien d&apos;emails ont été analysés</p>
+                </div>
+              </ScrollReveal>
+              <ScrollReveal variant="fade-up" delay={200}>
+                <div className="rounded-lg border bg-card p-4">
+                  <CheckCircle2 className="mx-auto size-8 text-green-600" />
+                  <p className="mt-2 font-medium">Pourquoi certains ont été ignorés</p>
+                </div>
+              </ScrollReveal>
             </div>
           </div>
         </MaxWidthWrapper>
@@ -153,116 +166,27 @@ export default async function HomePage() {
           />
 
           <div className="mt-16 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-            {/* Feature 1 */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
-                <Eye className="size-6 text-blue-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Détection déterministe</h3>
-              <p className="text-muted-foreground">
-                Règles simples et explicables. Le système détecte 5 types d&apos;actions : envoyer, appeler, suivre, payer, valider.
-                <strong className="mt-2 block">Si c&apos;est ambigu, on ne devine pas.</strong>
-              </p>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-purple-500/10">
-                <AlertCircle className="size-6 text-purple-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Corrigez immédiatement</h3>
-              <p className="text-muted-foreground">
-                Le système a manqué une action ? Un bouton <strong>&ldquo;Il manque une action&rdquo;</strong> accessible partout.
-                Créez manuellement en 3 clics, sans justification.
-              </p>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-green-500/10">
-                <CheckCircle2 className="size-6 text-green-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Phrase source visible</h3>
-              <p className="text-muted-foreground">
-                Chaque action affiche la phrase exacte de l&apos;email d&apos;origine.
-                Vous comprenez toujours pourquoi le système a détecté cette action.
-              </p>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-orange-500/10">
-                <Clock className="size-6 text-orange-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Synchronisation à la demande</h3>
-              <p className="text-muted-foreground">
-                Bouton de synchronisation manuelle directement sur le tableau de bord. Pas besoin d&apos;attendre le scan automatique.
-                <strong className="mt-2 block">Idéal pour tester ou forcer une mise à jour.</strong>
-              </p>
-            </div>
-
-            {/* Feature 4b - Urgency indicators */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
-                <Bell className="size-6 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Urgence visuelle immédiate</h3>
-              <p className="text-muted-foreground">
-                Actions en retard en <span className="rounded bg-red-100 px-1 text-red-800 dark:bg-red-900/30 dark:text-red-400">rouge</span>,
-                urgentes (&lt;24h) en <span className="rounded bg-orange-100 px-1 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">orange</span>.
-                <strong className="mt-2 block">Impossible de manquer une échéance.</strong>
-              </p>
-            </div>
-
-            {/* Feature 5 */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="size-6 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Actions ignorées expliquées</h3>
-              <p className="text-muted-foreground">
-                Newsletter ? Email automatique ? Vous voyez la liste des emails exclus et pourquoi ils l&apos;ont été.
-                Aucune surprise.
-              </p>
-            </div>
-
-            {/* Feature 6 - Microsoft Graph */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-blue-500/10">
-                <Zap className="size-6 text-blue-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Microsoft Outlook sans friction</h3>
-              <p className="text-muted-foreground">
-                Connectez-vous avec votre compte Microsoft et c&apos;est tout !
-                <strong className="mt-2 block">Microsoft Graph API : aucune configuration IMAP requise.</strong>
-              </p>
-            </div>
-
-            {/* Feature 7 - IMAP */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-purple-500/10">
-                <Server className="size-6 text-purple-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">IMAP universel</h3>
-              <p className="text-muted-foreground">
-                Gmail, Yahoo, iCloud, Fastmail, ProtonMail...
-                <br />
-                Connexion via <strong>IMAP avec App Password</strong> : simple, universel, sécurisé.
-                <strong className="mt-2 block">Vos mots de passe sont chiffrés AES-256.</strong>
-              </p>
-            </div>
-
-            {/* Feature 8 */}
-            <div className="flex flex-col rounded-lg border bg-card p-6 shadow-sm">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-indigo-500/10">
-                <ShieldCheck className="size-6 text-indigo-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Email = référence optionnelle</h3>
-              <p className="text-muted-foreground">
-                Toutes vos actions sont gérables ici. Votre boîte mail n&apos;est qu&apos;une option pour vérifier le contexte.
-                Vous ne retournez jamais dans votre boîte mail pour travailler.
-              </p>
-            </div>
+            {[
+              { icon: <Eye className="size-6 text-blue-500" />, bg: "bg-blue-500/10", title: "Détection déterministe", body: <>Règles simples et explicables. Le système détecte 5 types d&apos;actions : envoyer, appeler, suivre, payer, valider.<strong className="mt-2 block">Si c&apos;est ambigu, on ne devine pas.</strong></> },
+              { icon: <AlertCircle className="size-6 text-purple-500" />, bg: "bg-purple-500/10", title: "Corrigez immédiatement", body: <>Le système a manqué une action ? Un bouton <strong>&ldquo;Il manque une action&rdquo;</strong> accessible partout. Créez manuellement en 3 clics, sans justification.</> },
+              { icon: <CheckCircle2 className="size-6 text-green-500" />, bg: "bg-green-500/10", title: "Phrase source visible", body: <>Chaque action affiche la phrase exacte de l&apos;email d&apos;origine. Vous comprenez toujours pourquoi le système a détecté cette action.</> },
+              { icon: <Clock className="size-6 text-orange-500" />, bg: "bg-orange-500/10", title: "Synchronisation à la demande", body: <>Bouton de synchronisation manuelle directement sur le tableau de bord. Pas besoin d&apos;attendre le scan automatique.<strong className="mt-2 block">Idéal pour tester ou forcer une mise à jour.</strong></> },
+              { icon: <Bell className="size-6 text-red-500" />, bg: "bg-red-500/10", title: "Urgence visuelle immédiate", body: <>Actions en retard en <span className="rounded bg-red-100 px-1 text-red-800 dark:bg-red-900/30 dark:text-red-400">rouge</span>, urgentes (&lt;24h) en <span className="rounded bg-orange-100 px-1 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">orange</span>.<strong className="mt-2 block">Impossible de manquer une échéance.</strong></> },
+              { icon: <XCircle className="size-6 text-red-500" />, bg: "bg-red-500/10", title: "Actions ignorées expliquées", body: <>Newsletter ? Email automatique ? Vous voyez la liste des emails exclus et pourquoi ils l&apos;ont été. Aucune surprise.</> },
+              { icon: <Zap className="size-6 text-blue-500" />, bg: "bg-blue-500/10", title: "Microsoft Outlook sans friction", body: <>Connectez un ou plusieurs comptes Microsoft en quelques clics.<strong className="mt-2 block">Microsoft Graph API : aucune configuration IMAP requise.</strong></> },
+              { icon: <Server className="size-6 text-purple-500" />, bg: "bg-purple-500/10", title: "IMAP universel, multi-boîtes", body: <>Gmail, Yahoo, iCloud, Fastmail, ProtonMail... Ajoutez autant de boîtes que nécessaire.<br />Connexion via <strong>IMAP avec App Password</strong> : simple, universel, sécurisé.<strong className="mt-2 block">Vos mots de passe sont chiffrés AES-256.</strong></> },
+              { icon: <ShieldCheck className="size-6 text-indigo-500" />, bg: "bg-indigo-500/10", title: "Email = référence optionnelle", body: <>Toutes vos actions sont gérables ici. Votre boîte mail n&apos;est qu&apos;une option pour vérifier le contexte. Vous ne retournez jamais dans votre boîte mail pour travailler.</> },
+            ].map(({ icon, bg, title, body }, i) => (
+              <ScrollReveal key={title} variant="fade-up" delay={(i % 3) * 80}>
+                <div className="flex h-full flex-col rounded-lg border bg-card p-6 shadow-sm">
+                  <div className={`mb-4 flex size-12 items-center justify-center rounded-lg ${bg}`}>
+                    {icon}
+                  </div>
+                  <h3 className="mb-2 text-xl font-semibold">{title}</h3>
+                  <p className="text-muted-foreground">{body}</p>
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </MaxWidthWrapper>
       </section>
@@ -277,71 +201,21 @@ export default async function HomePage() {
           />
 
           <div className="mt-16 space-y-8">
-            {/* Step 1 */}
-            <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
-                1
-              </div>
-              <div>
-                <h3 className="mb-2 text-xl font-semibold">Connexion simple</h3>
-                <p className="text-muted-foreground">
-                  <strong>Option A - Microsoft (recommandé) :</strong> Connectez-vous avec votre compte Microsoft.
-                  <br />
-                  L&apos;accès aux emails est automatique via Microsoft Graph API. Aucune configuration !
-                </p>
-                <p className="mt-2 text-muted-foreground">
-                  <strong>Option B - Autres providers :</strong> Créez un compte, puis configurez IMAP avec un <strong>App Password</strong>.
-                  <br />
-                  <span className="text-sm">Compatible avec Gmail, Yahoo, iCloud, Fastmail, ProtonMail...</span>
-                </p>
-                <p className="mt-2 text-xs text-muted-foreground">
-                  Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).
-                </p>
-              </div>
-            </div>
-
-            {/* Step 2 */}
-            <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
-                2
-              </div>
-              <div>
-                <h3 className="mb-2 text-xl font-semibold">Scan automatique ou manuel</h3>
-                <p className="text-muted-foreground">
-                  Scan quotidien automatique à 7h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.
-                  <strong className="mt-2 block">Sont automatiquement exclus :</strong>
-                  newsletters, notifications automatiques, emails no-reply, footers de désinscription.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 3 */}
-            <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
-                3
-              </div>
-              <div>
-                <h3 className="mb-2 text-xl font-semibold">Détection par règles simples</h3>
-                <p className="text-muted-foreground">
-                  Le système cherche des phrases comme : &ldquo;peux-tu envoyer...&rdquo;, &ldquo;merci de rappeler...&rdquo;, &ldquo;n&apos;oublie pas de...&rdquo;.
-                  <strong className="mt-2 block">Règle d&apos;or :</strong> Si c&apos;est conditionnel (&ldquo;si tu peux&rdquo;, &ldquo;éventuellement&rdquo;), aucune action n&apos;est créée.
-                </p>
-              </div>
-            </div>
-
-            {/* Step 4 */}
-            <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
-              <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
-                4
-              </div>
-              <div>
-                <h3 className="mb-2 text-xl font-semibold">Vous gérez, corrigez, complétez</h3>
-                <p className="text-muted-foreground">
-                  Marquez comme <strong>Fait</strong>, <strong>Ignorer</strong>, ou cliquez <strong>Il manque une action</strong> pour ajouter manuellement.
-                  Le système apprend de rien, il reste simple et prévisible.
-                </p>
-              </div>
-            </div>
+            {[
+              { n: 1, title: "Connectez vos boîtes mail", body: <><p className="text-muted-foreground">Ajoutez une ou plusieurs boîtes depuis les Paramètres — Microsoft et IMAP peuvent coexister.</p><p className="mt-2 text-muted-foreground"><strong>Microsoft (Outlook, Hotmail, M365) :</strong> connexion OAuth en un clic, aucune configuration.<br /><strong>Autres providers (Gmail, Yahoo, iCloud…) :</strong> configurez IMAP avec un <strong>App Password</strong>.</p><p className="mt-2 text-xs text-muted-foreground">Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).</p></> },
+              { n: 2, title: "Scan automatique ou manuel", body: <p className="text-muted-foreground">Scan quotidien automatique à 8h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.<strong className="mt-2 block">Sont automatiquement exclus :</strong>newsletters, notifications automatiques, emails no-reply, footers de désinscription.</p> },
+              { n: 3, title: "Détection par règles simples", body: <p className="text-muted-foreground">Le système cherche des phrases comme : &ldquo;peux-tu envoyer...&rdquo;, &ldquo;merci de rappeler...&rdquo;, &ldquo;n&apos;oublie pas de...&rdquo;.<strong className="mt-2 block">Règle d&apos;or :</strong> Si c&apos;est conditionnel (&ldquo;si tu peux&rdquo;, &ldquo;éventuellement&rdquo;), aucune action n&apos;est créée.</p> },
+              { n: 4, title: "Vous gérez, corrigez, complétez", body: <p className="text-muted-foreground">Marquez comme <strong>Fait</strong>, <strong>Ignorer</strong>, ou cliquez <strong>Il manque une action</strong> pour ajouter manuellement. Le système apprend de rien, il reste simple et prévisible.</p> },
+            ].map(({ n, title, body }, i) => (
+              <ScrollReveal key={n} variant={i % 2 === 0 ? "fade-left" : "fade-right"} delay={0}>
+                <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
+                  <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
+                    {n}
+                  </div>
+                  <div><h3 className="mb-2 text-xl font-semibold">{title}</h3>{body}</div>
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </MaxWidthWrapper>
       </section>
@@ -356,136 +230,136 @@ export default async function HomePage() {
           />
 
           <div className="mt-16 space-y-8">
-            {/* Example 1 - Détecté */}
-            <div className="rounded-lg border-2 border-green-500/20 bg-green-50/50 p-6 dark:bg-green-950/20">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                <CheckCircle2 className="size-4" />
-                DÉTECTÉ (Type : SEND)
-              </div>
-              <div className="mb-4">
-                <span className="font-semibold">Email reçu :</span>
-                <p className="mt-2 italic text-muted-foreground">
-                  &ldquo;Bonjour David, <span className="rounded bg-yellow-100 px-1 font-semibold dark:bg-yellow-900/30">peux-tu m&apos;envoyer le rapport financier de Q4</span> avant vendredi ? Merci !&rdquo;
-                </p>
-              </div>
-              <div>
-                <span className="font-semibold">Action créée :</span>
-                <div className="mt-2 rounded-lg border border-orange-300 bg-orange-50/50 p-4 dark:border-orange-700 dark:bg-orange-950/30">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">📤 Envoyer le rapport financier de Q4</p>
-                    <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Envoyer</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 rounded bg-orange-100 px-2 py-1 text-sm font-medium text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
-                    <Clock className="size-4" />
-                    ⏰ Urgent : Vendredi
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">De : client@example.com</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Phrase source : &ldquo;peux-tu m&apos;envoyer le rapport financier de Q4&rdquo;
+            <ScrollReveal variant="fade-up" delay={0}>
+              <div className="rounded-lg border-2 border-green-500/20 bg-green-50/50 p-6 dark:bg-green-950/20">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-green-100 px-3 py-1 text-xs font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                  <CheckCircle2 className="size-4" />
+                  DÉTECTÉ (Type : SEND)
+                </div>
+                <div className="mb-4">
+                  <span className="font-semibold">Email reçu :</span>
+                  <p className="mt-2 italic text-muted-foreground">
+                    &ldquo;Bonjour David, <span className="rounded bg-yellow-100 px-1 font-semibold dark:bg-yellow-900/30">peux-tu m&apos;envoyer le rapport financier de Q4</span> avant vendredi ? Merci !&rdquo;
                   </p>
                 </div>
-              </div>
-              <div className="mt-4 text-sm text-green-700 dark:text-green-400">
-                ✅ <strong>Pourquoi détecté :</strong> Demande explicite (&ldquo;peux-tu envoyer&rdquo;) + objet clair + échéance précise.
-              </div>
-            </div>
-
-            {/* Example 2 - Non détecté (conditionnel) */}
-            <div className="rounded-lg border-2 border-orange-500/20 bg-orange-50/50 p-6 dark:bg-orange-950/20">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
-                <XCircle className="size-4" />
-                NON DÉTECTÉ (Conditionnel)
-              </div>
-              <div className="mb-4">
-                <span className="font-semibold">Email reçu :</span>
-                <p className="mt-2 italic text-muted-foreground">
-                  &ldquo;Salut, <span className="rounded bg-orange-100 px-1 dark:bg-orange-900/30">si tu as le temps, tu pourrais m&apos;envoyer le document</span> ? Pas urgent.&rdquo;
-                </p>
-              </div>
-              <div>
-                <span className="font-semibold">Résultat :</span>
-                <div className="mt-2 rounded-lg border border-orange-200 bg-card p-4 dark:border-orange-800">
-                  <p className="font-medium text-orange-700 dark:text-orange-400">Aucune action créée</p>
+                <div>
+                  <span className="font-semibold">Action créée :</span>
+                  <div className="mt-2 rounded-lg border border-orange-300 bg-orange-50/50 p-4 dark:border-orange-700 dark:bg-orange-950/30">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">📤 Envoyer le rapport financier de Q4</p>
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-800 dark:bg-blue-900/30 dark:text-blue-400">Envoyer</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 rounded bg-orange-100 px-2 py-1 text-sm font-medium text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">
+                      <Clock className="size-4" />
+                      ⏰ Urgent : Vendredi
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">De : client@example.com</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Phrase source : &ldquo;peux-tu m&apos;envoyer le rapport financier de Q4&rdquo;</p>
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-green-700 dark:text-green-400">
+                  ✅ <strong>Pourquoi détecté :</strong> Demande explicite (&ldquo;peux-tu envoyer&rdquo;) + objet clair + échéance précise.
                 </div>
               </div>
-              <div className="mt-4 text-sm text-orange-700 dark:text-orange-400">
-                ⚠️ <strong>Pourquoi ignoré :</strong> Phrase conditionnelle (&ldquo;si tu as le temps&rdquo;). Le système ne devine pas si c&apos;est vraiment important.
-                <br />
-                <strong>Solution :</strong> Cliquez &ldquo;Il manque une action&rdquo; si vous voulez la suivre.
-              </div>
-            </div>
+            </ScrollReveal>
 
-            {/* Example 3 - Détecté avec CALL */}
-            <div className="rounded-lg border-2 border-green-500/20 bg-green-50/50 p-6 dark:bg-green-950/20">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
-                <CheckCircle2 className="size-4" />
-                DÉTECTÉ (Type : CALL)
-              </div>
-              <div className="mb-4">
-                <span className="font-semibold">Email reçu :</span>
-                <p className="mt-2 italic text-muted-foreground">
-                  &ldquo;Suite à notre échange, <span className="rounded bg-yellow-100 px-1 font-semibold dark:bg-yellow-900/30">merci de me rappeler demain matin</span> pour finaliser.&rdquo;
-                </p>
-              </div>
-              <div>
-                <span className="font-semibold">Action créée :</span>
-                <div className="mt-2 rounded-lg border bg-card p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="font-medium">📞 Rappeler pour finaliser</p>
-                    <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">Appeler</span>
-                  </div>
-                  <div className="mt-2 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200">
-                    <Clock className="size-4" />
-                    Échéance : Demain matin
-                  </div>
-                  <p className="mt-2 text-sm text-muted-foreground">De : partenaire@example.com</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Phrase source : &ldquo;merci de me rappeler demain matin&rdquo;
+            <ScrollReveal variant="fade-up" delay={0}>
+              <div className="rounded-lg border-2 border-orange-500/20 bg-orange-50/50 p-6 dark:bg-orange-950/20">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-orange-100 px-3 py-1 text-xs font-medium text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+                  <XCircle className="size-4" />
+                  NON DÉTECTÉ (Conditionnel)
+                </div>
+                <div className="mb-4">
+                  <span className="font-semibold">Email reçu :</span>
+                  <p className="mt-2 italic text-muted-foreground">
+                    &ldquo;Salut, <span className="rounded bg-orange-100 px-1 dark:bg-orange-900/30">si tu as le temps, tu pourrais m&apos;envoyer le document</span> ? Pas urgent.&rdquo;
                   </p>
                 </div>
-              </div>
-              <div className="mt-4 text-sm text-green-700 dark:text-green-400">
-                ✅ <strong>Pourquoi détecté :</strong> Demande explicite (&ldquo;merci de rappeler&rdquo;) + échéance claire (&ldquo;demain matin&rdquo;).
-              </div>
-            </div>
-
-            {/* Example 4 - Non détecté (newsletter) */}
-            <div className="rounded-lg border-2 border-red-500/20 bg-red-50/50 p-6 dark:bg-red-950/20">
-              <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                <XCircle className="size-4" />
-                EXCLU AUTOMATIQUEMENT (Newsletter)
-              </div>
-              <div className="mb-4">
-                <span className="font-semibold">Email reçu :</span>
-                <p className="mt-2 italic text-muted-foreground">
-                  De : newsletter@example.com<br />
-                  &ldquo;Découvrez nos nouvelles fonctionnalités ! Cliquez ici pour en savoir plus.&rdquo;
-                </p>
-              </div>
-              <div>
-                <span className="font-semibold">Résultat :</span>
-                <div className="mt-2 rounded-lg border border-red-200 bg-card p-4 dark:border-red-800">
-                  <p className="font-medium text-red-700 dark:text-red-400">Email ignoré, non analysé</p>
+                <div>
+                  <span className="font-semibold">Résultat :</span>
+                  <div className="mt-2 rounded-lg border border-orange-200 bg-card p-4 dark:border-orange-800">
+                    <p className="font-medium text-orange-700 dark:text-orange-400">Aucune action créée</p>
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-orange-700 dark:text-orange-400">
+                  ⚠️ <strong>Pourquoi ignoré :</strong> Phrase conditionnelle (&ldquo;si tu as le temps&rdquo;). Le système ne devine pas si c&apos;est vraiment important.
+                  <br /><strong>Solution :</strong> Cliquez &ldquo;Il manque une action&rdquo; si vous voulez la suivre.
                 </div>
               </div>
-              <div className="mt-4 text-sm text-red-700 dark:text-red-400">
-                🚫 <strong>Pourquoi exclu :</strong> Expéditeur = newsletter@. Les emails marketing sont automatiquement exclus.
-                <br />
-                <strong>Visible dans :</strong> Paramètres → Emails ignorés
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={0}>
+              <div className="rounded-lg border-2 border-green-500/20 bg-green-50/50 p-6 dark:bg-green-950/20">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-purple-100 px-3 py-1 text-xs font-medium text-purple-700 dark:bg-purple-900/30 dark:text-purple-400">
+                  <CheckCircle2 className="size-4" />
+                  DÉTECTÉ (Type : CALL)
+                </div>
+                <div className="mb-4">
+                  <span className="font-semibold">Email reçu :</span>
+                  <p className="mt-2 italic text-muted-foreground">
+                    &ldquo;Suite à notre échange, <span className="rounded bg-yellow-100 px-1 font-semibold dark:bg-yellow-900/30">merci de me rappeler demain matin</span> pour finaliser.&rdquo;
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold">Action créée :</span>
+                  <div className="mt-2 rounded-lg border bg-card p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="font-medium">📞 Rappeler pour finaliser</p>
+                      <span className="rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">Appeler</span>
+                    </div>
+                    <div className="mt-2 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-sm text-slate-800 dark:bg-slate-800 dark:text-slate-200">
+                      <Clock className="size-4" />
+                      Échéance : Demain matin
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">De : partenaire@example.com</p>
+                    <p className="mt-1 text-xs text-muted-foreground">Phrase source : &ldquo;merci de me rappeler demain matin&rdquo;</p>
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-green-700 dark:text-green-400">
+                  ✅ <strong>Pourquoi détecté :</strong> Demande explicite (&ldquo;merci de rappeler&rdquo;) + échéance claire (&ldquo;demain matin&rdquo;).
+                </div>
               </div>
-            </div>
+            </ScrollReveal>
+
+            <ScrollReveal variant="fade-up" delay={0}>
+              <div className="rounded-lg border-2 border-red-500/20 bg-red-50/50 p-6 dark:bg-red-950/20">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-red-100 px-3 py-1 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                  <XCircle className="size-4" />
+                  EXCLU AUTOMATIQUEMENT (Newsletter)
+                </div>
+                <div className="mb-4">
+                  <span className="font-semibold">Email reçu :</span>
+                  <p className="mt-2 italic text-muted-foreground">
+                    De : newsletter@example.com<br />
+                    &ldquo;Découvrez nos nouvelles fonctionnalités ! Cliquez ici pour en savoir plus.&rdquo;
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold">Résultat :</span>
+                  <div className="mt-2 rounded-lg border border-red-200 bg-card p-4 dark:border-red-800">
+                    <p className="font-medium text-red-700 dark:text-red-400">Email ignoré, non analysé</p>
+                  </div>
+                </div>
+                <div className="mt-4 text-sm text-red-700 dark:text-red-400">
+                  🚫 <strong>Pourquoi exclu :</strong> Expéditeur = newsletter@. Les emails marketing sont automatiquement exclus.
+                  <br /><strong>Visible dans :</strong> Paramètres → Emails ignorés
+                </div>
+              </div>
+            </ScrollReveal>
           </div>
 
-          <div className="mt-12 rounded-lg border border-blue-200 bg-blue-50/50 p-6 dark:border-blue-800 dark:bg-blue-950/20">
-            <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
-              <AlertCircle className="size-5" />
-              Notre philosophie
-            </h3>
-            <p className="text-sm text-blue-800 dark:text-blue-200">
-              <strong>Mieux vaut manquer une action que vous stresser avec un faux positif.</strong><br />
-              Si le système hésite, il ne crée rien. Vous cliquez simplement &ldquo;Il manque une action&rdquo; en 3 secondes.
-            </p>
-          </div>
+          <ScrollReveal variant="fade-up" delay={0}>
+            <div className="mt-12 rounded-lg border border-blue-200 bg-blue-50/50 p-6 dark:border-blue-800 dark:bg-blue-950/20">
+              <h3 className="mb-2 flex items-center gap-2 font-semibold text-blue-900 dark:text-blue-100">
+                <AlertCircle className="size-5" />
+                Notre philosophie
+              </h3>
+              <p className="text-sm text-blue-800 dark:text-blue-200">
+                <strong>Mieux vaut manquer une action que vous stresser avec un faux positif.</strong><br />
+                Si le système hésite, il ne crée rien. Vous cliquez simplement &ldquo;Il manque une action&rdquo; en 3 secondes.
+              </p>
+            </div>
+          </ScrollReveal>
         </MaxWidthWrapper>
       </section>
 
@@ -499,47 +373,22 @@ export default async function HomePage() {
           />
 
           <div className="mt-16 grid gap-6 md:grid-cols-2">
-            <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="size-6 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Pas d&apos;IA &ldquo;intelligente&rdquo;</h3>
-              <p className="text-muted-foreground">
-                Nous n&apos;utilisons pas d&apos;intelligence artificielle opaque pour &ldquo;deviner&rdquo; vos intentions.
-                Règles simples, résultats prévisibles.
-              </p>
-            </div>
-
-            <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="size-6 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Pas de prioritisation automatique</h3>
-              <p className="text-muted-foreground">
-                Nous ne décidons pas pour vous ce qui est &ldquo;important&rdquo;. Vous voyez tout, vous décidez.
-              </p>
-            </div>
-
-            <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="size-6 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Pas de stockage du contenu des emails</h3>
-              <p className="text-muted-foreground">
-                Le corps de l&apos;email est lu une seule fois pour l&apos;analyse, puis oublié.
-                Seules les métadonnées minimales sont conservées (200 caractères max).
-              </p>
-            </div>
-
-            <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
-              <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
-                <XCircle className="size-6 text-red-500" />
-              </div>
-              <h3 className="mb-2 text-xl font-semibold">Pas de &ldquo;synchronisation parfaite&rdquo;</h3>
-              <p className="text-muted-foreground">
-                Nous ne prétendons pas que tout est synchronisé en temps réel. Vous voyez clairement quand le dernier scan a eu lieu.
-              </p>
-            </div>
+            {[
+              { title: "Pas d'IA « intelligente »", body: "Nous n'utilisons pas d'intelligence artificielle opaque pour « deviner » vos intentions. Règles simples, résultats prévisibles." },
+              { title: "Pas de prioritisation automatique", body: "Nous ne décidons pas pour vous ce qui est « important ». Vous voyez tout, vous décidez." },
+              { title: "Pas de stockage du contenu des emails", body: "Le corps de l'email est lu une seule fois pour l'analyse, puis oublié. Seules les métadonnées minimales sont conservées (200 caractères max)." },
+              { title: "Pas de « synchronisation parfaite »", body: "Nous ne prétendons pas que tout est synchronisé en temps réel. Vous voyez clairement quand le dernier scan a eu lieu." },
+            ].map(({ title, body }, i) => (
+              <ScrollReveal key={title} variant="fade-up" delay={i * 80}>
+                <div className="rounded-lg border-2 border-red-500/20 bg-card p-6">
+                  <div className="mb-4 flex size-12 items-center justify-center rounded-lg bg-red-500/10">
+                    <XCircle className="size-6 text-red-500" />
+                  </div>
+                  <h3 className="mb-2 text-xl font-semibold">{title}</h3>
+                  <p className="text-muted-foreground">{body}</p>
+                </div>
+              </ScrollReveal>
+            ))}
           </div>
         </MaxWidthWrapper>
       </section>
@@ -547,6 +396,7 @@ export default async function HomePage() {
       {/* CTA Section */}
       <section className="border-b py-20">
         <MaxWidthWrapper>
+          <ScrollReveal variant="zoom-in">
           <div className="rounded-2xl border bg-gradient-to-br from-primary/10 via-purple-500/10 to-blue-500/10 p-12 text-center">
             <h2 className="font-heading text-3xl font-bold sm:text-4xl md:text-5xl">
               Réduisez votre stress email dès aujourd&apos;hui
@@ -571,6 +421,7 @@ export default async function HomePage() {
               Vous saurez toujours exactement ce que fait le système. Promis.
             </p>
           </div>
+          </ScrollReveal>
         </MaxWidthWrapper>
       </section>
 

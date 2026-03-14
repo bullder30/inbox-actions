@@ -10,7 +10,7 @@
  */
 
 import { prisma } from "@/lib/db";
-import { getMicrosoftGraphToken, type TokenResult } from "./graph-oauth-helper";
+import { getMicrosoftGraphTokenForMailbox } from "./graph-oauth-helper";
 import type {
   GraphMessage,
   GraphDeltaResponse,
@@ -93,14 +93,12 @@ function htmlToText(html: string): string {
 export class MicrosoftGraphService {
   private accessToken: string;
   private userId: string;
-  private accountId: string;
-  private refreshToken: string | null;
+  readonly mailboxId: string;
 
-  constructor(tokenResult: TokenResult, userId: string) {
-    this.accessToken = tokenResult.accessToken;
-    this.accountId = tokenResult.accountId;
-    this.refreshToken = tokenResult.refreshToken;
+  constructor(accessToken: string, userId: string, mailboxId: string) {
+    this.accessToken = accessToken;
     this.userId = userId;
+    this.mailboxId = mailboxId;
   }
 
   /**
@@ -136,9 +134,9 @@ export class MicrosoftGraphService {
         // Handle token expiration
         if (response.status === 401) {
           console.log("[Graph] Token expired, attempting refresh...");
-          const newToken = await getMicrosoftGraphToken(this.userId);
+          const newToken = await getMicrosoftGraphTokenForMailbox(this.mailboxId);
           if (newToken) {
-            this.accessToken = newToken.accessToken;
+            this.accessToken = newToken;
             continue; // Retry with new token
           }
           throw new Error("Token refresh failed - user must reconnect");
@@ -178,20 +176,19 @@ export class MicrosoftGraphService {
     const { maxResults, folder = "inbox" } = options;
 
     try {
-      // Get user's sync state
-      const user = await prisma.user.findUnique({
-        where: { id: this.userId },
-        select: { lastEmailSync: true, microsoftDeltaLink: true },
+      // Get mailbox sync state
+      const mailbox = await prisma.microsoftGraphMailbox.findUnique({
+        where: { id: this.mailboxId },
+        select: { deltaLink: true, lastSync: true },
       });
 
       const allMessages: GraphMessage[] = [];
-      let nextLink: string | undefined;
       let deltaLink: string | undefined;
 
       // If we have a delta link, use it for incremental sync
-      if (user?.microsoftDeltaLink) {
+      if (mailbox?.deltaLink) {
         console.log("[Graph] Using delta query for incremental sync");
-        const result = await this.fetchWithDelta(user.microsoftDeltaLink, maxResults);
+        const result = await this.fetchWithDelta(mailbox.deltaLink, maxResults);
         allMessages.push(...result.messages);
         deltaLink = result.deltaLink;
       } else {
@@ -199,7 +196,7 @@ export class MicrosoftGraphService {
         console.log("[Graph] First sync: fetching from inbox");
 
         // Calculate time filter (last 24h for first sync)
-        const sinceDate = user?.lastEmailSync || new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const sinceDate = mailbox?.lastSync || new Date(Date.now() - 24 * 60 * 60 * 1000);
         const filter = `receivedDateTime ge ${sinceDate.toISOString()}`;
 
         const endpoint = `/me/mailFolders/${folder}/messages?$top=${maxResults || DEFAULT_PAGE_SIZE}&$filter=${encodeURIComponent(filter)}&$orderby=receivedDateTime desc&$select=id,conversationId,subject,bodyPreview,from,receivedDateTime,parentFolderId,categories,webLink`;
@@ -253,6 +250,7 @@ export class MicrosoftGraphService {
             data: {
               userId: this.userId,
               emailProvider: "MICROSOFT_GRAPH",
+              mailboxId: this.mailboxId,
               gmailMessageId: metadata.graphMessageId, // Reuse field
               gmailThreadId: metadata.conversationId, // Reuse field
               from: metadata.from,
@@ -267,12 +265,12 @@ export class MicrosoftGraphService {
         }
       }
 
-      // Update user sync state
-      await prisma.user.update({
-        where: { id: this.userId },
+      // Update mailbox sync state
+      await prisma.microsoftGraphMailbox.update({
+        where: { id: this.mailboxId },
         data: {
-          lastEmailSync: new Date(),
-          microsoftDeltaLink: deltaLink,
+          lastSync: new Date(),
+          deltaLink: deltaLink ?? null,
         },
       });
 
@@ -411,7 +409,7 @@ export class MicrosoftGraphService {
     const emails = await prisma.emailMetadata.findMany({
       where: {
         userId: this.userId,
-        emailProvider: "MICROSOFT_GRAPH",
+        mailboxId: this.mailboxId,
         status: "EXTRACTED",
       },
       orderBy: {
@@ -438,8 +436,8 @@ export class MicrosoftGraphService {
     await prisma.emailMetadata.updateMany({
       where: {
         userId: this.userId,
-        gmailMessageId: messageId, // Reused field
-        emailProvider: "MICROSOFT_GRAPH",
+        gmailMessageId: messageId,
+        mailboxId: this.mailboxId,
       },
       data: {
         status: "ANALYZED",
@@ -452,17 +450,18 @@ export class MicrosoftGraphService {
    */
   async countNewEmails(): Promise<number> {
     try {
-      const user = await prisma.user.findUnique({
-        where: { id: this.userId },
-        select: { lastEmailSync: true },
+      const mailbox = await prisma.microsoftGraphMailbox.findUnique({
+        where: { id: this.mailboxId },
+        select: { lastSync: true },
       });
 
       // Calculate since when to count
-      const sinceDate = user?.lastEmailSync || new Date(Date.now() - 24 * 60 * 60 * 1000);
+      const sinceDate = mailbox?.lastSync || new Date(Date.now() - 24 * 60 * 60 * 1000);
       const filter = `receivedDateTime ge ${sinceDate.toISOString()}`;
 
       const response = await this.graphRequest<{ "@odata.count"?: number; value: GraphMessage[] }>(
-        `/me/mailFolders/inbox/messages?$count=true&$filter=${encodeURIComponent(filter)}&$top=1`
+        `/me/mailFolders/inbox/messages?$count=true&$filter=${encodeURIComponent(filter)}&$top=1`,
+        { headers: { ConsistencyLevel: "eventual" } }
       );
 
       const totalInGraph = response["@odata.count"] || response.value.length;
@@ -471,7 +470,7 @@ export class MicrosoftGraphService {
       const syncedCount = await prisma.emailMetadata.count({
         where: {
           userId: this.userId,
-          emailProvider: "MICROSOFT_GRAPH",
+          mailboxId: this.mailboxId,
           receivedAt: { gte: sinceDate },
         },
       });
@@ -487,33 +486,38 @@ export class MicrosoftGraphService {
    * Disconnects the service (cleanup)
    */
   async disconnect(): Promise<void> {
-    // Clear delta link on disconnect
-    await prisma.user.update({
-      where: { id: this.userId },
-      data: {
-        microsoftDeltaLink: null,
-        lastEmailSync: null,
-      },
-    });
+    // No persistent connection to close for Graph API (stateless HTTP)
   }
 }
 
 /**
- * Factory function to create a MicrosoftGraphService instance
+ * Factory function to create a MicrosoftGraphService for a specific mailbox.
+ * Reads tokens directly from MicrosoftGraphMailbox.
  */
-export async function createMicrosoftGraphService(
+export async function createMicrosoftGraphServiceByMailbox(
+  mailboxId: string,
   userId: string
 ): Promise<MicrosoftGraphService | null> {
   try {
-    const tokenResult = await getMicrosoftGraphToken(userId);
-    if (!tokenResult) {
-      console.log("[Graph] Failed to get token for user:", userId);
+    const mailbox = await prisma.microsoftGraphMailbox.findUnique({
+      where: { id: mailboxId },
+      select: { userId: true, isActive: true },
+    });
+
+    if (!mailbox || mailbox.userId !== userId || !mailbox.isActive) {
+      console.log("[Graph] Mailbox not found or inactive:", mailboxId);
       return null;
     }
 
-    return new MicrosoftGraphService(tokenResult, userId);
+    const accessToken = await getMicrosoftGraphTokenForMailbox(mailboxId);
+    if (!accessToken) {
+      console.log("[Graph] Failed to get token for mailbox:", mailboxId);
+      return null;
+    }
+
+    return new MicrosoftGraphService(accessToken, userId, mailboxId);
   } catch (error) {
-    console.error("[Graph] Error creating service:", error);
+    console.error("[Graph] Error creating service by mailbox:", error);
     return null;
   }
 }

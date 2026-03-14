@@ -8,17 +8,17 @@ Le système utilise **node-cron** pour exécuter des tâches planifiées automat
 
 ### Fichiers principaux
 
-- **`lib/cron/count-new-emails-job.ts`** : Job de comptage des nouveaux emails (toutes les 2 minutes)
-- **`lib/cron/daily-sync-job.ts`** : Job de synchronisation quotidienne complète (8h00)
-- **`lib/cron/cleanup-job.ts`** : Job de nettoyage des métadonnées obsolètes (9h00)
+- **`lib/cron/count-new-emails-job.ts`** : Job de comptage des nouveaux emails (toutes les 10 minutes)
+- **`lib/cron/daily-sync-job.ts`** : Job de synchronisation quotidienne complète (7h00)
+- **`lib/cron/cleanup-job.ts`** : Job de nettoyage des métadonnées obsolètes (3h00)
 - **`lib/cron/cron-service.ts`** : Service de gestion des crons (démarrage, arrêt)
 - **`instrumentation.ts`** : Point d'entrée Next.js pour démarrer les crons au lancement du serveur
 
 ## Jobs planifiés
 
-### 1. Count New Emails Job (toutes les 2 minutes)
+### 1. Count New Emails Job (toutes les 10 minutes)
 
-**Planning** : `*/2 * * * *` (toutes les 2 minutes)
+**Planning** : `*/10 * * * *` (toutes les 10 minutes)
 
 Le job `count-new-emails` **compte uniquement** les nouveaux emails disponibles depuis la dernière synchronisation (manuelle ou automatique).
 
@@ -26,7 +26,7 @@ Le job `count-new-emails` **compte uniquement** les nouveaux emails disponibles 
 
 **La synchronisation réelle se fait via** :
 - Le bouton "Analyser" dans le dashboard (manuel)
-- Le daily-sync job (automatique, tous les jours à 8h00)
+- Le daily-sync job (automatique, tous les jours à 7h00)
 
 **Mise à jour temps réel du dashboard** :
 - Système **Server-Sent Events (SSE)** combiné avec **Zustand**
@@ -37,9 +37,9 @@ Le job `count-new-emails` **compte uniquement** les nouveaux emails disponibles 
 
 **Objectif** : Maintenir le compteur "En attente" à jour en temps réel sans polling
 
-### 2. Daily-Sync Job (tous les jours à 8h00)
+### 2. Daily-Sync Job (tous les jours à 7h00)
 
-**Planning** : `0 8 * * *` (tous les jours à 8h00)
+**Planning** : `0 7 * * *` (tous les jours à 7h00)
 
 Le job `daily-sync` est une version plus complète de l'auto-sync :
 
@@ -48,9 +48,9 @@ Le job `daily-sync` est une version plus complète de l'auto-sync :
 
 **Limites volontaires** : 100 sync / 50 analyze pour un traitement plus agressif quotidien
 
-### 3. Cleanup Job (tous les jours à 9h00)
+### 3. Cleanup Job (tous les jours à 3h00)
 
-**Planning** : `0 9 * * *` (tous les jours à 9h00)
+**Planning** : `0 3 * * *` (tous les jours à 3h00)
 
 Le job `cleanup` nettoie les métadonnées d'emails obsolètes :
 
@@ -69,12 +69,12 @@ Le compteur "En attente" dans le dashboard se met à jour automatiquement en tem
 
 1. **Composant client** : `PendingSyncCard` (React avec `useState` et `useEffect`)
 2. **API endpoint** : `/api/email/pending-count` (GET)
-3. **Polling** : Toutes les 30 secondes (le cron tourne toutes les 2 minutes)
+3. **Polling** : Toutes les 30 secondes (le cron tourne toutes les 10 minutes)
 
 ### Fonctionnement
 
 ```
-[Cron toutes les 2 min] → Met à jour le count des emails
+[Cron toutes les 10 min] → Met à jour le count des emails
                           ↓
 [Composant dashboard] → Polling /api/email/pending-count toutes les 30s
                           ↓
@@ -108,9 +108,9 @@ Cette fonction est appelée par Next.js au démarrage du serveur (dev et product
 ```
 [INSTRUMENTATION] Starting cron jobs...
 [CRON SERVICE] 🚀 Starting cron jobs...
-[CRON SERVICE] ✅ Count-new-emails job scheduled (every 2 minutes)
-[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)
-[CRON SERVICE] ✅ Cleanup job scheduled (every day at 9:00 AM)
+[CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)
+[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)
+[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM)
 ```
 
 ## Configuration
@@ -122,7 +122,7 @@ Par défaut, le cron utilise la timezone **Europe/Paris**. Pour la modifier :
 ```typescript
 // lib/cron/cron-service.ts
 cron.schedule(
-  "*/2 * * * *",
+  "*/10 * * * *",
   async () => { ... },
   {
     timezone: "America/New_York", // Changez ici
@@ -136,7 +136,7 @@ Pour modifier la fréquence d'exécution, éditez le pattern cron dans `lib/cron
 
 ```typescript
 // Exemples :
-"*/2 * * * *"   // Toutes les 2 minutes
+"*"*/2 * * * *"   // Toutes les 2 minutes
 "*/5 * * * *"   // Toutes les 5 minutes
 "*/10 * * * *"  // Toutes les 10 minutes
 "0 * * * *"     // Toutes les heures
@@ -158,9 +158,9 @@ Vous verrez dans les logs :
 ```
 [INSTRUMENTATION] Starting cron jobs...
 [CRON SERVICE] 🚀 Starting cron jobs...
-[CRON SERVICE] ✅ Count-new-emails job scheduled (every 2 minutes)
-[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)
-[CRON SERVICE] ✅ Cleanup job scheduled (every day at 9:00 AM)
+[CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)
+[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)
+[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM)
 ```
 
 ### Logs
@@ -261,15 +261,15 @@ Les erreurs sont loggées mais n'arrêtent pas le cron. Consultez les logs pour 
 
 Pour éviter les timeouts, chaque job traite un nombre limité d'éléments par exécution :
 
-**Count New Emails Job** (toutes les 2 minutes) :
+**Count New Emails Job** (toutes les 10 minutes) :
 - Ne fait que compter, pas de limite nécessaire
 - Opération légère et rapide
 
-**Daily-Sync Job** (tous les jours à 8h00) :
+**Daily-Sync Job** (tous les jours à 7h00) :
 - **Synchronisation** : Maximum 100 nouveaux emails par utilisateur
 - **Analyse** : Maximum 50 emails EXTRACTED par utilisateur
 
-**Cleanup Job** (tous les jours à 9h00) :
+**Cleanup Job** (tous les jours à 3h00) :
 - Pas de limite : traite tous les emails obsolètes selon les règles de rétention
 
 Si vous avez plus d'emails à traiter que les limites, ils seront traités lors de la prochaine exécution.
@@ -283,9 +283,9 @@ Les crons s'exécutent dans le même processus que Next.js. En production sur Ve
 | Job | Fréquence | Horaire | Action | Objectif |
 |-----|-----------|---------|--------|----------|
 | **count-new-emails** | Toutes les 2 min | - | Compte uniquement | Maintenir le compteur "En attente" à jour |
-| **daily-sync** | 1x par jour | 8h00 | Sync (100) + Analyze (50) | Synchronisation quotidienne complète |
-| **cleanup** | 1x par jour | 9h00 | Supprime emails obsolètes | Nettoyage des données obsolètes |
+| **daily-sync** | 1x par jour | 7h00 | Sync (100) + Analyze (50) | Synchronisation quotidienne complète |
+| **cleanup** | 1x par jour | 3h00 | Supprime emails obsolètes | Nettoyage des données obsolètes |
 
 **Note importante** : La synchronisation réelle des emails se fait uniquement via :
 - Le bouton "Analyser" dans le dashboard (manuel)
-- Le daily-sync job (automatique, 8h00)
+- Le daily-sync job (automatique, 7h00)

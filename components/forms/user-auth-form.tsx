@@ -6,20 +6,33 @@ import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Icons } from "@/components/shared/icons";
 import { toast } from "sonner";
 
-const authSchema = z.object({
+const loginSchema = z.object({
   email: z.string().email("Email invalide"),
   password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
 });
 
-type AuthFormData = z.infer<typeof authSchema>;
+const registerSchema = loginSchema
+  .extend({
+    confirmPassword: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+    termsAccepted: z.boolean().refine((v) => v === true, "Vous devez accepter les CGU"),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Les mots de passe ne correspondent pas",
+    path: ["confirmPassword"],
+  });
+
+type RegisterFormData = z.infer<typeof registerSchema>;
 
 interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
   mode?: "login" | "register";
@@ -34,27 +47,36 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = React.useState(false);
   const [isCredentialsLoading, setIsCredentialsLoading] = React.useState(false);
+  const [showPassword, setShowPassword] = React.useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
   const searchParams = useSearchParams();
   const error = searchParams?.get("error");
+
+  const isRegister = mode === "register";
+  const isOAuthLoading = isGoogleLoading || isMicrosoftLoading;
 
   const {
     register,
     handleSubmit,
+    watch,
+    setValue,
     formState: { errors },
-  } = useForm<AuthFormData>({
-    resolver: zodResolver(authSchema),
+  } = useForm<RegisterFormData>({
+    resolver: zodResolver(isRegister ? registerSchema : loginSchema),
+    defaultValues: { termsAccepted: false },
   });
 
-  async function onCredentialsSubmit(data: AuthFormData) {
+  const termsAccepted = watch("termsAccepted");
+
+  async function onCredentialsSubmit(data: RegisterFormData) {
     setIsCredentialsLoading(true);
 
     try {
-      if (mode === "register") {
-        // Registration flow
+      if (isRegister) {
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(data),
+          body: JSON.stringify({ email: data.email, password: data.password }),
         });
 
         const result = await response.json();
@@ -67,7 +89,6 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
         toast.success("Compte créé ! Connexion en cours...");
       }
 
-      // Sign in with credentials
       const result = await signIn("credentials", {
         email: data.email,
         password: data.password,
@@ -79,9 +100,8 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
         return;
       }
 
-      // Redirect to dashboard on success
       window.location.href = "/dashboard";
-    } catch (error) {
+    } catch {
       toast.error("Une erreur est survenue");
     } finally {
       setIsCredentialsLoading(false);
@@ -100,8 +120,8 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
         </div>
       )}
 
-      {/* Credentials Form */}
       <form onSubmit={handleSubmit(onCredentialsSubmit)} className="grid gap-4">
+        {/* Email */}
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>
           <Input
@@ -118,25 +138,108 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
             <p className="text-xs text-destructive">{errors.email.message}</p>
           )}
         </div>
+
+        {/* Password */}
         <div className="grid gap-2">
           <Label htmlFor="password">Mot de passe</Label>
-          <Input
-            id="password"
-            type="password"
-            placeholder="••••••••"
-            autoComplete={mode === "register" ? "new-password" : "current-password"}
-            disabled={isCredentialsLoading}
-            {...register("password")}
-          />
+          <div className="relative">
+            <Input
+              id="password"
+              type={showPassword ? "text" : "password"}
+              placeholder="••••••••"
+              autoComplete={isRegister ? "new-password" : "current-password"}
+              disabled={isCredentialsLoading}
+              className="pr-10"
+              {...register("password")}
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((v) => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              tabIndex={-1}
+              aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+            >
+              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+            </button>
+          </div>
           {errors.password && (
             <p className="text-xs text-destructive">{errors.password.message}</p>
           )}
+          {!isRegister && (
+            <div className="flex justify-end">
+              <Link
+                href="/forgot-password"
+                className="text-xs text-muted-foreground underline-offset-4 hover:underline"
+              >
+                Mot de passe oublié ?
+              </Link>
+            </div>
+          )}
         </div>
-        <Button type="submit" disabled={isCredentialsLoading}>
+
+        {/* Confirm Password (register only) */}
+        {isRegister && (
+          <div className="grid gap-2">
+            <Label htmlFor="confirmPassword">Confirmer le mot de passe</Label>
+            <div className="relative">
+              <Input
+                id="confirmPassword"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="••••••••"
+                autoComplete="new-password"
+                disabled={isCredentialsLoading}
+                className="pr-10"
+                {...register("confirmPassword")}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword((v) => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                tabIndex={-1}
+                aria-label={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              >
+                {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+            )}
+          </div>
+        )}
+
+        {/* CGU Checkbox (register only) */}
+        {isRegister && (
+          <div className="space-y-1">
+            <div className="flex items-start gap-2">
+              <Checkbox
+                id="terms"
+                checked={termsAccepted ?? false}
+                onCheckedChange={(checked) => setValue("termsAccepted", checked === true, { shouldValidate: true })}
+                disabled={isCredentialsLoading}
+                className="mt-0.5"
+              />
+              <label htmlFor="terms" className="text-xs leading-relaxed text-muted-foreground">
+                J&apos;accepte les{" "}
+                <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
+                  CGU
+                </Link>{" "}
+                et la{" "}
+                <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
+                  Politique de confidentialité
+                </Link>
+              </label>
+            </div>
+            {errors.termsAccepted && (
+              <p className="text-xs text-destructive">{errors.termsAccepted.message}</p>
+            )}
+          </div>
+        )}
+
+        <Button type="submit" disabled={isCredentialsLoading || isOAuthLoading}>
           {isCredentialsLoading && (
             <Icons.spinner className="mr-2 size-4 animate-spin" />
           )}
-          {mode === "register" ? "Créer un compte" : "Se connecter"}
+          {isRegister ? "Créer un compte" : "Se connecter"}
         </Button>
       </form>
 
@@ -154,7 +257,6 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
             </div>
           </div>
 
-          {/* OAuth Buttons */}
           <div className="grid gap-2">
             {isGoogleEnabled && (
               <button
@@ -164,7 +266,7 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
                   setIsGoogleLoading(true);
                   signIn("google");
                 }}
-                disabled={isGoogleLoading || isMicrosoftLoading}
+                disabled={isGoogleLoading || isMicrosoftLoading || isCredentialsLoading}
               >
                 {isGoogleLoading ? (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />
@@ -183,7 +285,7 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
                   setIsMicrosoftLoading(true);
                   signIn("microsoft-entra-id");
                 }}
-                disabled={isGoogleLoading || isMicrosoftLoading}
+                disabled={isGoogleLoading || isMicrosoftLoading || isCredentialsLoading}
               >
                 {isMicrosoftLoading ? (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />

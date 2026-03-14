@@ -5,6 +5,7 @@ import NextAuth, { type DefaultSession } from "next-auth";
 import type { Adapter, AdapterUser } from "next-auth/adapters";
 
 import { prisma } from "@/lib/db";
+import { sendVerificationEmail } from "@/lib/auth/send-verification-email";
 import { getUserById } from "@/lib/user";
 
 // Custom adapter that removes the 'name' field since it was removed from the User model
@@ -25,6 +26,17 @@ function CustomPrismaAdapter(): Adapter {
           image: userData.image,
         },
       });
+
+      // Send verification email for new OAuth users (signIn callback runs BEFORE createUser,
+      // so it cannot be done there for new users)
+      if (!user.emailVerified && user.email) {
+        try {
+          await sendVerificationEmail(user.email);
+        } catch (err) {
+          console.error("[Auth] Failed to send verification email on user creation:", err);
+        }
+      }
+
       return { ...user, id: user.id, email: user.email!, emailVerified: user.emailVerified };
     },
   };
@@ -54,7 +66,7 @@ export const {
     updateAge: 24 * 60 * 60, // 24 heures (rafraîchit le token si actif depuis > 24h)
   },
   callbacks: {
-    async signIn({ user, account, profile }) {
+    async signIn({ user, account }) {
       // Si c'est une connexion OAuth (Google ou Microsoft)
       if (account?.provider === "google" || account?.provider === "microsoft-entra-id") {
         // Vérifier si un utilisateur existe déjà avec cet email
@@ -86,6 +98,23 @@ export const {
               },
             });
             console.log(`[Auth] Compte ${account.provider} lié à l'utilisateur existant: ${user.email}`);
+          }
+        }
+
+        // Envoyer l'email de vérification si l'email n'est pas encore vérifié
+        // (nouvel utilisateur OAuth ou utilisateur existant non vérifié)
+        const dbUser = existingUser ?? await prisma.user.findUnique({ where: { email: user.email! } });
+        if (dbUser && !dbUser.emailVerified) {
+          // Envoyer seulement s'il n'y a pas déjà un token en cours (évite le spam au re-login)
+          const existingToken = await prisma.verificationToken.findFirst({
+            where: { identifier: user.email! },
+          });
+          if (!existingToken) {
+            try {
+              await sendVerificationEmail(user.email!);
+            } catch (err) {
+              console.error("[Auth] Failed to send verification email:", err);
+            }
           }
         }
       }

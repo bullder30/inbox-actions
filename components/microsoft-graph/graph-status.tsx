@@ -8,17 +8,15 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  AlertCircle,
   Calendar,
-  RefreshCw,
   Zap,
-  Mail,
   ExternalLink,
   Trash2,
 } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,67 +29,197 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-interface GraphStatusData {
-  configured: boolean;
-  hasMailReadScope: boolean;
-  hasAccount?: boolean;
-  isConnected?: boolean;
-  isActiveProvider?: boolean;
-  email?: string;
-  lastSync?: string;
-  hasDeltaLink?: boolean;
-  stats?: {
-    totalEmails: number;
-    pendingAnalysis: number;
-  };
-  message?: string;
+interface GraphMailboxData {
+  id: string;
+  label: string | null;
+  email: string | null;
+  isConnected: boolean;
+  connectionError: string | null;
+  lastSync: string | null;
 }
 
 interface GraphStatusProps {
   onStatusChange?: () => void;
-  showTitle?: boolean;
 }
 
-export function GraphStatus({ onStatusChange, showTitle = false }: GraphStatusProps) {
-  const [status, setStatus] = useState<GraphStatusData | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [activating, setActivating] = useState(false);
-  const [connecting, setConnecting] = useState(false);
+function GraphMailboxCard({
+  mailbox,
+  onRemove,
+}: {
+  mailbox: GraphMailboxData;
+  onRemove: (id: string) => void;
+}) {
   const [disconnecting, setDisconnecting] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+
+  const displayName = mailbox.label || mailbox.email || "Microsoft";
+
+  async function handleDisconnect() {
+    setDisconnecting(true);
+    try {
+      const response = await fetch("/api/microsoft-graph/disconnect", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mailboxId: mailbox.id }),
+      });
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Échec de la déconnexion");
+      toast.success(`Boîte "${displayName}" supprimée`);
+      onRemove(mailbox.id);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Erreur de déconnexion");
+    } finally {
+      setDisconnecting(false);
+    }
+  }
+
+  async function handleReconnect() {
+    setConnecting(true);
+    try {
+      const response = await fetch("/api/microsoft-graph/connect");
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Failed to initiate connection");
+      window.location.href = data.authUrl;
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Connection error");
+      setConnecting(false);
+    }
+  }
+
+  return (
+    <div className="rounded-lg border p-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1 space-y-1">
+          {/* Nom */}
+          <div className="flex items-center gap-2">
+            <Zap className="size-4 shrink-0 text-muted-foreground" />
+            <span className="truncate font-medium">{displayName}</span>
+          </div>
+
+          {/* Email */}
+          {mailbox.email && (
+            <div className="text-xs text-muted-foreground">{mailbox.email}</div>
+          )}
+
+          {/* Erreur */}
+          {mailbox.connectionError && (
+            <div className="flex items-start gap-1.5 rounded-md border border-red-200 bg-red-50 p-2 dark:border-red-800 dark:bg-red-950">
+              <AlertCircle className="mt-0.5 size-3 shrink-0 text-red-600 dark:text-red-400" />
+              <p className="text-xs text-red-700 dark:text-red-300">{mailbox.connectionError}</p>
+            </div>
+          )}
+
+          {/* Dernière sync */}
+          {mailbox.lastSync && (
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Calendar className="size-3" />
+              <span>
+                Sync{" "}
+                {formatDistanceToNow(new Date(mailbox.lastSync), { locale: fr, addSuffix: true })}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="flex shrink-0 items-center gap-1">
+          {/* Mobile : icône seule */}
+          {mailbox.isConnected ? (
+            <CheckCircle2 className="size-4 shrink-0 text-green-500 sm:hidden" />
+          ) : (
+            <XCircle className="size-4 shrink-0 text-destructive sm:hidden" />
+          )}
+          {/* Desktop : badge complet */}
+          <Badge
+            variant={mailbox.isConnected ? "success" : "destructive"}
+            className="hidden shrink-0 gap-1 text-xs sm:flex"
+          >
+            {mailbox.isConnected ? (
+              <><CheckCircle2 className="size-3" /> Connecté</>
+            ) : (
+              <><XCircle className="size-3" /> Token expiré</>
+            )}
+          </Badge>
+
+          {/* Spacer pour aligner avec les cartes IMAP qui ont un bouton édition */}
+          <div className="size-8" />
+
+          {/* Token expiré — reconnecter */}
+          {!mailbox.isConnected && (
+            <Button
+              onClick={handleReconnect}
+              disabled={connecting}
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              title="Reconnecter"
+            >
+              {connecting ? (
+                <Loader2 className="size-3.5 animate-spin" />
+              ) : (
+                <ExternalLink className="size-3.5" />
+              )}
+            </Button>
+          )}
+
+          {/* Supprimer */}
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-8 text-destructive hover:bg-destructive/10"
+              >
+                <Trash2 className="size-3.5" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Supprimer la boîte &quot;{displayName}&quot; ?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Les emails déjà synchronisés et les actions extraites seront conservés.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Annuler</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={handleDisconnect}
+                  disabled={disconnecting}
+                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                >
+                  {disconnecting ? (
+                    <Loader2 className="mr-2 size-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="mr-2 size-4" />
+                  )}
+                  Supprimer
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export function GraphStatus({ onStatusChange }: GraphStatusProps) {
+  const [mailboxes, setMailboxes] = useState<GraphMailboxData[]>([]);
+  const [microsoftOAuthEnabled, setMicrosoftOAuthEnabled] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [connecting, setConnecting] = useState(false);
 
   async function loadStatus() {
     try {
       setLoading(true);
       const response = await fetch("/api/microsoft-graph/status");
       const data = await response.json();
-      setStatus(data);
+      setMicrosoftOAuthEnabled(data.microsoftOAuthEnabled ?? false);
+      setMailboxes(data.mailboxes ?? []);
     } catch (error) {
-      console.error("[Graph Status] Error:", error);
+      console.error("[GraphStatus] Error:", error);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function handleActivate() {
-    setActivating(true);
-    try {
-      const response = await fetch("/api/microsoft-graph/activate", {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || data.error || "Activation failed");
-      }
-
-      toast.success("Microsoft Graph API activé !");
-      loadStatus();
-      onStatusChange?.();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Activation error");
-    } finally {
-      setActivating(false);
     }
   }
 
@@ -100,12 +228,7 @@ export function GraphStatus({ onStatusChange, showTitle = false }: GraphStatusPr
     try {
       const response = await fetch("/api/microsoft-graph/connect");
       const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Failed to initiate connection");
-      }
-
-      // Redirect to Microsoft OAuth
+      if (!response.ok) throw new Error(data.error || "Failed to initiate connection");
       window.location.href = data.authUrl;
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Connection error");
@@ -113,286 +236,62 @@ export function GraphStatus({ onStatusChange, showTitle = false }: GraphStatusPr
     }
   }
 
-  async function handleDisconnect() {
-    setDisconnecting(true);
-    try {
-      const response = await fetch("/api/microsoft-graph/disconnect", {
-        method: "POST",
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || "Disconnection failed");
-      }
-
-      toast.success("Microsoft Graph déconnecté");
-      loadStatus();
-      onStatusChange?.();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Disconnection error");
-    } finally {
-      setDisconnecting(false);
-    }
+  function handleRemoveMailbox(id: string) {
+    setMailboxes((prev) => prev.filter((m) => m.id !== id));
+    onStatusChange?.();
   }
 
   useEffect(() => {
     loadStatus();
   }, []);
 
+  if (!microsoftOAuthEnabled && !loading) {
+    return null;
+  }
+
   if (loading) {
     return (
-      <div className="space-y-4">
-        {showTitle && (
-          <div className="flex items-center gap-2">
-            <Skeleton className="size-5 rounded" />
-            <Skeleton className="h-5 w-36" />
-          </div>
-        )}
+      <div className="rounded-lg border p-4">
         <div className="flex items-center gap-2">
-          <Skeleton className="h-5 w-20 rounded-full" />
-          <Skeleton className="h-4 w-32" />
-        </div>
-        <div className="flex items-center gap-2">
-          <Skeleton className="size-4 rounded" />
-          <Skeleton className="h-4 w-40" />
-        </div>
-        <div className="flex gap-2">
-          <Skeleton className="h-9 w-28" />
-          <Skeleton className="size-9" />
+          <Zap className="size-4 text-muted-foreground" />
+          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
         </div>
       </div>
     );
   }
 
-  // Case 1: No Microsoft account AND no Mail.Read scope - Show connect button
-  if (!status?.hasAccount || (!status?.hasMailReadScope && !status?.configured)) {
-    return (
-      <div className="space-y-4">
-        {showTitle && (
-          <div className="flex items-center gap-2">
-            <Zap className="size-5 text-blue-500" />
-            <h3 className="font-medium">Microsoft Graph API</h3>
-          </div>
-        )}
-        <p className="text-sm text-muted-foreground">
-          Connectez votre compte Microsoft pour synchroniser vos emails Outlook, Hotmail ou Microsoft 365.
-        </p>
-        <Button
-          onClick={handleConnect}
-          disabled={connecting}
-          variant="outline"
-          className="gap-2"
-        >
-          {connecting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Connexion...
-            </>
-          ) : (
-            <>
-              <Mail className="size-4" />
-              Connecter un compte Microsoft
-              <ExternalLink className="size-3" />
-            </>
-          )}
-        </Button>
-      </div>
-    );
-  }
-
-  // Case 2: Account exists but no Mail.Read scope - Show re-connect button
-  if (status?.hasAccount && !status?.hasMailReadScope) {
-    return (
-      <div className="space-y-4">
-        {showTitle && (
-          <div className="flex items-center gap-2">
-            <Zap className="size-5 text-yellow-500" />
-            <h3 className="font-medium">Microsoft Graph API</h3>
-          </div>
-        )}
-        <div className="rounded-lg border border-yellow-300 bg-yellow-50 p-3 dark:border-yellow-800 dark:bg-yellow-950">
-          <p className="text-sm text-yellow-800 dark:text-yellow-200">
-            Votre compte Microsoft est connecté mais la permission de lecture des emails n&apos;a pas été accordée.
-          </p>
-        </div>
-        <Button
-          onClick={handleConnect}
-          disabled={connecting}
-          variant="outline"
-          className="gap-2"
-        >
-          {connecting ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Connexion...
-            </>
-          ) : (
-            <>
-              <RefreshCw className="size-4" />
-              Reconnecter avec permission email
-              <ExternalLink className="size-3" />
-            </>
-          )}
-        </Button>
-      </div>
-    );
-  }
-
-  // Case 3: Configured with Mail.Read scope - Show status and controls
   return (
-    <div className="space-y-4">
-      {showTitle && (
-        <div className="flex items-center gap-2">
-          <Zap className="size-5 text-green-500" />
-          <h3 className="font-medium">Microsoft Graph API</h3>
-        </div>
-      )}
+    <>
+      {/* Boîtes Microsoft Graph existantes */}
+      {mailboxes.map((mailbox) => (
+        <GraphMailboxCard
+          key={mailbox.id}
+          mailbox={mailbox}
+          onRemove={handleRemoveMailbox}
+        />
+      ))}
 
-      {/* Status badges */}
-      <div className="flex flex-wrap items-center gap-2">
-        <Badge
-          variant={status?.isConnected ? "gradient" : "destructive"}
-          className="gap-1"
-        >
-          {status?.isConnected ? (
-            <>
-              <CheckCircle2 className="size-3" />
-              Connecté
-            </>
-          ) : (
-            <>
-              <XCircle className="size-3" />
-              Token expiré
-            </>
-          )}
-        </Badge>
-        {status?.email && (
-          <span className="flex items-center gap-1 text-sm text-muted-foreground">
-            <Mail className="size-3" />
-            {status.email}
-          </span>
+      {/* Bouton Ajouter une boîte Microsoft */}
+      <Button
+        variant="outline"
+        size="sm"
+        className="w-full gap-2"
+        onClick={handleConnect}
+        disabled={connecting}
+      >
+        {connecting ? (
+          <>
+            <Loader2 className="size-4 animate-spin" />
+            Connexion...
+          </>
+        ) : (
+          <>
+            <Zap className="size-4" />
+            Ajouter une boîte Microsoft<span className="hidden sm:inline"> (Outlook, Hotmail, M365…)</span>
+            <ExternalLink className="size-3" />
+          </>
         )}
-      </div>
-
-      {/* Stats */}
-      {status?.stats && (
-        <div className="flex gap-4 text-sm">
-          <div>
-            <span className="font-medium">{status.stats.totalEmails}</span>
-            <span className="text-muted-foreground"> emails synchronisés</span>
-          </div>
-          {status.stats.pendingAnalysis > 0 && (
-            <div>
-              <span className="font-medium">{status.stats.pendingAnalysis}</span>
-              <span className="text-muted-foreground"> en attente d&apos;analyse</span>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Last sync */}
-      {status?.lastSync && (
-        <div className="flex items-center gap-2 text-sm">
-          <Calendar className="size-4 text-muted-foreground" />
-          <span className="text-muted-foreground">
-            Dernière sync :{" "}
-            {formatDistanceToNow(new Date(status.lastSync), {
-              locale: fr,
-              addSuffix: true,
-            })}
-          </span>
-        </div>
-      )}
-
-      {/* Actions */}
-      <div className="flex flex-wrap gap-2">
-        {/* Not active provider - show activate button */}
-        {!status?.isActiveProvider && (
-          <Button
-            onClick={handleActivate}
-            disabled={activating}
-            variant="default"
-          >
-            {activating ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Activation...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 size-4" />
-                Utiliser Microsoft Graph
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Token expired - show reconnect button */}
-        {!status?.isConnected && (
-          <Button
-            onClick={handleConnect}
-            disabled={connecting}
-            variant="outline"
-            className="gap-2"
-          >
-            {connecting ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Connexion...
-              </>
-            ) : (
-              <>
-                <RefreshCw className="size-4" />
-                Reconnecter
-              </>
-            )}
-          </Button>
-        )}
-
-        {/* Disconnect button */}
-        <AlertDialog>
-          <AlertDialogTrigger asChild>
-            <Button variant="outline" size="icon" className="text-destructive hover:bg-destructive/10">
-              <Trash2 className="size-4" />
-            </Button>
-          </AlertDialogTrigger>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Déconnecter Microsoft Graph ?</AlertDialogTitle>
-              <AlertDialogDescription>
-                Cette action supprimera l&apos;accès aux emails Microsoft.
-                Les emails déjà synchronisés et les actions extraites seront conservés.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel>Annuler</AlertDialogCancel>
-              <AlertDialogAction
-                onClick={handleDisconnect}
-                disabled={disconnecting}
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-              >
-                {disconnecting ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
-                ) : (
-                  <Trash2 className="mr-2 size-4" />
-                )}
-                Déconnecter
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      </div>
-
-      {/* Migration hint for non-active provider */}
-      {!status?.isActiveProvider && status?.configured && (
-        <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950">
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            <strong>Recommandé :</strong> Passez à Microsoft Graph API pour une meilleure expérience.
-            Aucune configuration IMAP nécessaire, rafraîchissement automatique des tokens et sync plus rapide.
-          </p>
-        </div>
-      )}
-    </div>
+      </Button>
+    </>
   );
 }

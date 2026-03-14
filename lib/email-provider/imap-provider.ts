@@ -14,8 +14,13 @@ import type {
 
 export class IMAPProvider implements IEmailProvider {
   readonly providerType: EmailProvider = "IMAP";
+  readonly mailboxId: string;
+  readonly mailboxLabel: string | null;
 
-  constructor(private service: IMAPService) {}
+  constructor(private service: IMAPService, mailboxId: string, mailboxLabel: string | null = null) {
+    this.mailboxId = mailboxId;
+    this.mailboxLabel = mailboxLabel;
+  }
 
   async fetchNewEmails(options?: FetchOptions): Promise<EmailMetadata[]> {
     const emails = await this.service.fetchNewEmails({

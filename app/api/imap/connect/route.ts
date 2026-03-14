@@ -22,6 +22,7 @@ const connectSchema = z.object({
   imapPassword: z.string().min(1, "Password is required"),
   imapFolder: z.string().default("INBOX"),
   useTLS: z.boolean().default(true),
+  label: z.string().max(50).optional(),
 });
 
 export async function POST(req: NextRequest) {
@@ -64,6 +65,7 @@ export async function POST(req: NextRequest) {
       imapPassword,
       imapFolder,
       useTLS,
+      label,
     } = validationResult.data;
 
     console.log(`[IMAP Connect] Attempting connection to ${imapHost}:${imapPort} (TLS: ${useTLS})`);
@@ -74,6 +76,17 @@ export async function POST(req: NextRequest) {
       user: imapUsername,
       pass: imapPassword,
     };
+
+    // Vérifier que cette boîte n'est pas déjà utilisée par un autre utilisateur
+    const takenByOther = await prisma.iMAPCredential.findFirst({
+      where: { imapHost, imapUsername, userId: { not: session.user.id } },
+    });
+    if (takenByOther) {
+      return NextResponse.json(
+        { error: "Cette boîte mail est déjà utilisée par un autre compte." },
+        { status: 409 }
+      );
+    }
 
     // Tester la connexion IMAP avant de sauvegarder
     const client = new ImapFlow({
@@ -146,6 +159,7 @@ export async function POST(req: NextRequest) {
         isConnected: true,
         connectionError: null,
         lastErrorAt: null,
+        ...(label !== undefined && { label }),
       },
       create: {
         userId: session.user.id,
@@ -157,41 +171,9 @@ export async function POST(req: NextRequest) {
         useTLS,
         authMethod: "PASSWORD",
         isConnected: true,
+        label: label ?? null,
       },
     });
-
-    // Mettre à jour le provider email de l'utilisateur
-    // AND disconnect Microsoft Graph (mutual exclusivity)
-    await prisma.user.update({
-      where: { id: session.user.id },
-      data: {
-        emailProvider: "IMAP",
-        // Clear sync data (mutual exclusivity)
-        lastEmailSync: null,
-        microsoftDeltaLink: null,
-      },
-    });
-
-    // Remove Mail.Read scope from Microsoft account (if any)
-    // This keeps the account for login but disables email access
-    const microsoftAccount = await prisma.account.findFirst({
-      where: {
-        userId: session.user.id,
-        provider: "microsoft-entra-id",
-      },
-    });
-
-    if (microsoftAccount?.scope?.includes("Mail.Read")) {
-      const newScope = microsoftAccount.scope
-        .replace("https://graph.microsoft.com/Mail.Read", "")
-        .replace(/\s+/g, " ")
-        .trim();
-      await prisma.account.update({
-        where: { id: microsoftAccount.id },
-        data: { scope: newScope },
-      });
-      console.log("[IMAP Connect] Microsoft Graph Mail.Read scope removed (mutual exclusivity)");
-    }
 
     console.log(`[IMAP Connect] Success! Credential ID: ${credential.id}`);
 

@@ -47,25 +47,6 @@ export default function RegisterPage() {
             Se connecter
           </Link>
         </p>
-
-        {/* Legal Links */}
-        <p className="text-center text-xs text-muted-foreground">
-          En continuant, vous acceptez nos{" "}
-          <Link
-            href="/terms"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            CGU
-          </Link>{" "}
-          et notre{" "}
-          <Link
-            href="/privacy"
-            className="underline underline-offset-4 hover:text-primary"
-          >
-            Politique de confidentialité
-          </Link>
-          .
-        </p>
       </div>
     </div>
   );

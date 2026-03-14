@@ -59,6 +59,11 @@ export function ActionCardSkeleton() {
           <Skeleton className="h-3 w-40" />
           <Skeleton className="hidden h-3 w-1 sm:block" />
           <Skeleton className="h-3 w-16" />
+          <Skeleton className="hidden h-3 w-1 sm:block" />
+          <div className="flex items-center gap-1">
+            <Skeleton className="size-3" />
+            <Skeleton className="h-3 w-28" />
+          </div>
         </div>
       </CardContent>
 

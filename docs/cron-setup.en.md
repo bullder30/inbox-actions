@@ -9,8 +9,8 @@ The system uses **node-cron** to execute 3 automatic tasks:
 | Job | Frequency | Description | Time (Europe/Paris) |
 |-----|-----------|-------------|---------------------|
 | **count-new-emails** | Every 10 min | Counts new emails | Continuous |
-| **daily-sync** | 1x per day | Syncs and analyzes emails | 8:00 AM |
-| **cleanup** | 1x per day | Deletes emails > 3 days | 11:00 PM |
+| **daily-sync** | 1x per day | Syncs and analyzes emails | 7:00 AM |
+| **cleanup** | 1x per day | Deletes emails > 3 days | 3:00 AM |
 
 **Features**:
 - Automatic startup via `instrumentation.ts`
@@ -64,8 +64,8 @@ export async function register() {
 [INSTRUMENTATION] Starting cron jobs...
 [CRON SERVICE] 🚀 Starting cron jobs...
 [CRON SERVICE] ✅ Count-new-emails job scheduled (every 10 minutes)
-[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 8:00 AM)
-[CRON SERVICE] ✅ Cleanup job scheduled (every day at 11:00 PM)
+[CRON SERVICE] ✅ Daily-sync job scheduled (every day at 7:00 AM Paris)
+[CRON SERVICE] ✅ Cleanup job scheduled (every day at 3:00 AM)
 [INSTRUMENTATION] Cron jobs started successfully
 ```
 
@@ -126,7 +126,7 @@ If you don't see these logs, crons are not active.
 
 ## Detailed Logs
 
-### Daily-sync job (8:00 AM)
+### Daily-sync job (7:00 AM)
 
 Example logs during daily-sync execution:
 
@@ -141,7 +141,7 @@ Example logs during daily-sync execution:
 [DAILY-SYNC JOB] Stats: { users: '1/1', synced: 17, actions: 5 }
 ```
 
-### Cleanup job (11:00 PM)
+### Cleanup job (3:00 AM)
 
 Example logs during cleanup execution:
 
@@ -175,7 +175,7 @@ Logs only if new emails are detected:
 - **Action**: Count only, does NOT sync emails
 - **Performance**: Very fast (~100-200ms)
 
-### 2. Daily-sync job (8:00 AM)
+### 2. Daily-sync job (7:00 AM)
 
 **STEP 1: Email Synchronization**
 - Retrieves all users with an email provider configured (IMAP or Microsoft Graph)
@@ -198,7 +198,7 @@ Logs only if new emails are detected:
 - Sends email digest to user if actions were extracted
 - Non-blocking (notification error doesn't stop job)
 
-### 3. Cleanup job (11:00 PM)
+### 3. Cleanup job (3:00 AM)
 
 **Simplified deletion strategy**:
 - Deletes **all emails** (ANALYZED or EXTRACTED) older than **3 days**
@@ -252,13 +252,13 @@ The `/api/cron/test-trigger` endpoint has **no authentication** to facilitate de
 ### The Problem
 
 **Crons do NOT execute if PC is in sleep/hibernation**:
-- At 8:00 AM -> daily-sync doesn't run if PC is sleeping
-- At 11:00 PM -> cleanup doesn't run if PC is sleeping
+- At 7:00 AM -> daily-sync doesn't run if PC is sleeping
+- At 3:00 AM -> cleanup doesn't run if PC is sleeping
 - Node.js is frozen when PC is in sleep mode
 
 **Symptoms**:
 ```
-[NODE-CRON] [WARN] missed execution at Tue Jan 13 2026 08:00:00 GMT+0100!
+[NODE-CRON] [WARN] missed execution at Tue Jan 13 2026 07:00:00 GMT+0100!
 Possible blocking IO or high CPU user at the same process used by node-cron.
 ```
 
@@ -285,7 +285,7 @@ Create Windows tasks that **automatically wake the PC** to execute jobs.
 
 2. Create a task for **daily-sync**:
    - Name: `Inbox Actions - Daily Sync`
-   - Trigger: Every day at 8:00 AM
+   - Trigger: Every day at 7:00 AM
    - Action: Program/script
      ```
      powershell.exe
@@ -298,7 +298,7 @@ Create Windows tasks that **automatically wake the PC** to execute jobs.
 
 3. Create a task for **cleanup**:
    - Name: `Inbox Actions - Cleanup`
-   - Trigger: Every day at 11:00 PM
+   - Trigger: Every day at 3:00 AM
    - Action: Program/script
      ```
      powershell.exe
@@ -487,8 +487,8 @@ pnpm dev
 | `instrumentation.ts` | Entry point: starts crons at boot |
 | `lib/cron/cron-service.ts` | Main service: configures and starts 3 jobs |
 | `lib/cron/count-new-emails-job.ts` | Counting job (10 min) |
-| `lib/cron/daily-sync-job.ts` | Daily sync job (8:00 AM) |
-| `lib/cron/cleanup-job.ts` | Cleanup job (11:00 PM) |
+| `lib/cron/daily-sync-job.ts` | Daily sync job (7:00 AM) |
+| `lib/cron/cleanup-job.ts` | Cleanup job (3:00 AM) |
 | `app/api/cron/test-trigger/route.ts` | Manual test endpoint |
 | `app/api/cron/daily-sync/route.ts` | HTTP endpoint for external crons |
 | `app/api/cron/cleanup-metadata/route.ts` | HTTP endpoint for external crons |

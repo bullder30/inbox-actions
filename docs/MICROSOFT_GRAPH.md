@@ -24,22 +24,25 @@ Pour les comptes Microsoft, Inbox Actions utilise **Microsoft Graph API** pour a
 
 ## Architecture
 
-### Factory Pattern
+### Multi-boîtes indépendantes
 
-Le système utilise un pattern Factory pour abstraire le provider email :
+Depuis la version 0.3.0, chaque compte Microsoft est stocké dans un enregistrement `MicrosoftGraphMailbox` **indépendant** — les tokens OAuth sont stockés directement dans ce modèle, sans lien avec la table `Account` d'Auth.js.
+
+Un utilisateur peut connecter **plusieurs comptes Microsoft** simultanément, comme il peut le faire avec IMAP.
 
 ```
 ┌─────────────────────────────────────┐
-│  createEmailProvider(userId)        │  ← Point d'entrée unique
+│  createAllEmailProviders(userId)    │  ← Itère TOUTES les boîtes
 │  lib/email-provider/factory.ts      │
 └──────────────┬──────────────────────┘
                │
-      ┌────────┴────────┐
-      ▼                 ▼
-┌──────────────┐  ┌──────────────┐
-│ MicrosoftGraph│  │ IMAPProvider │
-│   Provider    │  │              │
-└──────────────┘  └──────────────┘
+    ┌──────────┴────────────┐
+    │  Pour chaque mailbox  │
+    ▼                       ▼
+┌──────────────┐       ┌──────────────┐
+│ GraphMailbox │       │ IMAPMailbox  │
+│    #1        │  ...  │    #N        │
+└──────────────┘       └──────────────┘
 ```
 
 ### Interface commune
@@ -48,15 +51,13 @@ Le provider implémente `IEmailProvider` :
 
 ```typescript
 interface IEmailProvider {
-  providerType: EmailProvider; // "MICROSOFT_GRAPH"
+  providerType: "IMAP" | "MICROSOFT_GRAPH";
 
   fetchNewEmails(options?: FetchOptions): Promise<EmailMetadata[]>;
   getEmailBodyForAnalysis(messageId: string | bigint): Promise<string | null>;
   getExtractedEmails(): Promise<EmailMetadata[]>;
   markEmailAsAnalyzed(messageId: string | bigint): Promise<void>;
-  countNewEmails(): Promise<number>;
   disconnect(): Promise<void>;
-  getStatus(): Promise<ConnectionStatus>;
 }
 ```
 
@@ -74,7 +75,7 @@ interface IEmailProvider {
    - **Supported account types**:
      - Pour comptes personnels : "Personal Microsoft accounts only"
      - Pour organisations : "Accounts in any organizational directory and personal Microsoft accounts"
-   - **Redirect URI**: Web → `http://localhost:3000/api/auth/callback/microsoft-entra-id`
+   - **Redirect URI**: Web → `http://localhost:3000/api/microsoft-graph/callback`
 
 ### 2. Configurer les permissions API
 
@@ -96,18 +97,18 @@ interface IEmailProvider {
 3. Donnez une description et une durée de validité
 4. **Copiez immédiatement la valeur** (pas l'ID)
 
-### 4. Configurer l'authentification
+### 4. Configurer les URIs de redirection
 
 1. Allez dans **"Authentication"**
 2. Ajoutez les URIs de redirection :
    ```
-   # Pour le login Auth.js
-   http://localhost:3000/api/auth/callback/microsoft-entra-id
-   https://votre-domaine.com/api/auth/callback/microsoft-entra-id
-
-   # Pour la connexion email (séparée du login)
+   # Pour la connexion email (boîte Microsoft)
    http://localhost:3000/api/microsoft-graph/callback
    https://votre-domaine.com/api/microsoft-graph/callback
+
+   # Pour le login Auth.js (si login Microsoft activé)
+   http://localhost:3000/api/auth/callback/microsoft-entra-id
+   https://votre-domaine.com/api/auth/callback/microsoft-entra-id
    ```
 3. Cochez "Access tokens" et "ID tokens" dans "Implicit grant and hybrid flows"
 
@@ -120,8 +121,6 @@ MICROSOFT_CLIENT_SECRET=votre_secret_value
 MICROSOFT_TENANT_ID=consumers    # Pour comptes personnels
 # ou
 MICROSOFT_TENANT_ID=common       # Pour comptes perso + organisation
-# ou
-MICROSOFT_TENANT_ID=<guid>       # Pour un tenant spécifique
 
 NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true
 ```
@@ -132,127 +131,97 @@ NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED=true
 
 ### Séparation Login / Connexion Email
 
-**Important** : L'authentification (login) est séparée de la connexion email.
+**Important** : L'authentification (login) est indépendante de la connexion email.
 
-- **Login Microsoft** : Scopes basiques (`openid`, `email`, `profile`, `offline_access`)
-- **Connexion Email** : Demande explicite du scope `Mail.Read` via `/api/microsoft-graph/connect`
+- **Login** : géré par Auth.js (Google, Microsoft, Credentials)
+- **Boîte email Microsoft** : configurée séparément dans les Paramètres, via `/api/microsoft-graph/connect`
 
-Cette séparation permet à un utilisateur connecté avec Google ou credentials d'ajouter un compte Microsoft pour la synchronisation email.
+Un utilisateur connecté avec Google (ou toute autre méthode) peut ajouter un ou plusieurs comptes Microsoft pour la synchronisation email.
 
-### Flux de connexion email
+### Flux d'ajout d'une boîte Microsoft
 
 ```
-┌──────────────┐    ┌─────────────────┐    ┌────────────────┐
-│ Settings     │───►│ /api/microsoft- │───►│ Microsoft      │
-│ Page         │    │ graph/connect   │    │ OAuth          │
-└──────────────┘    └─────────────────┘    │ (Mail.Read)    │
-                                           └───────┬────────┘
-                                                   │
-                    ┌─────────────────┐            │
-                    │ /api/microsoft- │◄───────────┘
-                    │ graph/callback  │
-                    └────────┬────────┘
-                             │
-                             ▼
+┌──────────────┐    ┌─────────────────────┐    ┌────────────────┐
+│ Settings     │───►│ /api/microsoft-     │───►│ Microsoft      │
+│ Page         │    │ graph/connect       │    │ OAuth          │
+└──────────────┘    └─────────────────────┘    │ (Mail.Read)    │
+                                               └───────┬────────┘
+                                                       │
+                    ┌─────────────────────┐            │
+                    │ /api/microsoft-     │◄───────────┘
+                    │ graph/callback      │
+                    └──────────┬──────────┘
+                               │  Upsert par (userId, microsoftAccountId)
+                               ▼
               ┌─────────────────────────────────────────────────┐
-              │           Account table (Prisma)                 │
-              │  - access_token                                 │
-              │  - refresh_token                                │
-              │  - expires_at                                   │
-              │  - scope: "...Mail.Read..."                     │
+              │        MicrosoftGraphMailbox (Prisma)            │
+              │  - accessToken                                   │
+              │  - refreshToken                                  │
+              │  - expiresAt                                     │
+              │  - email, label                                  │
+              │  - isConnected, connectionError                  │
+              │  - deltaLink (sync incrémental)                  │
               └─────────────────────────────────────────────────┘
 ```
 
-### Cas d'utilisation
+### Protection contre les conflits
 
-| Connexion App | Connexion Email | Résultat |
-|---------------|-----------------|----------|
-| Google | Microsoft Graph | ✅ L'utilisateur connecté avec Google peut ajouter un compte Microsoft pour les emails |
-| Microsoft | Microsoft Graph | ✅ L'utilisateur doit autoriser Mail.Read séparément dans les paramètres |
-| Credentials | Microsoft Graph | ✅ L'utilisateur peut ajouter un compte Microsoft pour les emails |
-| Google | IMAP | ✅ Alternative possible avec n'importe quel provider |
+- Un même compte Microsoft ne peut pas être configuré par deux utilisateurs différents
+- La vérification se fait lors du callback OAuth (`userId != current_user`)
+- Retour d'erreur explicite si conflit détecté
 
-### Exclusivité mutuelle des providers
+### Exclusivité avec IMAP
 
-**Important** : Un seul provider email peut être actif à la fois.
-
-- **Connecter Microsoft Graph** → Supprime automatiquement les credentials IMAP
-- **Connecter IMAP** → Supprime automatiquement le scope Mail.Read de Microsoft
-
-Cette exclusivité garantit qu'un seul provider est utilisé pour la synchronisation, évitant les conflits et la confusion.
-
-### Sync des emails
-
-Le service Microsoft Graph effectue :
-
-1. **Fetch des nouveaux emails** via `/me/messages`
-2. **Delta query** pour sync incrémental via `/me/mailFolders/inbox/messages/delta`
-3. **Récupération du body** via `/me/messages/{id}?$select=body`
-
-```typescript
-// Utilisation
-const graphService = await createMicrosoftGraphService(userId);
-
-// Sync des nouveaux emails
-const emails = await graphService.fetchNewEmails({ maxResults: 100 });
-
-// Récupération du corps pour analyse
-const body = await graphService.getEmailBodyForAnalysis(messageId);
-
-// Marquer comme analysé
-await graphService.markEmailAsAnalyzed(messageId);
-```
-
-### Delta Query (sync incrémental)
-
-Pour optimiser les performances, le système utilise les delta queries :
-
-```typescript
-// Premier sync : récupère tous les emails récents
-GET /me/mailFolders/inbox/messages/delta
-
-// Réponse contient @odata.deltaLink
-// Stocké dans user.microsoftDeltaLink
-
-// Syncs suivants : uniquement les changements
-GET {user.microsoftDeltaLink}
-```
+Les boîtes IMAP et Microsoft coexistent — un utilisateur peut avoir à la fois des boîtes IMAP et des boîtes Microsoft. La synchronisation itère toutes les boîtes actives.
 
 ---
 
 ## Modèle de données
 
-### Champs User (Prisma)
+### MicrosoftGraphMailbox
 
 ```prisma
-model User {
-  // Email provider preference
-  emailProvider        EmailProvider?  // MICROSOFT_GRAPH, IMAP, etc.
+model MicrosoftGraphMailbox {
+  id                 String    @id @default(cuid())
+  userId             String
+  microsoftAccountId String    // OID du compte Microsoft
 
-  // Sync tracking (universel pour tous les providers)
-  lastEmailSync        DateTime?       // Dernière synchronisation
+  label        String?   // Surnom optionnel
+  email        String?   // Adresse email Microsoft
 
-  // Microsoft Graph specific
-  microsoftDeltaLink   String? @db.Text // Delta link pour sync incrémental
+  // Tokens OAuth (stockés ici, indépendants d'Account)
+  accessToken  String?   @db.Text
+  refreshToken String?   @db.Text
+  expiresAt    Int?      // Unix timestamp
+
+  // Sync incrémental
+  deltaLink    String?   @db.Text
+  lastSync     DateTime?
+
+  // Statut
+  isActive        Boolean   @default(true)
+  isConnected     Boolean   @default(false)
+  connectionError String?
+  lastErrorAt     DateTime?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, microsoftAccountId])  // Un compte par utilisateur
+  @@index([userId])
+  @@index([isActive])
 }
 ```
 
-### EmailMetadata
+### EmailMetadata (champs réutilisés)
 
 ```prisma
 model EmailMetadata {
-  // Provider
   emailProvider  EmailProvider  // MICROSOFT_GRAPH
+  mailboxId      String?        // ID du MicrosoftGraphMailbox
 
-  // Microsoft Graph identifiers
-  gmailMessageId String?        // Réutilisé pour Graph message ID
-  gmailThreadId  String?        // Réutilisé pour Graph conversationId
-
-  // Métadonnées communes
-  from           String
-  subject        String?
-  snippet        String
-  receivedAt     DateTime
+  // Champs réutilisés pour Graph
+  gmailMessageId String?        // Graph message ID
+  gmailThreadId  String?        // Graph conversationId
 }
 ```
 
@@ -260,38 +229,28 @@ model EmailMetadata {
 
 ## API Endpoints
 
-### Statut Microsoft Graph
+### Statut
 
 ```bash
 GET /api/microsoft-graph/status
 
-# Réponse (non connecté)
+# Réponse
 {
-  "configured": false,
-  "hasMailReadScope": false,
-  "hasAccount": false,
   "microsoftOAuthEnabled": true,
-  "message": "No Microsoft account linked"
-}
-
-# Réponse (connecté avec Mail.Read)
-{
-  "configured": true,
-  "hasMailReadScope": true,
-  "hasAccount": true,
-  "microsoftOAuthEnabled": true,
-  "isConnected": true,
-  "email": "user@outlook.com",
-  "lastSync": "2026-02-01T10:00:00Z",
-  "hasDeltaLink": true,
-  "stats": {
-    "totalEmails": 150,
-    "pendingAnalysis": 5
-  }
+  "mailboxes": [
+    {
+      "id": "cuid...",
+      "label": null,
+      "email": "user@outlook.com",
+      "isConnected": true,
+      "connectionError": null,
+      "lastSync": "2026-03-10T08:00:00Z"
+    }
+  ]
 }
 ```
 
-### Connexion Email Microsoft (OAuth)
+### Initier la connexion OAuth
 
 ```bash
 GET /api/microsoft-graph/connect
@@ -300,21 +259,20 @@ GET /api/microsoft-graph/connect
 {
   "authUrl": "https://login.microsoftonline.com/..."
 }
-
 # L'utilisateur est redirigé vers Microsoft pour autoriser Mail.Read
 # Callback: /api/microsoft-graph/callback
 ```
 
-### Activer Microsoft Graph
+### Supprimer une boîte
 
 ```bash
-POST /api/microsoft-graph/activate
+POST /api/microsoft-graph/disconnect
+Content-Type: application/json
+
+{ "mailboxId": "cuid..." }
 
 # Réponse
-{
-  "success": true,
-  "message": "Microsoft Graph activé"
-}
+{ "success": true, "message": "Microsoft mailbox disconnected" }
 ```
 
 ### Synchronisation manuelle
@@ -325,31 +283,64 @@ POST /api/microsoft-graph/sync
 # Réponse
 {
   "success": true,
-  "count": 15,
+  "synced": 15,
   "message": "15 emails synchronisés"
 }
 ```
 
 ---
 
-## Rate Limiting
+## Gestion des tokens
 
-Microsoft Graph a des limites de requêtes :
+### Refresh automatique
+
+Le helper `getMicrosoftGraphTokenForMailbox(mailboxId)` gère le cycle de vie des tokens :
+
+1. Lit le token depuis `MicrosoftGraphMailbox`
+2. Si expiré ou expirant dans < 5 minutes → refresh automatique
+3. En cas d'échec du refresh → marque `isConnected: false` + `connectionError`
+4. L'UI affiche alors un bouton "Reconnecter" pour relancer le flux OAuth
+
+```typescript
+const accessToken = await getMicrosoftGraphTokenForMailbox(mailboxId);
+if (!accessToken) {
+  // Token invalide — l'utilisateur doit se reconnecter
+}
+```
+
+### Gestion 401 dans les requêtes Graph
+
+Si l'API Microsoft retourne 401, `MicrosoftGraphService` tente un refresh automatique avant de relancer la requête.
+
+---
+
+## Sync incrémental (Delta Query)
+
+Pour optimiser les performances, le système utilise les delta queries Microsoft Graph :
+
+```
+Premier sync :
+GET /me/mailFolders/inbox/messages?$filter=receivedDateTime ge ...
+→ Stocke @odata.deltaLink dans MicrosoftGraphMailbox.deltaLink
+
+Syncs suivants :
+GET {deltaLink}
+→ Retourne uniquement les changements depuis le dernier sync
+→ Met à jour le deltaLink
+```
+
+**Important** : Si le `deltaLink` est invalide (token expiré trop longtemps), Graph retourne 410 Gone. Dans ce cas, effacer `deltaLink` en base pour forcer un full sync.
+
+---
+
+## Rate Limiting
 
 | Limite | Valeur |
 |--------|--------|
-| Requêtes/10 min/mailbox | 10,000 |
+| Requêtes/10 min/mailbox | 10 000 |
 | Requêtes concurrentes | 4 |
 
-Le service gère automatiquement les erreurs 429 avec retry exponential backoff :
-
-```typescript
-if (response.status === 429) {
-  const retryAfter = response.headers.get("Retry-After") || "60";
-  await sleep(parseInt(retryAfter) * 1000);
-  return graphRequest(endpoint); // Retry
-}
-```
+Le service gère automatiquement les erreurs 429 avec retry et exponential backoff (jusqu'à 3 tentatives).
 
 ---
 
@@ -357,10 +348,10 @@ if (response.status === 429) {
 
 ### Erreur "AADSTS70011: invalid_scope"
 
-**Cause** : Le scope Mail.Read n'est pas correctement configuré.
+**Cause** : Le scope `Mail.Read` n'est pas configuré dans Azure Portal.
 
 **Solution** :
-1. Vérifiez les permissions dans Azure Portal
+1. Vérifiez les permissions dans Azure Portal → API permissions
 2. Assurez-vous que `Mail.Read` est ajouté comme permission déléguée
 3. Si admin, cliquez "Grant admin consent"
 
@@ -368,24 +359,23 @@ if (response.status === 429) {
 
 **Cause** : Le refresh token a expiré ou été révoqué.
 
-**Solution** :
-1. L'utilisateur doit se reconnecter via Microsoft OAuth
-2. Vérifiez que `offline_access` est dans les scopes
+**Solution** : L'utilisateur doit se reconnecter via le bouton "Reconnecter" dans les Paramètres.
 
 ### Erreur "issuer does not match expectedIssuer"
 
 **Cause** : Le tenant ID ne correspond pas au type de compte.
 
 **Solution** :
-- Pour comptes personnels : `MICROSOFT_TENANT_ID=consumers`
-- Pour comptes organisation : utilisez le GUID du tenant
+- Comptes personnels : `MICROSOFT_TENANT_ID=consumers`
+- Comptes organisation : GUID du tenant ou `common`
 
-### Emails non synchronisés
+### Emails non récupérés après reset
 
-**Vérifications** :
-1. Le scope `Mail.Read` est-il présent dans le token ?
-2. L'utilisateur a-t-il autorisé l'accès aux emails ?
-3. Le deltaLink est-il corrompu ? (Reset avec `/api/microsoft-graph/reset-delta`)
+Si vous videz `EmailMetadata` et réinitialisez `lastSync`, il faut aussi effacer `deltaLink` en base — sinon Graph ne retourne rien (déjà "vu" via le delta).
+
+```sql
+UPDATE microsoft_graph_mailboxes SET delta_link = NULL WHERE id = '...';
+```
 
 ---
 
@@ -393,11 +383,12 @@ if (response.status === 429) {
 
 | Critère | Microsoft Graph | IMAP |
 |---------|-----------------|------|
-| Configuration | Automatique | Manuelle (App Password) |
-| Authentification | OAuth2 | Password |
+| Configuration | Automatique (OAuth) | Manuelle (App Password) |
+| Multi-comptes | ✅ | ✅ |
 | Sync incrémental | Delta query (natif) | UID comparison |
 | Rate limiting | 10k req/10min | Dépend du provider |
-| Providers supportés | Microsoft uniquement | Tous |
+| Providers supportés | Microsoft uniquement | Gmail, Yahoo, iCloud, etc. |
+| Tokens | Stockés dans `MicrosoftGraphMailbox` | Password chiffré dans `IMAPCredential` |
 
 ---
 
@@ -410,4 +401,5 @@ if (response.status === 429) {
 
 ---
 
-**Dernière mise à jour** : 6 février 2026
+**Dernière mise à jour** : 13 mars 2026
+**Version** : 0.3.0
