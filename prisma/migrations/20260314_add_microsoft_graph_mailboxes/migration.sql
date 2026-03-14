@@ -37,6 +37,10 @@ ALTER TABLE "microsoft_graph_mailboxes"
     ADD CONSTRAINT "microsoft_graph_mailboxes_userId_fkey"
     FOREIGN KEY ("userId") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
+-- AlterTable: imap_credentials — add label column
+ALTER TABLE "imap_credentials"
+    ADD COLUMN IF NOT EXISTS "label" TEXT;
+
 -- AlterTable: actions — add mailbox_id and mailbox_label columns
 ALTER TABLE "actions"
     ADD COLUMN IF NOT EXISTS "mailbox_id" TEXT,
