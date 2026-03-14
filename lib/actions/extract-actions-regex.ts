@@ -54,11 +54,12 @@ const SEND_PATTERNS = [
 const CALL_PATTERNS = [
   // Rappeler
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:me\s+)?(?:rappeler|me rappeler)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,
-  /(?:rappelle|rappelez)(?:-moi)?(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,
+  /^(?:rappelle|rappelez)(?:-moi)?(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,  // impératif en début de phrase
+  /(?:rappelle|rappelez)-moi(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,        // rappelle-moi n'importe où
 
   // Appeler
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:appeler|contacter|joindre)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
-  /(?:appelle|appelez|contacte|contactez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
+  /^(?:appelle|appelez|contacte|contactez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
 
   // Visio/réunion
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:organiser|planifier)\s+(?:une\s+)?(?:visio|réunion|call)\s+(?:avec\s+)?(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
@@ -73,7 +74,7 @@ const CALL_PATTERNS = [
 const FOLLOW_UP_PATTERNS = [
   // Relancer explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+relancer\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
-  /(?:relance|relancez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
+  /^(?:relance|relancez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
 
   // Faire un suivi
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+faire\s+(?:un\s+)?(?:suivi|point)\s+(?:sur|avec|de)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
@@ -92,7 +93,7 @@ const FOLLOW_UP_PATTERNS = [
 const PAY_PATTERNS = [
   // Payer explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:régler|payer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
-  /(?:règle|réglez|paie|payez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /^(?:règle|réglez|paie|payez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Procéder au paiement/règlement
   /(?:merci de|veuillez)\s+procéder\s+au\s+(?:paiement|règlement)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici)/i,
@@ -112,12 +113,12 @@ const PAY_PATTERNS = [
 const VALIDATE_PATTERNS = [
   // Valider explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
-  /(?:valide|validez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /^(?:valide|validez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /il (?:faut|faudrait)\s+(?:aussi\s+)?valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Approuver/confirmer
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:approuver|confirmer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
-  /(?:approuve|approuvez|confirme|confirmez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /^(?:approuve|approuvez|confirme|confirmez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Donner avis/OK
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:me\s+)?(?:donner\s+(?:ton|votre)\s+)?(?:avis|OK|accord|validation)\s+(?:sur|pour)\s+(.{1,50}?)(?:\.|$|avant)/i,
