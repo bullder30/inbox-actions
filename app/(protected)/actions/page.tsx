@@ -88,7 +88,7 @@ export default function ActionsPage() {
       </div>
 
       {loading ? (
-        <ActionCardSkeletonList count={3} />
+        <ActionCardSkeletonList count={1} />
       ) : actions.length === 0 ? (
         <EmptyState emailsAnalyzed={emailsAnalyzed} />
       ) : (
@@ -102,7 +102,7 @@ export default function ActionsPage() {
           ))}
           {/* Sentinelle : quand elle devient visible, on charge la page suivante */}
           <div ref={sentinelRef} className="h-1" />
-          {loadingMore && <ActionCardSkeletonList count={2} />}
+          {loadingMore && <ActionCardSkeletonList count={1} />}
         </div>
       )}
     </>

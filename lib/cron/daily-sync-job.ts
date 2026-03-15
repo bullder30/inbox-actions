@@ -9,7 +9,7 @@ import { createIMAPServiceById } from "@/lib/imap/imap-service";
 import { createMicrosoftGraphServiceByMailbox } from "@/lib/microsoft-graph/graph-service";
 import { IMAPProvider } from "@/lib/email-provider/imap-provider";
 import { MicrosoftGraphProvider } from "@/lib/email-provider/microsoft-graph-provider";
-import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
+import { extractActionsFromEmail, type UserExclusionData } from "@/lib/actions/extract-actions-regex";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 import { MAX_EMAILS_TO_SYNC, MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
 import type { IEmailProvider } from "@/lib/email-provider/interface";
@@ -91,7 +91,12 @@ export async function runDailySyncJob() {
 
         provider = new IMAPProvider(service, credential.id, mailboxLabel);
 
-        const result = await syncAndAnalyzeMailbox(provider, credential.userId, mailboxLabel);
+        const userExclusions = await prisma.userExclusion.findMany({
+          where: { userId: credential.userId },
+          select: { type: true, value: true },
+        }) as UserExclusionData[];
+
+        const result = await syncAndAnalyzeMailbox(provider, credential.userId, mailboxLabel, userExclusions);
         stats.totalEmailsSynced += result.synced;
         stats.totalActionsExtracted += result.actions;
         stats.successMailboxes++;
@@ -133,7 +138,12 @@ export async function runDailySyncJob() {
 
         provider = new MicrosoftGraphProvider(service, mailbox.userId, mailboxLabel);
 
-        const result = await syncAndAnalyzeMailbox(provider, mailbox.userId, mailboxLabel);
+        const userExclusions = await prisma.userExclusion.findMany({
+          where: { userId: mailbox.userId },
+          select: { type: true, value: true },
+        }) as UserExclusionData[];
+
+        const result = await syncAndAnalyzeMailbox(provider, mailbox.userId, mailboxLabel, userExclusions);
         stats.totalEmailsSynced += result.synced;
         stats.totalActionsExtracted += result.actions;
         stats.successMailboxes++;
@@ -188,7 +198,8 @@ export async function runDailySyncJob() {
 async function syncAndAnalyzeMailbox(
   provider: IEmailProvider,
   userId: string,
-  mailboxLabel: string
+  mailboxLabel: string,
+  userExclusions: UserExclusionData[] = []
 ): Promise<{ synced: number; actions: number }> {
   // ÉTAPE 1: Synchroniser les nouveaux emails
   const newEmails = await provider.fetchNewEmails({
@@ -218,7 +229,7 @@ async function syncAndAnalyzeMailbox(
         subject: emailMetadata.subject,
         body,
         receivedAt: emailMetadata.receivedAt,
-      });
+      }, userExclusions);
 
       for (const action of extractedActions) {
         await prisma.action.create({

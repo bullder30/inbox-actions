@@ -20,6 +20,7 @@
 | **Microsoft Graph API** | Accès natif aux emails Outlook/Microsoft 365 (sans configuration) |
 | **IMAP universel** | Gmail, Yahoo, iCloud, Fastmail, ProtonMail... |
 | **Extraction d'actions** | 5 types : SEND, CALL, FOLLOW_UP, PAY, VALIDATE |
+| **Exclusions utilisateur** | Filtrer expéditeurs, domaines ou sujets de l'analyse |
 | **Détection de deadlines** | Dates absolues, relatives, heures spécifiques |
 | **Temps réel** | Mises à jour via SSE (Server-Sent Events) |
 | **Sync automatique** | Cron jobs quotidiens + sync manuelle |
@@ -113,8 +114,12 @@
 | **[REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)** | **Système d'extraction regex** |
 | | - Patterns par type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE) |
 | | - Détection de deadlines (dates, heures) |
-| | - Règles d'exclusion (newsletters, no-reply) |
+| | - Règles d'exclusion système (newsletters, no-reply) |
 | | - Conditions ignorées ("si tu peux", "éventuellement") |
+| **[EXCLUSIONS.md](./EXCLUSIONS.md)** | **Exclusions utilisateur** |
+| | - Exclure un expéditeur, domaine ou sujet |
+| | - API GET / POST / DELETE |
+| | - Intégration dans la sync et l'analyse |
 
 ### Base de données
 
@@ -296,9 +301,13 @@ L'extraction utilise des patterns regex déterministes :
 | PAY | `payer la facture`, `virement` |
 | VALIDATE | `valider`, `approuver` |
 
-**Règles d'exclusion** :
+**Règles d'exclusion système** :
 - Newsletters, no-reply, notifications
 - Phrases conditionnelles ("si tu peux", "quand tu as le temps")
+
+**Exclusions utilisateur** :
+- Expéditeur exact, domaine entier, ou mot-clé de sujet
+- Configurables depuis les cartes d'action (menu `···`) ou les paramètres
 
 **Détails** : [REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)
 

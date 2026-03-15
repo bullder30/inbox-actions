@@ -26,6 +26,14 @@ export type EmailContext = {
   receivedAt: Date;
 };
 
+/**
+ * Exclusion utilisateur passée à l'extraction (sans dépendance Prisma)
+ */
+export type UserExclusionData = {
+  type: "SENDER" | "DOMAIN" | "SUBJECT";
+  value: string;
+};
+
 // ============================================================================
 // PATTERNS REGEX PAR TYPE D'ACTION
 // ============================================================================
@@ -753,10 +761,32 @@ function extractActionsByType(
 }
 
 /**
+ * Vérifie si un email doit être exclu selon les règles personnalisées de l'utilisateur
+ */
+function shouldExcludeByUserRules(context: EmailContext, exclusions: UserExclusionData[]): boolean {
+  const raw = context.from;
+  const angleMatch = raw.match(/<([^>]+)>/);
+  const emailLower = (angleMatch ? angleMatch[1] : raw).trim().toLowerCase();
+  const subjectLower = context.subject?.toLowerCase() ?? "";
+
+  for (const exclusion of exclusions) {
+    const val = exclusion.value.toLowerCase();
+    if (exclusion.type === "SENDER" && emailLower === val) return true;
+    if (exclusion.type === "DOMAIN" && emailLower.endsWith(`@${val}`)) return true;
+    if (exclusion.type === "SUBJECT" && subjectLower.includes(val)) return true;
+  }
+  return false;
+}
+
+/**
  * Fonction principale d'extraction d'actions depuis un email
  * Règle : Si ambigu → aucune action
  */
-export function extractActionsFromEmail(context: EmailContext): ExtractedAction[] {
+export function extractActionsFromEmail(
+  context: EmailContext,
+  userExclusions: UserExclusionData[] = []
+): ExtractedAction[] {
+  if (userExclusions.length > 0 && shouldExcludeByUserRules(context, userExclusions)) return [];
   if (shouldExcludeEmail(context)) return [];
 
   const actions: ExtractedAction[] = [];

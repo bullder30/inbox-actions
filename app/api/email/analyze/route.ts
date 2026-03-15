@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { createAllEmailProviders } from "@/lib/email-provider/factory";
-import { extractActionsFromEmail } from "@/lib/actions/extract-actions-regex";
+import { extractActionsFromEmail, type UserExclusionData } from "@/lib/actions/extract-actions-regex";
 import { prisma } from "@/lib/db";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 import { MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
@@ -42,6 +42,12 @@ export async function POST(req: NextRequest) {
     const body = await req.json().catch(() => ({}));
     const maxEmails = body.maxEmails ?? MAX_EMAILS_TO_ANALYZE;
 
+    // Charger les exclusions utilisateur une seule fois pour toute la session
+    const userExclusions = await prisma.userExclusion.findMany({
+      where: { userId: session.user.id },
+      select: { type: true, value: true },
+    }) as UserExclusionData[];
+
     let processedCount = 0;
     let extractedActionsCount = 0;
     let skippedCount = 0;
@@ -68,7 +74,7 @@ export async function POST(req: NextRequest) {
             subject: emailMetadata.subject,
             body: emailBody,
             receivedAt: emailMetadata.receivedAt,
-          });
+          }, userExclusions);
 
           for (const action of extractedActions) {
             await prisma.action.create({

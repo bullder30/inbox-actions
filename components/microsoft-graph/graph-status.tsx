@@ -87,89 +87,22 @@ function GraphMailboxCard({
   }
 
   return (
-    <div className="rounded-lg border p-4">
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1 space-y-1">
-          {/* Nom */}
-          <div className="flex items-center gap-2">
-            <Zap className="size-4 shrink-0 text-muted-foreground" />
-            <span className="truncate font-medium">{displayName}</span>
-          </div>
-
-          {/* Email */}
-          {mailbox.email && (
-            <div className="text-xs text-muted-foreground">{mailbox.email}</div>
-          )}
-
-          {/* Erreur */}
-          {mailbox.connectionError && (
-            <div className="flex items-start gap-1.5 rounded-md border border-red-200 bg-red-50 p-2 dark:border-red-800 dark:bg-red-950">
-              <AlertCircle className="mt-0.5 size-3 shrink-0 text-red-600 dark:text-red-400" />
-              <p className="text-xs text-red-700 dark:text-red-300">{mailbox.connectionError}</p>
-            </div>
-          )}
-
-          {/* Dernière sync */}
-          {mailbox.lastSync && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Calendar className="size-3" />
-              <span>
-                Sync{" "}
-                {formatDistanceToNow(new Date(mailbox.lastSync), { locale: fr, addSuffix: true })}
-              </span>
-            </div>
-          )}
+    <div className="rounded-lg border p-3 sm:p-4">
+      {/* Ligne 1 : nom + boutons */}
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex min-w-0 items-center gap-2">
+          <Zap className="size-4 shrink-0 text-muted-foreground" />
+          <span className="truncate font-medium">{displayName}</span>
         </div>
-
-        {/* Actions */}
         <div className="flex shrink-0 items-center gap-1">
-          {/* Mobile : icône seule */}
-          {mailbox.isConnected ? (
-            <CheckCircle2 className="size-4 shrink-0 text-green-500 sm:hidden" />
-          ) : (
-            <XCircle className="size-4 shrink-0 text-destructive sm:hidden" />
-          )}
-          {/* Desktop : badge complet */}
-          <Badge
-            variant={mailbox.isConnected ? "success" : "destructive"}
-            className="hidden shrink-0 gap-1 text-xs sm:flex"
-          >
-            {mailbox.isConnected ? (
-              <><CheckCircle2 className="size-3" /> Connecté</>
-            ) : (
-              <><XCircle className="size-3" /> Token expiré</>
-            )}
-          </Badge>
-
-          {/* Spacer pour aligner avec les cartes IMAP qui ont un bouton édition */}
-          <div className="size-8" />
-
-          {/* Token expiré — reconnecter */}
           {!mailbox.isConnected && (
-            <Button
-              onClick={handleReconnect}
-              disabled={connecting}
-              variant="ghost"
-              size="icon"
-              className="size-8"
-              title="Reconnecter"
-            >
-              {connecting ? (
-                <Loader2 className="size-3.5 animate-spin" />
-              ) : (
-                <ExternalLink className="size-3.5" />
-              )}
+            <Button onClick={handleReconnect} disabled={connecting} variant="ghost" size="icon" className="size-8" title="Reconnecter">
+              {connecting ? <Loader2 className="size-3.5 animate-spin" /> : <ExternalLink className="size-3.5" />}
             </Button>
           )}
-
-          {/* Supprimer */}
           <AlertDialog>
             <AlertDialogTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="size-8 text-destructive hover:bg-destructive/10"
-              >
+              <Button variant="ghost" size="icon" className="size-8 text-destructive hover:bg-destructive/10">
                 <Trash2 className="size-3.5" />
               </Button>
             </AlertDialogTrigger>
@@ -187,11 +120,7 @@ function GraphMailboxCard({
                   disabled={disconnecting}
                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
                 >
-                  {disconnecting ? (
-                    <Loader2 className="mr-2 size-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="mr-2 size-4" />
-                  )}
+                  {disconnecting ? <Loader2 className="mr-2 size-4 animate-spin" /> : <Trash2 className="mr-2 size-4" />}
                   Supprimer
                 </AlertDialogAction>
               </AlertDialogFooter>
@@ -199,6 +128,34 @@ function GraphMailboxCard({
           </AlertDialog>
         </div>
       </div>
+
+      {/* Ligne 2 : statut + email + sync */}
+      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
+        <Badge variant={mailbox.isConnected ? "success" : "destructive"} className="gap-1 text-xs">
+          {mailbox.isConnected ? (
+            <><CheckCircle2 className="size-3" /> Connecté</>
+          ) : (
+            <><XCircle className="size-3" /> Token expiré</>
+          )}
+        </Badge>
+        {mailbox.email && (
+          <span className="text-xs text-muted-foreground">{mailbox.email}</span>
+        )}
+        {mailbox.lastSync && (
+          <span className="flex items-center gap-1 text-xs text-muted-foreground">
+            <Calendar className="size-3" />
+            {formatDistanceToNow(new Date(mailbox.lastSync), { locale: fr, addSuffix: true })}
+          </span>
+        )}
+      </div>
+
+      {/* Erreur */}
+      {mailbox.connectionError && (
+        <div className="mt-2 flex items-start gap-1.5 rounded-md border border-red-200 bg-red-50 p-2 dark:border-red-800 dark:bg-red-950">
+          <AlertCircle className="mt-0.5 size-3 shrink-0 text-red-600 dark:text-red-400" />
+          <p className="text-xs text-red-700 dark:text-red-300">{mailbox.connectionError}</p>
+        </div>
+      )}
     </div>
   );
 }

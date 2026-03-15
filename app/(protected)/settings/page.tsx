@@ -16,6 +16,7 @@ import { cn } from "@/lib/utils";
 import { IMAPConnectForm, IMAPMailboxCard } from "@/components/imap";
 import type { IMAPMailboxData } from "@/components/imap";
 import { GraphStatus } from "@/components/microsoft-graph";
+import { ExclusionSection } from "@/components/settings/exclusion-section";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -298,6 +299,9 @@ export default function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* ===== Exclusions ===== */}
+          <ExclusionSection />
 
           {/* ===== Apparence ===== */}
           <Card>
