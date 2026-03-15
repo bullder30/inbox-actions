@@ -16,6 +16,7 @@ vi.mock("@/lib/db", () => ({
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
+      deleteMany: vi.fn(),
       count: vi.fn(),
     },
     emailMetadata: {
@@ -61,6 +62,12 @@ vi.mock("@/lib/db", () => ({
       delete: vi.fn(),
       deleteMany: vi.fn(),
       count: vi.fn(),
+    },
+    userExclusion: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      create: vi.fn(),
+      delete: vi.fn(),
     },
   },
 }));

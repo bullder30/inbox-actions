@@ -20,8 +20,12 @@ Welcome to the complete Inbox Actions documentation.
   - Detailed patterns by action type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE)
   - Specific hours for deadlines (12pm, 6pm, 8pm)
   - Sentence cleaning (dashes, quotes, bullet lists)
-  - Exclusion rules and conditionals
+  - System exclusion rules and conditionals
   - Email webmail links
+- **[EXCLUSIONS.en.md](./EXCLUSIONS.en.md)** - User exclusion system
+  - Exclude a sender, domain, or subject keyword
+  - API GET / POST / DELETE
+  - Integration in sync and analysis jobs
 
 ### Email Provider Integration
 

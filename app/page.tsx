@@ -1,7 +1,7 @@
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server, Zap } from "lucide-react";
+import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server, Zap, Filter } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
 import { Button } from "@/components/ui/button";
 import { HeaderSection } from "@/components/shared/header-section";
@@ -172,7 +172,7 @@ export default async function HomePage() {
               { icon: <CheckCircle2 className="size-6 text-green-500" />, bg: "bg-green-500/10", title: "Phrase source visible", body: <>Chaque action affiche la phrase exacte de l&apos;email d&apos;origine. Vous comprenez toujours pourquoi le système a détecté cette action.</> },
               { icon: <Clock className="size-6 text-orange-500" />, bg: "bg-orange-500/10", title: "Synchronisation à la demande", body: <>Bouton de synchronisation manuelle directement sur le tableau de bord. Pas besoin d&apos;attendre le scan automatique.<strong className="mt-2 block">Idéal pour tester ou forcer une mise à jour.</strong></> },
               { icon: <Bell className="size-6 text-red-500" />, bg: "bg-red-500/10", title: "Urgence visuelle immédiate", body: <>Actions en retard en <span className="rounded bg-red-100 px-1 text-red-800 dark:bg-red-900/30 dark:text-red-400">rouge</span>, urgentes (&lt;24h) en <span className="rounded bg-orange-100 px-1 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400">orange</span>.<strong className="mt-2 block">Impossible de manquer une échéance.</strong></> },
-              { icon: <XCircle className="size-6 text-red-500" />, bg: "bg-red-500/10", title: "Actions ignorées expliquées", body: <>Newsletter ? Email automatique ? Vous voyez la liste des emails exclus et pourquoi ils l&apos;ont été. Aucune surprise.</> },
+              { icon: <Filter className="size-6 text-amber-500" />, bg: "bg-amber-500/10", title: "Exclusions personnalisées", body: <>Excluez un expéditeur ou domaine via <strong>···</strong> sur une carte d&apos;action. Ajoutez des mots-clés de sujet depuis les Paramètres. Les actions existantes liées sont supprimées automatiquement.<strong className="mt-2 block">Newsletters et robots : exclus automatiquement sans configuration.</strong></> },
               { icon: <Zap className="size-6 text-blue-500" />, bg: "bg-blue-500/10", title: "Microsoft Outlook sans friction", body: <>Connectez un ou plusieurs comptes Microsoft en quelques clics.<strong className="mt-2 block">Microsoft Graph API : aucune configuration IMAP requise.</strong></> },
               { icon: <Server className="size-6 text-purple-500" />, bg: "bg-purple-500/10", title: "IMAP universel, multi-boîtes", body: <>Gmail, Yahoo, iCloud, Fastmail, ProtonMail... Ajoutez autant de boîtes que nécessaire.<br />Connexion via <strong>IMAP avec App Password</strong> : simple, universel, sécurisé.<strong className="mt-2 block">Vos mots de passe sont chiffrés AES-256.</strong></> },
               { icon: <ShieldCheck className="size-6 text-indigo-500" />, bg: "bg-indigo-500/10", title: "Email = référence optionnelle", body: <>Toutes vos actions sont gérables ici. Votre boîte mail n&apos;est qu&apos;une option pour vérifier le contexte. Vous ne retournez jamais dans votre boîte mail pour travailler.</> },
@@ -203,7 +203,7 @@ export default async function HomePage() {
           <div className="mt-16 space-y-8">
             {[
               { n: 1, title: "Connectez vos boîtes mail", body: <><p className="text-muted-foreground">Ajoutez une ou plusieurs boîtes depuis les Paramètres — Microsoft et IMAP peuvent coexister.</p><p className="mt-2 text-muted-foreground"><strong>Microsoft (Outlook, Hotmail, M365) :</strong> connexion OAuth en un clic, aucune configuration.<br /><strong>Autres providers (Gmail, Yahoo, iCloud…) :</strong> configurez IMAP avec un <strong>App Password</strong>.</p><p className="mt-2 text-xs text-muted-foreground">Nous ne stockons jamais le contenu complet des emails. Seulement : expéditeur, sujet, extrait court (200 caractères max).</p></> },
-              { n: 2, title: "Scan automatique ou manuel", body: <p className="text-muted-foreground">Scan quotidien automatique à 8h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.<strong className="mt-2 block">Sont automatiquement exclus :</strong>newsletters, notifications automatiques, emails no-reply, footers de désinscription.</p> },
+              { n: 2, title: "Scan automatique ou manuel", body: <p className="text-muted-foreground">Scan quotidien automatique à 8h00, ou lancez une synchronisation manuelle à tout moment depuis le tableau de bord.<strong className="mt-2 block">Sont automatiquement exclus :</strong>newsletters, notifications automatiques, emails no-reply, footers de désinscription.<strong className="mt-2 block">Exclusions personnalisées :</strong>Excluez un expéditeur ou domaine via <strong>···</strong> sur une carte d&apos;action, ou ajoutez un mot-clé de sujet depuis les Paramètres. Les actions existantes liées sont supprimées immédiatement.</p> },
               { n: 3, title: "Détection par règles simples", body: <p className="text-muted-foreground">Le système cherche des phrases comme : &ldquo;peux-tu envoyer...&rdquo;, &ldquo;merci de rappeler...&rdquo;, &ldquo;n&apos;oublie pas de...&rdquo;.<strong className="mt-2 block">Règle d&apos;or :</strong> Si c&apos;est conditionnel (&ldquo;si tu peux&rdquo;, &ldquo;éventuellement&rdquo;), aucune action n&apos;est créée.</p> },
               { n: 4, title: "Vous gérez, corrigez, complétez", body: <p className="text-muted-foreground">Marquez comme <strong>Fait</strong>, <strong>Ignorer</strong>, ou cliquez <strong>Il manque une action</strong> pour ajouter manuellement. Le système apprend de rien, il reste simple et prévisible.</p> },
             ].map(({ n, title, body }, i) => (
@@ -342,7 +342,7 @@ export default async function HomePage() {
                 </div>
                 <div className="mt-4 text-sm text-red-700 dark:text-red-400">
                   🚫 <strong>Pourquoi exclu :</strong> Expéditeur = newsletter@. Les emails marketing sont automatiquement exclus.
-                  <br /><strong>Visible dans :</strong> Paramètres → Emails ignorés
+                  <br /><strong>Exclusions manuelles :</strong> Cliquez <strong>···</strong> sur une action card pour exclure un expéditeur, un domaine entier ou un mot-clé de sujet. Les actions existantes sont supprimées instantanément.
                 </div>
               </div>
             </ScrollReveal>

@@ -26,6 +26,14 @@ export type EmailContext = {
   receivedAt: Date;
 };
 
+/**
+ * Exclusion utilisateur passée à l'extraction (sans dépendance Prisma)
+ */
+export type UserExclusionData = {
+  type: "SENDER" | "DOMAIN" | "SUBJECT";
+  value: string;
+};
+
 // ============================================================================
 // PATTERNS REGEX PAR TYPE D'ACTION
 // ============================================================================
@@ -54,11 +62,12 @@ const SEND_PATTERNS = [
 const CALL_PATTERNS = [
   // Rappeler
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:me\s+)?(?:rappeler|me rappeler)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,
-  /(?:rappelle|rappelez)(?:-moi)?(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,
+  /^(?:rappelle|rappelez)(?:-moi)?(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,  // impératif en début de phrase
+  /(?:rappelle|rappelez)-moi(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,        // rappelle-moi n'importe où
 
   // Appeler
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:appeler|contacter|joindre)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
-  /(?:appelle|appelez|contacte|contactez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
+  /^(?:appelle|appelez|contacte|contactez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
 
   // Visio/réunion
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:organiser|planifier)\s+(?:une\s+)?(?:visio|réunion|call)\s+(?:avec\s+)?(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
@@ -73,7 +82,7 @@ const CALL_PATTERNS = [
 const FOLLOW_UP_PATTERNS = [
   // Relancer explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+relancer\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
-  /(?:relance|relancez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
+  /^(?:relance|relancez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
 
   // Faire un suivi
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+faire\s+(?:un\s+)?(?:suivi|point)\s+(?:sur|avec|de)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
@@ -92,7 +101,7 @@ const FOLLOW_UP_PATTERNS = [
 const PAY_PATTERNS = [
   // Payer explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:régler|payer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
-  /(?:règle|réglez|paie|payez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /^(?:règle|réglez|paie|payez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Procéder au paiement/règlement
   /(?:merci de|veuillez)\s+procéder\s+au\s+(?:paiement|règlement)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici)/i,
@@ -112,12 +121,12 @@ const PAY_PATTERNS = [
 const VALIDATE_PATTERNS = [
   // Valider explicite
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
-  /(?:valide|validez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /^(?:valide|validez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /il (?:faut|faudrait)\s+(?:aussi\s+)?valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Approuver/confirmer
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:approuver|confirmer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
-  /(?:approuve|approuvez|confirme|confirmez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /^(?:approuve|approuvez|confirme|confirmez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Donner avis/OK
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:me\s+)?(?:donner\s+(?:ton|votre)\s+)?(?:avis|OK|accord|validation)\s+(?:sur|pour)\s+(.{1,50}?)(?:\.|$|avant)/i,
@@ -144,6 +153,12 @@ const EXCLUSION_PATTERNS = {
     /do-?not-?reply@/i,
     /notifications?@/i,
     /newsletter@/i,
+    /jobs?-?listings?@/i,   // LinkedIn job alerts
+    /alerts?@/i,            // Alertes automatiques génériques
+    /digest@/i,             // Digest automatiques
+    /updates?@/i,           // Mises à jour automatiques
+    /marketing@/i,          // Emails marketing
+    /promo(?:tions?)?@/i,   // Promotions
   ],
 
   // Sujets à exclure
@@ -177,6 +192,11 @@ const WEAK_CONDITIONAL_PATTERNS = [
   /si\s+jamais/i,
   /quand\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
   /lorsque\s+tu\s+(?:auras|as)\s+(?:le\s+)?temps/i,
+  // Contextes hypothétiques / offres de service (pas une demande directe)
+  /en\s+cas\s+de/i,
+  /n['']hésitez\s+pas/i,
+  /si\s+vous\s+avez\s+(?:des\s+)?(?:questions?|besoin)/i,
+  /pour\s+(?:toute\s+)?(?:question|information|renseignement)/i,
 ];
 
 // ============================================================================
@@ -741,10 +761,32 @@ function extractActionsByType(
 }
 
 /**
+ * Vérifie si un email doit être exclu selon les règles personnalisées de l'utilisateur
+ */
+function shouldExcludeByUserRules(context: EmailContext, exclusions: UserExclusionData[]): boolean {
+  const raw = context.from;
+  const angleMatch = raw.match(/<([^>]+)>/);
+  const emailLower = (angleMatch ? angleMatch[1] : raw).trim().toLowerCase();
+  const subjectLower = context.subject?.toLowerCase() ?? "";
+
+  for (const exclusion of exclusions) {
+    const val = exclusion.value.toLowerCase();
+    if (exclusion.type === "SENDER" && emailLower === val) return true;
+    if (exclusion.type === "DOMAIN" && emailLower.endsWith(`@${val}`)) return true;
+    if (exclusion.type === "SUBJECT" && subjectLower.includes(val)) return true;
+  }
+  return false;
+}
+
+/**
  * Fonction principale d'extraction d'actions depuis un email
  * Règle : Si ambigu → aucune action
  */
-export function extractActionsFromEmail(context: EmailContext): ExtractedAction[] {
+export function extractActionsFromEmail(
+  context: EmailContext,
+  userExclusions: UserExclusionData[] = []
+): ExtractedAction[] {
+  if (userExclusions.length > 0 && shouldExcludeByUserRules(context, userExclusions)) return [];
   if (shouldExcludeEmail(context)) return [];
 
   const actions: ExtractedAction[] = [];

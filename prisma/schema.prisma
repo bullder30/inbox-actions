@@ -40,6 +40,12 @@ enum IMAPAuthMethod {
   OAUTH    // OAuth2 / XOAUTH2 (Microsoft, Google)
 }
 
+enum ExclusionType {
+  SENDER  // Adresse email exacte (ex: temu@eu.temuemail.com)
+  DOMAIN  // Domaine entier (ex: @temuemail.com)
+  SUBJECT // Sous-chaîne dans le sujet (ex: "newsletter")
+}
+
 enum ActionStatus {
   TODO
   DONE
@@ -115,6 +121,7 @@ model User {
   // Email mailboxes
   imapCredentials       IMAPCredential[]
   microsoftGraphMailboxes MicrosoftGraphMailbox[]
+  exclusions            UserExclusion[]
 
   @@map(name: "users")
 }
@@ -280,4 +287,20 @@ model MicrosoftGraphMailbox {
   @@index([userId])
   @@index([isActive])
   @@map(name: "microsoft_graph_mailboxes")
+}
+
+// Règles d'exclusion personnalisées par utilisateur
+model UserExclusion {
+  id        String        @id @default(cuid())
+  userId    String
+  type      ExclusionType
+  value     String        // ex: "temu@eu.temuemail.com" | "@temuemail.com" | "newsletter"
+  label     String?       // Label lisible optionnel, ex: "Temu"
+  createdAt DateTime      @default(now()) @map(name: "created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, type, value])
+  @@index([userId])
+  @@map(name: "user_exclusions")
 }

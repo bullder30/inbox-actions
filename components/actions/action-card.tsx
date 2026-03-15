@@ -9,7 +9,6 @@ import { ActionWithUser, ActionWithUserPrisma } from "@/lib/api/actions";
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -17,15 +16,23 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
   Check,
   X,
-  Eye,
   Calendar,
   Mail,
   ExternalLink,
   Clock,
   MailOpen,
   Inbox,
+  MoreHorizontal,
+  UserX,
+  Globe,
 } from "lucide-react";
 import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
@@ -104,6 +111,56 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
     }
   }
 
+  async function handleAddExclusion(type: "SENDER" | "DOMAIN") {
+    const from = action.emailFrom;
+
+    // Extraire l'adresse email brute depuis "Name <email@domain.com>" ou "email@domain.com"
+    const match = from.match(/<([^>]+)>/);
+    const email = (match ? match[1] : from).trim().toLowerCase();
+
+    let value: string;
+    let label: string;
+
+    if (type === "SENDER") {
+      value = email;
+      label = email;
+    } else {
+      const atIndex = email.indexOf("@");
+      if (atIndex === -1) {
+        toast.error("Impossible d'extraire le domaine");
+        return;
+      }
+      value = email.slice(atIndex + 1);
+      label = `@${value}`;
+    }
+
+    try {
+      const res = await fetch("/api/exclusions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, value, label }),
+      });
+
+      if (res.status === 409) {
+        toast.info("Cette exclusion existe déjà");
+        return;
+      }
+      if (!res.ok) throw new Error();
+
+      const data = await res.json();
+      const deleted = data.deletedActions ?? 0;
+      toast.success(
+        deleted > 0
+          ? `Exclusion ajoutée : ${label} (${deleted} action${deleted > 1 ? "s" : ""} supprimée${deleted > 1 ? "s" : ""})`
+          : `Exclusion ajoutée : ${label}`
+      );
+      if (onUpdate) onUpdate();
+      else router.refresh();
+    } catch {
+      toast.error("Erreur lors de l'ajout de l'exclusion");
+    }
+  }
+
   if (variant === "compact") {
     return (
       <Card className={cn(
@@ -115,9 +172,22 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1 space-y-1">
               <CardTitle className="break-words text-sm sm:text-base">{decodeHtmlEntities(action.title)}</CardTitle>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground sm:text-sm">
-                <Mail className="size-3 shrink-0" />
-                <span className="max-w-[200px] truncate">{action.emailFrom}</span>
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Mail className="size-3 shrink-0" />
+                  <span className="break-all">
+                    {(() => {
+                      const am = action.emailFrom.match(/<([^>]+)>/);
+                      return (am ? am[1] : action.emailFrom).trim();
+                    })()}
+                  </span>
+                </span>
+                {action.mailboxLabel && (
+                  <span className="flex items-center gap-1">
+                    <Inbox className="size-3 shrink-0" />
+                    <span>{action.mailboxLabel}</span>
+                  </span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -162,44 +232,95 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
     );
   }
 
+  // Extrait l'adresse email brute depuis "Name <email>" ou retourne le champ brut
+  const displaySender = (() => {
+    const angleMatch = action.emailFrom.match(/<([^>]+)>/);
+    return (angleMatch ? angleMatch[1] : action.emailFrom).trim();
+  })();
+
   return (
     <Card className={cn(
       "overflow-hidden transition-all hover:shadow-lg",
       isOverdue && "border-red-300 bg-red-50/50",
       isUrgent && !isOverdue && "border-orange-300 bg-orange-50/50"
     )}>
-      <CardHeader className="space-y-3">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
-          <div className="min-w-0 flex-1 space-y-1">
-            <CardTitle className="break-words text-lg sm:text-xl">{decodeHtmlEntities(action.title)}</CardTitle>
-            <CardDescription className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs sm:text-sm">
-              <span className="flex items-center gap-1">
-                <Mail className="size-3 sm:size-4" />
-                <span className="max-w-[180px] truncate sm:max-w-none">{action.emailFrom}</span>
-              </span>
-              <span className="hidden sm:inline">•</span>
-              <span className="flex items-center gap-1">
-                <Clock className="size-3 sm:size-4" />
-                <span>
-                  Reçu {formatDistanceToNow(new Date(action.emailReceivedAt), { locale: fr, addSuffix: true })}
-                </span>
-              </span>
-            </CardDescription>
-          </div>
-          <div className="flex items-center gap-2">
+      <CardHeader className="space-y-2 pb-3">
+        {/* Ligne 1 : titre + badges + menu */}
+        <div className="flex items-start justify-between gap-3">
+          <CardTitle className="break-words text-base leading-snug sm:text-lg">
+            {decodeHtmlEntities(action.title)}
+          </CardTitle>
+          <div className="flex shrink-0 items-center gap-1.5">
             <Badge variant="outline" className={cn(typeInfo.color, "text-xs")}>
               {typeInfo.label}
             </Badge>
             <Badge variant="secondary" className={cn(statusInfo.color, "text-xs")}>
               {statusInfo.label}
             </Badge>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                  <MoreHorizontal className="size-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => handleAddExclusion("SENDER")}>
+                  <UserX className="mr-2 size-4" />
+                  Exclure cet expéditeur
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => handleAddExclusion("DOMAIN")}>
+                  <Globe className="mr-2 size-4" />
+                  Exclure ce domaine
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
+        </div>
+
+        {/* Ligne 2 : métadonnées groupées, flex-wrap pour mobile */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <Mail className="size-3 shrink-0" />
+            <span className="break-all">{displaySender}</span>
+          </span>
+          <span className="flex items-center gap-1">
+            <Clock className="size-3 shrink-0" />
+            <span>Reçu {formatDistanceToNow(new Date(action.emailReceivedAt), { locale: fr, addSuffix: true })}</span>
+          </span>
+          {action.mailboxLabel && (
+            <span className="flex items-center gap-1">
+              <Inbox className="size-3 shrink-0" />
+              <span>{action.mailboxLabel}</span>
+            </span>
+          )}
         </div>
       </CardHeader>
 
-      <CardContent className="space-y-4">
-        {/* Phrase source - toujours visible */}
-        <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-4">
+      <CardContent className="space-y-3 pt-0">
+        {/* Échéance */}
+        {action.dueDate && (
+          <div className={cn(
+            "flex items-center gap-2 rounded-lg border p-3",
+            isOverdue
+              ? "border-red-300 bg-red-50 text-red-800"
+              : isUrgent
+              ? "border-orange-300 bg-orange-50 text-orange-800"
+              : "border-slate-200 bg-slate-50 text-slate-800"
+          )}>
+            <Calendar className="size-4 shrink-0" />
+            <span className="text-sm font-medium">
+              {isOverdue ? "⚠️ En retard" : isUrgent ? "⏰ Urgent" : "Échéance"}{" "}
+              {new Date(action.dueDate).toLocaleDateString("fr-FR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </div>
+        )}
+
+        {/* Phrase source */}
+        <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-3">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 flex-1 break-words text-sm italic">
               &ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;
@@ -218,51 +339,6 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             )}
           </div>
         </blockquote>
-
-        {/* Échéance avec indicateurs */}
-        {action.dueDate && (
-          <div
-            className={cn(
-              "flex items-center gap-2 rounded-lg border p-3",
-              isOverdue
-                ? "border-red-300 bg-red-50 text-red-800"
-                : isUrgent
-                ? "border-orange-300 bg-orange-50 text-orange-800"
-                : "border-slate-200 bg-slate-50 text-slate-800"
-            )}
-          >
-            <Calendar className="size-4" />
-            <span className="text-sm font-medium">
-              {isOverdue ? "⚠️ En retard" : isUrgent ? "⏰ Urgent" : "Échéance"}{" "}
-              {new Date(action.dueDate).toLocaleDateString("fr-FR", {
-                day: "numeric",
-                month: "long",
-                year: "numeric",
-              })}
-            </span>
-          </div>
-        )}
-
-        {/* Métadonnées */}
-        <div className="flex min-w-0 flex-col gap-1 text-xs text-muted-foreground sm:flex-row sm:items-center sm:gap-4">
-          <span className="min-w-0 truncate">De : {action.emailFrom}</span>
-          <span className="hidden sm:inline">•</span>
-          <span>
-            {new Date(action.emailReceivedAt).toLocaleDateString("fr-FR", {
-              day: "numeric",
-              month: "short",
-            })}
-          </span>
-          {action.mailboxLabel && (
-            <>
-              <span className="hidden sm:inline">•</span>
-              <span className="flex items-center gap-1">
-                <Inbox className="size-3 shrink-0" />
-                <span>{action.mailboxLabel}</span>
-              </span>
-            </>
-          )}
-        </div>
       </CardContent>
 
       <CardFooter className="flex flex-col gap-2 sm:flex-row sm:justify-end">

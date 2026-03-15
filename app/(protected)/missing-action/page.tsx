@@ -3,13 +3,12 @@
 import { Clock, Inbox, Loader2, Mail, MailOpen, Plus } from "lucide-react";
 
 import { BackButton } from "@/components/shared/back-button";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { ActionType } from "@/lib/api/actions";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -192,79 +191,64 @@ export default function MissingActionPage() {
           <div className="space-y-3">
             {emails.map((email) => (
 
-              <Card key={email.id} className="transition-all hover:shadow-md">
-                <CardHeader className="px-4 pb-3 pt-4 sm:px-6 sm:pt-6">
-                  <div className="space-y-2">
-                    <div className="flex items-start justify-between gap-2">
-                      <CardTitle className="line-clamp-2 flex-1 text-sm sm:line-clamp-1 sm:text-base">
-                        {email.subject || "(sans objet)"}
-                      </CardTitle>
-                      <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
-                        <Badge variant="gradient" className="px-1.5 text-[10px] sm:px-2 sm:text-xs">
-                          {email.reason}
-                        </Badge>
-                        {email.webUrl && (
-                          <a
-                            href={email.webUrl}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Button variant="ghost" size="sm" className="size-7 p-0">
-                              <MailOpen className="size-3.5" />
-                            </Button>
-                          </a>
-                        )}
-                      </div>
-                    </div>
-                    <CardDescription className="flex flex-wrap items-center gap-1.5 text-[10px] sm:gap-2 sm:text-xs">
-                      <div className="flex items-center gap-1">
-                        <Mail className="size-3 shrink-0" />
-                        <span className="max-w-[150px] truncate sm:max-w-none">{email.from}</span>
-                      </div>
-                      <span className="hidden sm:inline">•</span>
-                      <div className="flex items-center gap-1">
-                        <Clock className="size-3 shrink-0" />
-                        <span className="whitespace-nowrap">
-                          {formatDistanceToNow(new Date(email.receivedAt), {
-                            locale: fr,
-                            addSuffix: true,
-                          })}
-                        </span>
-                      </div>
-                      {email.mailboxLabel && (
-                        <>
-                          <span className="hidden sm:inline">•</span>
-                          <div className="flex items-center gap-1">
-                            <Inbox className="size-3 shrink-0" />
-                            <span>{email.mailboxLabel}</span>
-                          </div>
-                        </>
-                      )}
-                    </CardDescription>
+              <Card key={email.id} className="overflow-hidden transition-all hover:shadow-lg">
+                <CardHeader className="space-y-2 pb-3">
+                  {/* Ligne 1 : sujet + boutons */}
+                  <div className="flex items-start justify-between gap-3">
+                    <CardTitle className="break-words text-base leading-snug sm:text-lg">
+                      {email.subject || "(sans objet)"}
+                    </CardTitle>
+                    {email.webUrl && (
+                      <a
+                        href={email.webUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                          <MailOpen className="size-3.5" />
+                        </Button>
+                      </a>
+                    )}
+                  </div>
+                  {/* Ligne 2 : métadonnées groupées */}
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Mail className="size-3 shrink-0" />
+                      <span className="break-all">
+                        {(() => { const m = email.from.match(/<([^>]+)>/); return (m ? m[1] : email.from).trim(); })()}
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="size-3 shrink-0" />
+                      <span>{formatDistanceToNow(new Date(email.receivedAt), { locale: fr, addSuffix: true })}</span>
+                    </span>
+                    {email.mailboxLabel && (
+                      <span className="flex items-center gap-1">
+                        <Inbox className="size-3 shrink-0" />
+                        <span>{email.mailboxLabel}</span>
+                      </span>
+                    )}
                   </div>
                 </CardHeader>
-                <CardContent className="px-4 pt-0 sm:px-6">
-                  <p className="line-clamp-2 text-xs text-muted-foreground sm:line-clamp-2">
-                    {email.snippet}
-                  </p>
+                <CardContent className="space-y-3 pt-0">
+                  <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-3">
+                    <p className="break-words text-sm italic text-muted-foreground">
+                      {email.snippet}
+                    </p>
+                  </blockquote>
                 </CardContent>
-                <CardFooter className="flex justify-end px-4 pb-4 pt-3 sm:px-6 sm:pb-6">
-                  <Button
-                    onClick={() => handleOpenDialog(email)}
-                    size="sm"
-                    className="h-8 gap-2 text-xs sm:h-9 sm:text-sm"
-                  >
-                    <Plus className="size-3.5 sm:size-4" />
-                    <span className="xs:inline hidden">Créer une action</span>
-                    <span className="xs:hidden">Créer</span>
+                <CardFooter className="flex justify-end">
+                  <Button onClick={() => handleOpenDialog(email)} size="sm" className="w-full sm:w-auto">
+                    <Plus className="mr-2 size-4" />
+                    Créer une action
                   </Button>
                 </CardFooter>
               </Card>
             ))}
             {/* Sentinelle infinite scroll */}
             <div ref={sentinelRef} className="h-1" />
-            {loadingMore && <MissingActionCardSkeletonList count={2} />}
+            {loadingMore && <MissingActionCardSkeletonList count={1} />}
           </div>
         </div>
       )}
