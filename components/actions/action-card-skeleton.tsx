@@ -10,16 +10,17 @@ export function ActionCardSkeleton() {
   return (
     <Card className="overflow-hidden">
       <CardHeader className="space-y-2 pb-3">
-        {/* Ligne 1 : titre + badges + menu */}
-        <div className="flex items-start justify-between gap-3">
-          <Skeleton className="h-6 w-3/4" />
-          <div className="flex shrink-0 items-center gap-1.5">
+        {/* Ligne 1 : badges + menu */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
             <Skeleton className="h-5 w-16 rounded-full" />
             <Skeleton className="h-5 w-14 rounded-full" />
-            <Skeleton className="size-7 rounded" />
           </div>
+          <Skeleton className="size-7 rounded" />
         </div>
-        {/* Ligne 2 : métadonnées groupées */}
+        {/* Titre pleine largeur */}
+        <Skeleton className="h-6 w-full" />
+        {/* Ligne 3 : métadonnées groupées */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
           <div className="flex items-center gap-1">
             <Skeleton className="size-3" />

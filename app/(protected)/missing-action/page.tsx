@@ -193,24 +193,10 @@ export default function MissingActionPage() {
 
               <Card key={email.id} className="overflow-hidden transition-all hover:shadow-lg">
                 <CardHeader className="space-y-2 pb-3">
-                  {/* Ligne 1 : sujet + boutons */}
-                  <div className="flex items-start justify-between gap-3">
-                    <CardTitle className="break-words text-base leading-snug sm:text-lg">
-                      {email.subject || "(sans objet)"}
-                    </CardTitle>
-                    {email.webUrl && (
-                      <a
-                        href={email.webUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
-                          <MailOpen className="size-3.5" />
-                        </Button>
-                      </a>
-                    )}
-                  </div>
+                  {/* Ligne 1 : sujet */}
+                  <CardTitle className="break-words text-base leading-snug sm:text-lg">
+                    {email.subject || "(sans objet)"}
+                  </CardTitle>
                   {/* Ligne 2 : métadonnées groupées */}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
@@ -233,9 +219,23 @@ export default function MissingActionPage() {
                 </CardHeader>
                 <CardContent className="space-y-3 pt-0">
                   <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-3">
-                    <p className="break-words text-sm italic text-muted-foreground">
-                      {email.snippet}
-                    </p>
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="min-w-0 flex-1 break-words text-sm italic text-muted-foreground">
+                        {email.snippet}
+                      </p>
+                      {email.webUrl && (
+                        <a
+                          href={email.webUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                            <MailOpen className="size-3.5" />
+                          </Button>
+                        </a>
+                      )}
+                    </div>
                   </blockquote>
                 </CardContent>
                 <CardFooter className="flex justify-end">
