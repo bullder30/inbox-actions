@@ -17,6 +17,7 @@ import {
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -88,12 +89,15 @@ function GraphMailboxCard({
 
   return (
     <div className="rounded-lg border p-3 sm:p-4">
-      {/* Ligne 1 : nom + boutons */}
+      {/* Ligne 1 : badge + boutons */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Zap className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate font-medium">{displayName}</span>
-        </div>
+        <Badge variant={mailbox.isConnected ? "success" : "destructive"} className="gap-1 text-xs">
+          {mailbox.isConnected ? (
+            <><CheckCircle2 className="size-3" /> Connecté</>
+          ) : (
+            <><XCircle className="size-3" /> Token expiré</>
+          )}
+        </Badge>
         <div className="flex shrink-0 items-center gap-1">
           {!mailbox.isConnected && (
             <Button onClick={handleReconnect} disabled={connecting} variant="ghost" size="icon" className="size-8" title="Reconnecter">
@@ -129,15 +133,14 @@ function GraphMailboxCard({
         </div>
       </div>
 
-      {/* Ligne 2 : statut + email + sync */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Badge variant={mailbox.isConnected ? "success" : "destructive"} className="gap-1 text-xs">
-          {mailbox.isConnected ? (
-            <><CheckCircle2 className="size-3" /> Connecté</>
-          ) : (
-            <><XCircle className="size-3" /> Token expiré</>
-          )}
-        </Badge>
+      {/* Ligne 2 : nom */}
+      <div className="mt-1.5 flex items-center gap-2">
+        <Zap className="size-4 shrink-0 text-muted-foreground" />
+        <span className="break-words font-medium">{displayName}</span>
+      </div>
+
+      {/* Ligne 3 : email + sync */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
         {mailbox.email && (
           <span className="text-xs text-muted-foreground">{mailbox.email}</span>
         )}
@@ -208,10 +211,23 @@ export function GraphStatus({ onStatusChange }: GraphStatusProps) {
 
   if (loading) {
     return (
-      <div className="rounded-lg border p-4">
-        <div className="flex items-center gap-2">
-          <Zap className="size-4 text-muted-foreground" />
-          <div className="h-4 w-32 animate-pulse rounded bg-muted" />
+      <div className="rounded-lg border p-3 sm:p-4">
+        {/* Ligne 1 : badge + boutons */}
+        <div className="flex items-center justify-between gap-2">
+          <Skeleton className="h-5 w-20 rounded-full" />
+          <div className="flex gap-1">
+            <Skeleton className="size-8 rounded" />
+          </div>
+        </div>
+        {/* Ligne 2 : icône + nom */}
+        <div className="mt-1.5 flex items-center gap-2">
+          <Skeleton className="size-4" />
+          <Skeleton className="h-4 w-32" />
+        </div>
+        {/* Ligne 3 : détails */}
+        <div className="mt-1.5 flex items-center gap-3">
+          <Skeleton className="h-3 w-36" />
+          <Skeleton className="h-3 w-24" />
         </div>
       </div>
     );

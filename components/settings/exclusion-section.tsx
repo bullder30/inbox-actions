@@ -127,7 +127,7 @@ export function ExclusionSection() {
         {/* Formulaire d'ajout */}
         <div className="flex gap-2">
           <Select value={addType} onValueChange={(v) => setAddType(v as ExclusionType)}>
-            <SelectTrigger className="w-36 shrink-0">
+            <SelectTrigger className="w-28 shrink-0">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

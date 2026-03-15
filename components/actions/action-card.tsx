@@ -245,39 +245,41 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
       isUrgent && !isOverdue && "border-orange-300 bg-orange-50/50"
     )}>
       <CardHeader className="space-y-2 pb-3">
-        {/* Ligne 1 : titre + badges + menu */}
-        <div className="flex items-start justify-between gap-3">
-          <CardTitle className="break-words text-base leading-snug sm:text-lg">
-            {decodeHtmlEntities(action.title)}
-          </CardTitle>
-          <div className="flex shrink-0 items-center gap-1.5">
+        {/* Ligne 1 : badges + menu */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
             <Badge variant="outline" className={cn(typeInfo.color, "text-xs")}>
               {typeInfo.label}
             </Badge>
             <Badge variant="secondary" className={cn(statusInfo.color, "text-xs")}>
               {statusInfo.label}
             </Badge>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
-                  <MoreHorizontal className="size-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => handleAddExclusion("SENDER")}>
-                  <UserX className="mr-2 size-4" />
-                  Exclure cet expéditeur
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleAddExclusion("DOMAIN")}>
-                  <Globe className="mr-2 size-4" />
-                  Exclure ce domaine
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                <MoreHorizontal className="size-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleAddExclusion("SENDER")}>
+                <UserX className="mr-2 size-4" />
+                Exclure cet expéditeur
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleAddExclusion("DOMAIN")}>
+                <Globe className="mr-2 size-4" />
+                Exclure ce domaine
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
-        {/* Ligne 2 : métadonnées groupées, flex-wrap pour mobile */}
+        {/* Titre complet pleine largeur */}
+        <CardTitle className="break-words text-base leading-snug sm:text-lg">
+          {decodeHtmlEntities(action.title)}
+        </CardTitle>
+
+        {/* Ligne 3 : métadonnées groupées, flex-wrap pour mobile */}
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
           <span className="flex items-center gap-1">
             <Mail className="size-3 shrink-0" />

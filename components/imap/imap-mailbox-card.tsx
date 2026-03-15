@@ -98,12 +98,15 @@ export function IMAPMailboxCard({ mailbox, onDisconnect, onUpdate }: IMAPMailbox
 
   return (
     <div className="rounded-lg border p-3 sm:p-4">
-      {/* Ligne 1 : nom + boutons */}
+      {/* Ligne 1 : badge + boutons */}
       <div className="flex items-center justify-between gap-2">
-        <div className="flex min-w-0 items-center gap-2">
-          <Server className="size-4 shrink-0 text-muted-foreground" />
-          <span className="truncate font-medium">{displayName}</span>
-        </div>
+        <Badge variant={mailbox.isConnected ? "success" : "destructive"} className="gap-1 text-xs">
+          {mailbox.isConnected ? (
+            <><CheckCircle2 className="size-3" /> Connecté</>
+          ) : (
+            <><XCircle className="size-3" /> Déconnecté</>
+          )}
+        </Badge>
         <div className="flex shrink-0 items-center gap-1">
           <Button variant="ghost" size="icon" className="size-8" onClick={() => setIsEditing(true)}>
             <Pencil className="size-3.5" />
@@ -137,15 +140,14 @@ export function IMAPMailboxCard({ mailbox, onDisconnect, onUpdate }: IMAPMailbox
         </div>
       </div>
 
-      {/* Ligne 2 : statut + détails */}
-      <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
-        <Badge variant={mailbox.isConnected ? "success" : "destructive"} className="gap-1 text-xs">
-          {mailbox.isConnected ? (
-            <><CheckCircle2 className="size-3" /> Connecté</>
-          ) : (
-            <><XCircle className="size-3" /> Déconnecté</>
-          )}
-        </Badge>
+      {/* Ligne 2 : nom */}
+      <div className="mt-1.5 flex items-center gap-2">
+        <Server className="size-4 shrink-0 text-muted-foreground" />
+        <span className="break-words font-medium">{displayName}</span>
+      </div>
+
+      {/* Ligne 3 : détails */}
+      <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
         <span className="text-xs text-muted-foreground">{mailbox.username} · {mailbox.host}</span>
         {mailbox.lastSync && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
