@@ -24,7 +24,7 @@ export default function PrivacyPage() {
               Politique de confidentialité
             </h1>
             <p className="text-sm text-muted-foreground">
-              Dernière mise à jour : 6 février 2026
+              Dernière mise à jour : 16 mars 2026
             </p>
           </div>
 
@@ -116,6 +116,13 @@ export default function PrivacyPage() {
                 <li>Date d&apos;échéance (si détectée)</li>
                 <li>Phrase source (extrait de l&apos;email)</li>
               </ul>
+
+              <h3 className="mb-2 mt-4 font-medium text-foreground">2.5 Règles d&apos;exclusion</h3>
+              <ul className="list-inside list-disc space-y-1 pl-4">
+                <li>Expéditeurs exclus (adresse email)</li>
+                <li>Domaines exclus</li>
+                <li>Mots-clés de sujet exclus</li>
+              </ul>
             </section>
 
             {/* Section 3 */}
@@ -192,6 +199,10 @@ export default function PrivacyPage() {
                     <tr>
                       <td className="py-2 pr-4">Credentials IMAP</td>
                       <td className="py-2">Jusqu&apos;à déconnexion IMAP</td>
+                    </tr>
+                    <tr>
+                      <td className="py-2 pr-4">Règles d&apos;exclusion</td>
+                      <td className="py-2">Jusqu&apos;à suppression par l&apos;utilisateur</td>
                     </tr>
                   </tbody>
                 </table>
