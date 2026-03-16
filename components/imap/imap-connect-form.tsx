@@ -170,25 +170,48 @@ type FormValues = z.infer<typeof formSchema>;
 
 interface IMAPConnectFormProps {
   onSuccess?: () => void;
+  initialValues?: {
+    username: string;
+    host: string;
+    port: number;
+    folder: string;
+    useTLS: boolean;
+  };
 }
 
-export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
+export function IMAPConnectForm({ onSuccess, initialValues }: IMAPConnectFormProps) {
+  const isEditing = !!initialValues;
+
+  const detectedPreset = initialValues
+    ? (detectProviderFromEmail(initialValues.username) ?? "custom")
+    : "";
+
   const [isLoading, setIsLoading] = useState(false);
-  const [selectedPreset, setSelectedPreset] = useState<string>("");
+  const [selectedPreset, setSelectedPreset] = useState<string>(detectedPreset);
   const [showServerConfig, setShowServerConfig] = useState(false);
   const [isMicrosoftEmail, setIsMicrosoftEmail] = useState(false);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: {
-      imapUsername: "",
-      imapPassword: "",
-      imapHost: "imap.gmail.com",
-      imapPort: 993,
-      imapFolder: "INBOX",
-      useTLS: true,
-      authMethod: "PASSWORD",
-    },
+    defaultValues: initialValues
+      ? {
+          imapUsername: initialValues.username,
+          imapPassword: "",
+          imapHost: initialValues.host,
+          imapPort: initialValues.port,
+          imapFolder: initialValues.folder,
+          useTLS: initialValues.useTLS,
+          authMethod: "PASSWORD",
+        }
+      : {
+          imapUsername: "",
+          imapPassword: "",
+          imapHost: "imap.gmail.com",
+          imapPort: 993,
+          imapFolder: "INBOX",
+          useTLS: true,
+          authMethod: "PASSWORD",
+        },
   });
 
   // Watch authMethod to show/hide password field
@@ -345,7 +368,7 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
                       <Input
                         type="email"
                         placeholder="vous@exemple.com"
-                        className="pl-10"
+                        className="pl-10 placeholder:text-xs"
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
@@ -397,8 +420,8 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
                         <Lock className="absolute left-3 top-3 size-4 text-muted-foreground" />
                         <Input
                           type="password"
-                          placeholder="••••••••••••••••"
-                          className="pl-10"
+                          placeholder={isEditing ? "Laisser vide pour conserver l'actuel" : "••••••••••••••••"}
+                          className="pl-10 placeholder:text-xs"
                           {...field}
                         />
                       </div>
@@ -429,7 +452,7 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
                           <Server className="absolute left-3 top-3 size-4 text-muted-foreground" />
                           <Input
                             placeholder="imap.exemple.com"
-                            className="pl-10"
+                            className="pl-10 placeholder:text-xs"
                             {...field}
                           />
                         </div>
@@ -451,6 +474,7 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
                           <Input
                             type="number"
                             placeholder="993"
+                            className="placeholder:text-xs"
                             {...field}
                           />
                         </FormControl>
@@ -519,7 +543,7 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
                           <Folder className="absolute left-3 top-3 size-4 text-muted-foreground" />
                           <Input
                             placeholder="INBOX"
-                            className="pl-10"
+                            className="pl-10 placeholder:text-xs"
                             {...field}
                           />
                         </div>
@@ -538,10 +562,10 @@ export function IMAPConnectForm({ onSuccess }: IMAPConnectFormProps) {
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 size-4 animate-spin" />
-                  Test de connexion...
+                  {isEditing ? "Enregistrement..." : "Test de connexion..."}
                 </>
               ) : (
-                "Connecter"
+                isEditing ? "Enregistrer les modifications" : "Connecter"
               )}
             </Button>
           </form>
