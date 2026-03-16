@@ -44,15 +44,15 @@ export type UserExclusionData = {
  */
 const SEND_PATTERNS = [
   // Impératif direct
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
   /(?:envoie|envoyez)(?:-moi)?\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
   /il (?:faut|faudrait)\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
 
   // Avec objet explicite
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:m[''])?(?:transmettre|faire parvenir|adresser)\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:m[''])?(?:transmettre|faire parvenir|adresser)\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
 
   // Questions = demande explicite
-  /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:m[''])?(?:transférer|faire suivre)\s+(.{1,100}?)(?:\.|$|\?)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous)(?:\s+.{0,40}?)?\s+(?:m[''])?(?:transférer|faire suivre)\s+(.{1,100}?)(?:\.|$|\?)/i,
 ];
 
 /**
@@ -61,12 +61,12 @@ const SEND_PATTERNS = [
  */
 const CALL_PATTERNS = [
   // Rappeler
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:me\s+)?(?:rappeler|me rappeler)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:me\s+)?(?:rappeler|me rappeler)(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,
   /^(?:rappelle|rappelez)(?:-moi)?(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,  // impératif en début de phrase
   /(?:rappelle|rappelez)-moi(?:\s+(.{1,50}?))?(?:\.|$|avant|d'ici|pour)/i,        // rappelle-moi n'importe où
 
   // Appeler
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:appeler|contacter|joindre)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:appeler|contacter|joindre)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
   /^(?:appelle|appelez|contacte|contactez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour)/i,
 
   // Visio/réunion
@@ -81,7 +81,7 @@ const CALL_PATTERNS = [
  */
 const FOLLOW_UP_PATTERNS = [
   // Relancer explicite
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+relancer\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+relancer\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
   /^(?:relance|relancez)\s+(.{1,50}?)(?:\.|$|avant|d'ici|pour|sur)/i,
 
   // Faire un suivi
@@ -100,7 +100,7 @@ const FOLLOW_UP_PATTERNS = [
  */
 const PAY_PATTERNS = [
   // Payer explicite
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+(?:régler|payer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:régler|payer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /^(?:règle|réglez|paie|payez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Procéder au paiement/règlement
@@ -124,12 +124,12 @@ const PAY_PATTERNS = [
  */
 const VALIDATE_PATTERNS = [
   // Valider explicite
-  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)\s+valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /^(?:valide|validez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /il (?:faut|faudrait)\s+(?:aussi\s+)?valider\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Approuver/confirmer
-  /(?:peux-tu|pourrais-tu|pourriez-vous)\s+(?:approuver|confirmer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
+  /(?:peux-tu|pourrais-tu|pourriez-vous)(?:\s+.{0,40}?)?\s+(?:approuver|confirmer)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
   /^(?:approuve|approuvez|confirme|confirmez)\s+(.{1,50}?)(?:\.|$|avant|d'ici)/i,
 
   // Donner avis/OK
