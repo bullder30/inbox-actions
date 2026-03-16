@@ -113,6 +113,10 @@ const PAY_PATTERNS = [
 
   // Virement
   /(?:peux-tu|pourrais-tu|pourriez-vous)\s+faire\s+(?:un\s+)?virement\s+(?:de|pour)\s+(.{1,50}?)(?:\.|$|avant)/i,
+
+  // Somme due / avis de paiement (factures établissements, organismes)
+  /(?:une\s+)?somme\s+(?:est\s+)?due(?:\s+(?:à|de|pour|au)\s+(.{1,60}?))?(?:\.|$)/i,
+  /(?:ci-joint|en\s+pièce[\s-]jointe)[^.]{0,80}(?:facture|avis\s+de\s+paiement)(.{0,50}?)(?:\.|$)/i,
 ];
 
 /**
@@ -133,6 +137,17 @@ const VALIDATE_PATTERNS = [
 
   // ⚠️ Pattern trop vague supprimé (créait "Valider" sans objet)
   // /il (?:faut|faudrait)\s+(?:que tu|qu['']on)\s+valide/i,
+];
+
+/**
+ * Patterns pour détecter PAY directement depuis le sujet de l'email
+ * (factures d'établissements, avis de paiement automatiques)
+ */
+const SUBJECT_PAY_PATTERNS = [
+  /\bfacture\b(?!\s+automatique)/i,
+  /avis\s+de\s+paiement/i,
+  /somme\s+due/i,
+  /appel\s+de\s+(?:fonds?|cotisation)/i,
 ];
 
 // ============================================================================
@@ -499,6 +514,8 @@ const STRONG_MARKERS: Record<ActionType, RegExp[]> = {
     /virement/i,
     /iban/i,
     /tva/i,
+    /somme\s+due/i,
+    /ci-?joint/i,
   ],
   VALIDATE: [
     /contrat/i,
@@ -796,6 +813,23 @@ export function extractActionsFromEmail(
   actions.push(...extractActionsByType("FOLLOW_UP", FOLLOW_UP_PATTERNS, context));
   actions.push(...extractActionsByType("PAY", PAY_PATTERNS, context));
   actions.push(...extractActionsByType("VALIDATE", VALIDATE_PATTERNS, context));
+
+  // Détection PAY depuis le sujet (factures, avis de paiement) — fallback si body n'a rien détecté
+  if (context.subject && !actions.some((a) => a.type === "PAY")) {
+    const normalizedSubject = normalizeText(context.subject);
+    for (const pattern of SUBJECT_PAY_PATTERNS) {
+      if (pattern.test(normalizedSubject)) {
+        const rawTitle = `Payer – ${context.subject.trim()}`;
+        actions.push({
+          title: rawTitle.length > 100 ? rawTitle.substring(0, 97) + "..." : rawTitle,
+          type: "PAY",
+          sourceSentence: context.subject.trim(),
+          dueDate: null,
+        });
+        break;
+      }
+    }
+  }
 
   return deduplicateActions(actions);
 }
