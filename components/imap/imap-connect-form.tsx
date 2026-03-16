@@ -368,7 +368,7 @@ export function IMAPConnectForm({ onSuccess, initialValues }: IMAPConnectFormPro
                       <Input
                         type="email"
                         placeholder="vous@exemple.com"
-                        className="pl-10"
+                        className="pl-10 placeholder:text-xs"
                         {...field}
                         onChange={(e) => {
                           field.onChange(e);
@@ -452,7 +452,7 @@ export function IMAPConnectForm({ onSuccess, initialValues }: IMAPConnectFormPro
                           <Server className="absolute left-3 top-3 size-4 text-muted-foreground" />
                           <Input
                             placeholder="imap.exemple.com"
-                            className="pl-10"
+                            className="pl-10 placeholder:text-xs"
                             {...field}
                           />
                         </div>
@@ -474,6 +474,7 @@ export function IMAPConnectForm({ onSuccess, initialValues }: IMAPConnectFormPro
                           <Input
                             type="number"
                             placeholder="993"
+                            className="placeholder:text-xs"
                             {...field}
                           />
                         </FormControl>
@@ -542,7 +543,7 @@ export function IMAPConnectForm({ onSuccess, initialValues }: IMAPConnectFormPro
                           <Folder className="absolute left-3 top-3 size-4 text-muted-foreground" />
                           <Input
                             placeholder="INBOX"
-                            className="pl-10"
+                            className="pl-10 placeholder:text-xs"
                             {...field}
                           />
                         </div>
