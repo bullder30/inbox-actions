@@ -76,8 +76,9 @@ export function ExclusionSection() {
   }
 
   async function handleAdd() {
-    const value = addValue.trim().toLowerCase();
+    let value = addValue.trim().toLowerCase();
     if (!value) return;
+    if (addType === "DOMAIN") value = value.replace(/^@/, "");
     setAdding(true);
     try {
       const res = await fetch("/api/exclusions", {

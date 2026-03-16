@@ -54,7 +54,7 @@ export function IMAPMailboxCard({ mailbox, onDisconnect, onUpdate }: IMAPMailbox
   const [disconnecting, setDisconnecting] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
-  const displayName = mailbox.label || mailbox.username;
+  const displayName = mailbox.label || mailbox.username.split("@")[0];
 
   async function handleDisconnect() {
     setDisconnecting(true);
@@ -87,6 +87,13 @@ export function IMAPMailboxCard({ mailbox, onDisconnect, onUpdate }: IMAPMailbox
           </Button>
         </div>
         <IMAPConnectForm
+          initialValues={{
+            username: mailbox.username,
+            host: mailbox.host,
+            port: mailbox.port,
+            folder: mailbox.folder,
+            useTLS: mailbox.useTLS,
+          }}
           onSuccess={() => {
             setIsEditing(false);
             onUpdate();
