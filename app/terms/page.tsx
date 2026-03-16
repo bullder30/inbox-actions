@@ -23,7 +23,7 @@ export default function TermsPage() {
               Conditions d&apos;utilisation
             </h1>
             <p className="text-sm text-muted-foreground">
-              Dernière mise à jour : 6 février 2026
+              Dernière mise à jour : 16 mars 2026
             </p>
           </div>
 
@@ -94,7 +94,7 @@ export default function TermsPage() {
               <ul className="list-inside list-disc space-y-2 pl-4">
                 <li>Le contenu complet des emails n&apos;est <strong>jamais stocké</strong></li>
                 <li>Seules les métadonnées sont conservées : expéditeur, sujet, extrait court (200 caractères max)</li>
-                <li>Les métadonnées sont automatiquement supprimées après 3 jours</li>
+                <li>Les métadonnées sont automatiquement supprimées chaque nuit (dans les 24h)</li>
                 <li>Les actions créées sont conservées jusqu&apos;à leur suppression par l&apos;utilisateur</li>
               </ul>
             </section>
@@ -138,9 +138,10 @@ export default function TermsPage() {
                 7. Propriété intellectuelle
               </h2>
               <p>
-                Le service Inbox Actions, son interface, son code et son design sont protégés
-                par le droit d&apos;auteur. Vous n&apos;êtes pas autorisé à copier, modifier ou
-                distribuer tout ou partie du service sans autorisation préalable.
+                  Le code source d&apos;Inbox Actions est publié sous licence{" "}
+                <a href="https://www.gnu.org/licenses/agpl-3.0.html" className="text-primary underline hover:no-underline" target="_blank" rel="noopener noreferrer">AGPL-3.0</a>.
+                Vous êtes libre de l&apos;utiliser, le modifier et le redistribuer selon les termes de cette licence.
+                L&apos;interface, le design et la marque restent la propriété de leurs auteurs.
               </p>
             </section>
 
