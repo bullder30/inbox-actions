@@ -6,7 +6,7 @@ Transform your emails into clear, actionable tasks. No magic, no guessing — ju
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC)
-![Version](https://img.shields.io/badge/version-0.2.0--MVP-orange)
+![Version](https://img.shields.io/badge/version-0.3.3-orange)
 ![Language](https://img.shields.io/badge/emails-French%20only-blue)
 
 > **MVP Notice:** This version only analyzes emails written in **French**. Multi-language support is planned for future releases.
@@ -40,6 +40,7 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 - **Due Date Extraction** — Automatic detection of deadlines from email content
 - **Urgency Indicators** — Visual alerts for overdue (red) and urgent (orange) actions
 - **Source Transparency** — Every action shows the exact sentence that triggered it
+- **Exclusion Rules** — Block emails by sender, domain, or subject keyword
 - **Manual Override** — "Missing an action?" button available everywhere
 - **Email Digest** — Daily notification summary via Resend
 - **GDPR Compliant** — Email body is never stored, only minimal metadata
@@ -256,6 +257,7 @@ pnpm email        # Start React Email dev server
 - **EmailMetadata** — Minimal email info (GDPR compliant)
 - **Account** — OAuth tokens (managed by Auth.js)
 - **IMAPCredential** — IMAP configuration (encrypted password)
+- **UserExclusion** — Exclusion rules by sender, domain, or subject
 
 ## Cron Jobs
 
@@ -286,6 +288,11 @@ pnpm email        # Start React Email dev server
 ### IMAP
 - `GET /api/imap/status` — IMAP configuration status
 - `POST /api/imap/connect` — Configure IMAP connection
+
+### Exclusions
+- `GET /api/exclusions` — List exclusion rules
+- `POST /api/exclusions` — Add exclusion rule (SENDER / DOMAIN / SUBJECT)
+- `DELETE /api/exclusions/[id]` — Remove exclusion rule
 
 ## Security & Privacy
 
