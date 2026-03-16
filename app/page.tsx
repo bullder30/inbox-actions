@@ -53,7 +53,7 @@ export default async function HomePage() {
       </header>
 
       {/* Hero Section */}
-      <section className="relative overflow-hidden border-b py-20 lg:py-32">
+      <section className="relative overflow-hidden border-b py-12 lg:py-20">
         <MaxWidthWrapper>
           <div className="mx-auto max-w-4xl text-center">
             <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
@@ -207,7 +207,7 @@ export default async function HomePage() {
               { n: 3, title: "Détection par règles simples", body: <p className="text-muted-foreground">Le système cherche des phrases comme : &ldquo;peux-tu envoyer...&rdquo;, &ldquo;merci de rappeler...&rdquo;, &ldquo;n&apos;oublie pas de...&rdquo;.<strong className="mt-2 block">Règle d&apos;or :</strong> Si c&apos;est conditionnel (&ldquo;si tu peux&rdquo;, &ldquo;éventuellement&rdquo;), aucune action n&apos;est créée.</p> },
               { n: 4, title: "Vous gérez, corrigez, complétez", body: <p className="text-muted-foreground">Marquez comme <strong>Fait</strong>, <strong>Ignorer</strong>, ou cliquez <strong>Il manque une action</strong> pour ajouter manuellement. Le système apprend de rien, il reste simple et prévisible.</p> },
             ].map(({ n, title, body }, i) => (
-              <ScrollReveal key={n} variant={i % 2 === 0 ? "fade-left" : "fade-right"} delay={0}>
+              <ScrollReveal key={n} variant="fade-up" delay={i * 80}>
                 <div className="flex gap-6 rounded-lg border bg-card p-6 shadow-sm">
                   <div className="flex size-10 shrink-0 items-center justify-center rounded-full bg-primary text-lg font-bold text-primary-foreground">
                     {n}
