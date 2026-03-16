@@ -421,7 +421,7 @@ export function IMAPConnectForm({ onSuccess, initialValues }: IMAPConnectFormPro
                         <Input
                           type="password"
                           placeholder={isEditing ? "Laisser vide pour conserver l'actuel" : "••••••••••••••••"}
-                          className="pl-10"
+                          className="pl-10 placeholder:text-xs"
                           {...field}
                         />
                       </div>
