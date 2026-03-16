@@ -53,7 +53,8 @@ function GraphMailboxCard({
   const [disconnecting, setDisconnecting] = useState(false);
   const [connecting, setConnecting] = useState(false);
 
-  const displayName = mailbox.label || mailbox.email || "Microsoft";
+  const emailPrefix = mailbox.email ? mailbox.email.split("@")[0] : null;
+  const displayName = mailbox.label || emailPrefix || "Microsoft";
 
   async function handleDisconnect() {
     setDisconnecting(true);
@@ -139,10 +140,10 @@ function GraphMailboxCard({
         <span className="break-words font-medium">{displayName}</span>
       </div>
 
-      {/* Ligne 3 : email + sync */}
+      {/* Ligne 3 : email + provider + sync */}
       <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1">
         {mailbox.email && (
-          <span className="text-xs text-muted-foreground">{mailbox.email}</span>
+          <span className="text-xs text-muted-foreground">{mailbox.email} · graph.microsoft.com</span>
         )}
         {mailbox.lastSync && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
