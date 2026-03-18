@@ -11,7 +11,7 @@ const registerSchema = z.object({
   email: z.string().email("Email invalide"),
   password: z
     .string()
-    .min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+    .min(12, "Le mot de passe doit contenir au moins 12 caractères"),
 });
 
 export async function POST(req: NextRequest) {

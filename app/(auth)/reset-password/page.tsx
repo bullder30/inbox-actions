@@ -18,8 +18,8 @@ import { toast } from "sonner";
 
 const schema = z
   .object({
-    password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
-    confirmPassword: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+    password: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
+    confirmPassword: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Les mots de passe ne correspondent pas",

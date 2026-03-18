@@ -1,4 +1,4 @@
-import type { EmailProvider, EmailStatus } from "@prisma/client";
+import type { EmailProvider } from "@prisma/client";
 
 /**
  * Authentication method for IMAP

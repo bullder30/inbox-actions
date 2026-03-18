@@ -10,6 +10,19 @@ export const dynamic = "force-dynamic";
  * Utile pour tester sans attendre l'heure planifiée
  */
 export async function GET(req: NextRequest) {
+  const authHeader = req.headers.get("authorization");
+  const cronSecret = process.env.CRON_SECRET;
+
+  if (!cronSecret) {
+    console.error("[TEST TRIGGER] CRON_SECRET not configured");
+    return NextResponse.json({ error: "Cron not configured" }, { status: 500 });
+  }
+
+  if (authHeader !== `Bearer ${cronSecret}`) {
+    console.warn("[TEST TRIGGER] Unauthorized attempt");
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const searchParams = req.nextUrl.searchParams;
   const job = searchParams.get("job");
 
@@ -24,7 +37,7 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    let result;
+    let result: unknown;
 
     switch (job) {
       case "daily-sync":

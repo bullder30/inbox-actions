@@ -19,12 +19,12 @@ import { toast } from "sonner";
 
 const loginSchema = z.object({
   email: z.string().email("Email invalide"),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+  password: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
 });
 
 const registerSchema = loginSchema
   .extend({
-    confirmPassword: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+    confirmPassword: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
     termsAccepted: z.boolean().refine((v) => v === true, "Vous devez accepter les CGU"),
   })
   .refine((data) => data.password === data.confirmPassword, {

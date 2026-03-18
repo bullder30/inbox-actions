@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { hash } from "bcryptjs";
+import { createHash } from "crypto";
 import { z } from "zod";
 
 import { prisma } from "@/lib/db";
@@ -8,7 +9,7 @@ export const dynamic = "force-dynamic";
 
 const schema = z.object({
   token: z.string().min(1),
-  password: z.string().min(6, "Le mot de passe doit contenir au moins 6 caractères"),
+  password: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
 });
 
 export async function POST(req: NextRequest) {
@@ -22,8 +23,10 @@ export async function POST(req: NextRequest) {
 
     const { token, password } = parsed.data;
 
+    const tokenHash = createHash("sha256").update(token).digest("hex");
+
     const user = await prisma.user.findUnique({
-      where: { passwordResetToken: token },
+      where: { passwordResetToken: tokenHash },
       select: { id: true, passwordResetExpiry: true },
     });
 

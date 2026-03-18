@@ -32,9 +32,14 @@ export async function POST(req: Request) {
     // Update the user stripe into in our database.
     // Since this is the initial subscription, we need to update
     // the subscription id and customer id.
+    if (!session?.metadata?.userId) {
+      console.error("[STRIPE] Missing userId in checkout.session.completed metadata");
+      return new Response("Missing userId in metadata", { status: 400 });
+    }
+
     await prisma.user.update({
       where: {
-        id: session?.metadata?.userId,
+        id: session.metadata.userId,
       },
       data: {
         stripeSubscriptionId: subscription.id,
