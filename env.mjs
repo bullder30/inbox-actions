@@ -20,6 +20,7 @@ export const env = createEnv({
     EMAIL_SUPPORT: z.string().email().optional(),
     STRIPE_API_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
+    IMAP_MASTER_KEY: z.string().length(64, "IMAP_MASTER_KEY must be a 64-character hex string").optional(),
     CRON_SECRET: z.string().min(1).optional(),
     // Cron provider: "node" (default) or "vercel"
     CRON_PROVIDER: z.enum(["node", "vercel"]).optional().default("node"),
@@ -62,6 +63,7 @@ export const env = createEnv({
     NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID:
       process.env.NEXT_PUBLIC_STRIPE_BUSINESS_YEARLY_PLAN_ID,
     // Cron
+    IMAP_MASTER_KEY: process.env.IMAP_MASTER_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
     CRON_PROVIDER: process.env.CRON_PROVIDER,
     // Feature flags

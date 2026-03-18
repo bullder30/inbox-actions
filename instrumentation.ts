@@ -11,6 +11,15 @@
 export async function register() {
   // Exécuter uniquement côté serveur
   if (process.env.NEXT_RUNTIME === "nodejs") {
+    // Validate IMAP encryption key at startup (fail fast)
+    const { validateMasterKey } = await import("@/lib/imap/imap-credentials");
+    try {
+      validateMasterKey();
+      console.log("[INSTRUMENTATION] IMAP encryption key validated");
+    } catch {
+      console.warn("[INSTRUMENTATION] ⚠️  IMAP_MASTER_KEY not configured — IMAP password encryption unavailable");
+    }
+
     const cronProvider = process.env.CRON_PROVIDER || "node";
 
     if (cronProvider === "node") {
