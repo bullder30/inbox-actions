@@ -1,5 +1,69 @@
+import { Metadata } from "next";
+
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
+import { constructMetadata } from "@/lib/utils";
+
+export const metadata: Metadata = constructMetadata({
+  title: "Inbox Actions — Transformez vos emails en actions concrètes",
+  description:
+    "Inbox Actions extrait automatiquement les tâches de vos emails Gmail, Outlook et IMAP. Détection déterministe, RGPD, lecture seule. Gratuit, sans carte bancaire.",
+});
+
+const faqSchema = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: [
+    {
+      "@type": "Question",
+      name: "Quels services email sont supportés ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Inbox Actions supporte Microsoft Outlook, Hotmail et Microsoft 365 via l'API Graph (connexion OAuth en un clic), ainsi que Gmail, Yahoo, iCloud, Fastmail et ProtonMail via IMAP avec App Password.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Le contenu de mes emails est-il stocké ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Non. Le corps des emails est analysé une seule fois pour détecter les actions, puis immédiatement oublié. Seules les métadonnées minimales sont conservées : expéditeur, sujet, et un extrait de 200 caractères maximum. Inbox Actions est conforme au RGPD.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Inbox Actions utilise-t-il de l'intelligence artificielle ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Non. Inbox Actions utilise des règles déterministes simples et explicables pour détecter les actions. Si une phrase est ambiguë, aucune action n'est créée. Vous savez toujours pourquoi une action a été détectée ou ignorée.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Quels types d'actions sont détectés ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Cinq types d'actions sont détectés dans les emails en français : Envoyer (SEND), Appeler (CALL), Relancer (FOLLOW_UP), Payer (PAY) et Valider (VALIDATE).",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Inbox Actions est-il gratuit ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Oui, Inbox Actions est gratuit. Aucune carte bancaire n'est requise pour commencer.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Est-ce conforme au RGPD ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Oui. Inbox Actions est conforme au RGPD : accès en lecture seule, aucun contenu d'email stocké, chiffrement AES-256 des credentials IMAP, et vous pouvez supprimer toutes vos données à tout moment.",
+      },
+    },
+  ],
+};
 import Link from "next/link";
 import { ArrowRight, Mail, Eye, AlertCircle, ShieldCheck, CheckCircle2, Clock, XCircle, Bell, Github, LogIn, UserPlus, Server, Zap, Filter } from "lucide-react";
 import MaxWidthWrapper from "@/components/shared/max-width-wrapper";
@@ -19,6 +83,10 @@ export default async function HomePage() {
 
   return (
     <div className="flex min-h-screen flex-col">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqSchema) }}
+      />
       {/* Header / Navigation */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <MaxWidthWrapper>
