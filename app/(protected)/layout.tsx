@@ -1,5 +1,13 @@
 import { redirect } from "next/navigation";
 
+import { constructMetadata } from "@/lib/utils";
+
+export const metadata = constructMetadata({
+  title: "Application — Inbox Actions",
+  description: "Gérez vos actions extraites depuis vos emails.",
+  noIndex: true,
+});
+
 import { sidebarLinks } from "@/config/dashboard";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
