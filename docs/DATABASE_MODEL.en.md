@@ -31,6 +31,7 @@ model Action {
   title            String
   type             ActionType
   status           ActionStatus @default(TODO)
+  isScheduled      Boolean      @default(false)
   dueDate          DateTime?
   sourceSentence   String       @db.Text
   emailFrom        String
@@ -59,7 +60,8 @@ model Action {
 | `userId`         | String         | Owner user identifier                                                    | Yes      |
 | `title`          | String         | Short action title (e.g., "Call client ABC")                            | Yes      |
 | `type`           | ActionType     | Action type: SEND, CALL, FOLLOW_UP, PAY, VALIDATE                       | Yes      |
-| `status`         | ActionStatus   | Status: TODO (default), DONE, IGNORED                                    | Yes      |
+| `status`         | ActionStatus   | Actual DB status: TODO (default), DONE, IGNORED                          | Yes      |
+| `isScheduled`    | Boolean        | `true` if manually scheduled for a future date (> end of day)           | Yes      |
 | `dueDate`        | DateTime       | Deadline for completing the action (optional)                            | No       |
 | `sourceSentence` | Text           | Sentence extracted from email that generated the action                  | Yes      |
 | `emailFrom`      | String         | Sender email address                                                     | Yes      |
@@ -67,6 +69,8 @@ model Action {
 | `gmailMessageId` | String         | Gmail message ID to create direct link to email                          | No       |
 | `createdAt`      | DateTime       | Action creation date in the system                                       | Yes      |
 | `updatedAt`      | DateTime       | Last modification date (auto-updated)                                    | Yes      |
+
+> **Note:** The "Upcoming" filter (SCHEDULED) is **virtual** — it does not exist as an enum value. It matches actions with `status=TODO`, `isScheduled=true` and `dueDate` strictly after the end of the current day. This enables automatic transition without any cron job: an action scheduled for today stays in "Today", and automatically moves to "Upcoming" the next day.
 
 ---
 

@@ -141,6 +141,7 @@ model Action {
   title            String
   type             ActionType
   status           ActionStatus @default(TODO)
+  isScheduled      Boolean      @default(false)
   dueDate          DateTime?
   sourceSentence   String       @db.Text
   emailFrom        String
@@ -155,6 +156,7 @@ model Action {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([userId, status, isScheduled, dueDate]) // filtre Aujourd'hui / À venir
   @@index([userId])
   @@index([status])
   @@index([type])

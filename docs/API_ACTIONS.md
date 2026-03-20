@@ -60,10 +60,25 @@ if (action.userId !== session.user.id) {
 
 #### Query Parameters (optionnels)
 
-| Paramètre | Type         | Description                                    |
-|-----------|--------------|------------------------------------------------|
-| `status`  | ActionStatus | Filtrer par statut (TODO, DONE, IGNORED)      |
-| `type`    | ActionType   | Filtrer par type (SEND, CALL, FOLLOW_UP, etc.)|
+| Paramètre | Type   | Description                                                                 |
+|-----------|--------|-----------------------------------------------------------------------------|
+| `status`  | string | Filtre virtuel : `TODO` (Aujourd'hui), `SCHEDULED` (À venir), `DONE`, `IGNORED` |
+| `type`    | string | Filtrer par type : `SEND`, `CALL`, `FOLLOW_UP`, `PAY`, `VALIDATE`          |
+| `limit`   | number | Nombre d'actions par page (défaut : 20, max : 100)                          |
+| `offset`  | number | Décalage pour la pagination (défaut : 0)                                    |
+
+#### Logique des filtres virtuels
+
+Le filtre `status` implémente une logique virtuelle côté serveur basée sur `endOfToday = 23:59:59` :
+
+| Filtre      | Conditions en base                                                              |
+|-------------|---------------------------------------------------------------------------------|
+| `TODO`      | `status=TODO` ET (`isScheduled=false` OU `dueDate=null` OU `dueDate≤endOfToday`) |
+| `SCHEDULED` | `status=TODO` ET `isScheduled=true` ET `dueDate>endOfToday`                   |
+| `DONE`      | `status=DONE`                                                                   |
+| `IGNORED`   | `status=IGNORED`                                                                |
+
+Cela permet qu'une action planifiée pour aujourd'hui reste dans "Aujourd'hui" (TODO), et bascule automatiquement dans "À venir" (SCHEDULED) le lendemain.
 
 #### Réponse réussie (200)
 
@@ -76,6 +91,7 @@ if (action.userId !== session.user.id) {
       "title": "Appeler le client ABC",
       "type": "CALL",
       "status": "TODO",
+      "isScheduled": false,
       "dueDate": "2024-01-20T16:00:00.000Z",
       "sourceSentence": "Il faudrait appeler le client ABC pour faire le point.",
       "emailFrom": "sales@company.com",
@@ -84,32 +100,32 @@ if (action.userId !== session.user.id) {
       "updatedAt": "2024-01-16T14:25:00.000Z",
       "user": {
         "id": "user123",
-        "name": "John Doe",
         "email": "john@example.com"
       }
     }
   ],
-  "count": 1
+  "total": 42,
+  "hasMore": true
 }
 ```
 
 #### Exemples de requêtes
 
-**Toutes les actions :**
-```bash
-curl -X GET http://localhost:3000/api/actions \
-  -H "Cookie: next-auth.session-token=..."
-```
-
-**Actions TODO uniquement :**
+**Actions du jour (Aujourd'hui) :**
 ```bash
 curl -X GET "http://localhost:3000/api/actions?status=TODO" \
   -H "Cookie: next-auth.session-token=..."
 ```
 
-**Actions de type CALL :**
+**Actions à venir (planifiées après aujourd'hui) :**
 ```bash
-curl -X GET "http://localhost:3000/api/actions?type=CALL" \
+curl -X GET "http://localhost:3000/api/actions?status=SCHEDULED" \
+  -H "Cookie: next-auth.session-token=..."
+```
+
+**Actions de type CALL avec pagination :**
+```bash
+curl -X GET "http://localhost:3000/api/actions?type=CALL&limit=10&offset=0" \
   -H "Cookie: next-auth.session-token=..."
 ```
 
@@ -122,12 +138,12 @@ curl -X GET "http://localhost:3000/api/actions?status=TODO&type=PAY" \
 #### Avec fetch (Frontend)
 
 ```typescript
-// Toutes les actions
-const response = await fetch('/api/actions');
-const { actions, count } = await response.json();
+// Actions du jour
+const response = await fetch('/api/actions?status=TODO&limit=20&offset=0');
+const { actions, total, hasMore } = await response.json();
 
-// Actions TODO uniquement
-const response = await fetch('/api/actions?status=TODO');
+// Actions à venir
+const response = await fetch('/api/actions?status=SCHEDULED');
 const { actions } = await response.json();
 ```
 
@@ -435,7 +451,80 @@ console.log(message); // "Action marquée comme ignorée"
 
 ---
 
-### 6. DELETE /api/actions/:id
+### 6. POST /api/actions/:id/schedule
+
+**Planifie une action à une date donnée**
+
+#### URL Parameters
+
+| Paramètre | Type   | Description      |
+|-----------|--------|------------------|
+| `id`      | string | ID de l'action   |
+
+#### Body (JSON)
+
+| Champ     | Type   | Requis | Description                                    |
+|-----------|--------|--------|------------------------------------------------|
+| `dueDate` | string | ✅     | Date ISO 8601 (ne peut pas être dans le passé) |
+
+#### Règles métier
+
+- Le `status` reste toujours `TODO`
+- `isScheduled` est mis à `true` si la date est **strictement après aujourd'hui** (après 23:59:59), `false` sinon
+- Une date planifiée pour aujourd'hui → action reste dans **"Aujourd'hui"** (visible immédiatement)
+- Une date planifiée pour demain ou plus tard → action bascule dans **"À venir"** (filtre SCHEDULED)
+- Peut être appelé sur une action `TODO` (planification initiale ou replanification)
+- Ne peut pas être appelé sur une action `DONE` ou `IGNORED`
+- La date ne peut pas être dans le passé (avant le début du jour courant)
+- Le bouton s'appelle **"Planifier"** si aucune `dueDate` n'est définie, **"Replanifier"** sinon
+
+#### Réponse réussie (200)
+
+```json
+{
+  "action": {
+    "id": "clx1234567890",
+    "status": "TODO",
+    "isScheduled": true,
+    "dueDate": "2026-03-27T17:00:00.000Z",
+    ...
+  },
+  "message": "Action planifiée"
+}
+```
+
+#### Erreurs possibles
+
+| Code | Condition                                       |
+|------|-------------------------------------------------|
+| 400  | `dueDate` manquant ou invalide                  |
+| 400  | `dueDate` dans le passé (avant le début du jour)|
+| 400  | Action déjà DONE ou IGNORED                     |
+| 401  | Non authentifié                                 |
+| 403  | Action appartenant à un autre user              |
+| 404  | Action non trouvée                              |
+
+#### Exemples
+
+```bash
+curl -X POST http://localhost:3000/api/actions/clx1234567890/schedule \
+  -H "Content-Type: application/json" \
+  -H "Cookie: next-auth.session-token=..." \
+  -d '{"dueDate": "2026-03-27T17:00:00.000Z"}'
+```
+
+```typescript
+const response = await fetch(`/api/actions/${actionId}/schedule`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify({ dueDate: selectedDate.toISOString() }),
+});
+const { action, message } = await response.json();
+```
+
+---
+
+### 7. DELETE /api/actions/:id
 
 **Supprime une action**
 
@@ -670,3 +759,4 @@ curl -X DELETE http://localhost:3000/api/actions/ACTION_ID
 | DELETE  | `/api/actions/:id`            | Supprimer une action         | ✅   |
 | POST    | `/api/actions/:id/done`       | Marquer comme terminée       | ✅   |
 | POST    | `/api/actions/:id/ignore`     | Marquer comme ignorée        | ✅   |
+| POST    | `/api/actions/:id/schedule`   | Planifier à une date         | ✅   |

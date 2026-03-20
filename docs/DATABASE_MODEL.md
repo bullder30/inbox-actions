@@ -31,6 +31,7 @@ model Action {
   title            String
   type             ActionType
   status           ActionStatus @default(TODO)
+  isScheduled      Boolean      @default(false)
   dueDate          DateTime?
   sourceSentence   String       @db.Text
   emailFrom        String
@@ -59,7 +60,8 @@ model Action {
 | `userId`         | String         | Identifiant de l'utilisateur propriétaire                                | ✅     |
 | `title`          | String         | Titre court de l'action (ex: "Appeler le client ABC")                   | ✅     |
 | `type`           | ActionType     | Type d'action: SEND, CALL, FOLLOW_UP, PAY, VALIDATE                     | ✅     |
-| `status`         | ActionStatus   | Statut: TODO (défaut), DONE, IGNORED                                     | ✅     |
+| `status`         | ActionStatus   | Statut réel en base: TODO (défaut), DONE, IGNORED                        | ✅     |
+| `isScheduled`    | Boolean        | `true` si planifié manuellement pour une date future (> fin du jour)     | ✅     |
 | `dueDate`        | DateTime       | Date limite pour réaliser l'action (optionnelle)                         | ❌     |
 | `sourceSentence` | Text           | Phrase extraite de l'email qui a généré l'action                         | ✅     |
 | `emailFrom`      | String         | Adresse email de l'expéditeur                                            | ✅     |
@@ -67,6 +69,8 @@ model Action {
 | `gmailMessageId` | String         | ID du message Gmail pour créer un lien direct vers le mail              | ❌     |
 | `createdAt`      | DateTime       | Date de création de l'action dans le système                             | ✅     |
 | `updatedAt`      | DateTime       | Date de dernière modification (mise à jour automatique)                  | ✅     |
+
+> **Note :** Le filtre "À venir" (SCHEDULED) est **virtuel** — il n'existe pas comme valeur d'enum. Il correspond aux actions avec `status=TODO`, `isScheduled=true` et `dueDate` strictement après la fin du jour courant. Cela permet une bascule automatique sans cron : une action planifiée pour aujourd'hui reste dans "Aujourd'hui", et passe dans "À venir" dès le lendemain.
 
 ---
 
@@ -183,6 +187,15 @@ const completedCalls = await prisma.action.findMany({
 | `TODO`    | Action à faire (statut par défaut)                | 🔵 Bleu          |
 | `DONE`    | Action terminée                                    | 🟢 Vert          |
 | `IGNORED` | Action ignorée/non pertinente                      | ⚫ Gris           |
+
+### Filtres virtuels de l'interface
+
+| Filtre UI   | Logique en base                                                            |
+| ----------- | -------------------------------------------------------------------------- |
+| Aujourd'hui | `status=TODO` ET (`isScheduled=false` OU `dueDate≤endOfToday`)            |
+| À venir     | `status=TODO` ET `isScheduled=true` ET `dueDate>endOfToday`               |
+| Terminées   | `status=DONE`                                                              |
+| Ignorées    | `status=IGNORED`                                                           |
 
 ---
 
@@ -353,6 +366,7 @@ ORDER BY due_date ASC;
 │ title               │
 │ type                │
 │ status              │
+│ isScheduled         │
 │ dueDate             │
 │ sourceSentence      │
 │ emailFrom           │
