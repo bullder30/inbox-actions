@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { ActionStatus, ActionType } from "@prisma/client";
+import { getEndOfTodayParis } from "@/lib/utils/date-paris";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,7 @@ export const dynamic = "force-dynamic";
  * GET /api/actions
  * Récupère la liste des actions de l'utilisateur connecté
  * Query params optionnels:
- * - status: TODO | DONE | IGNORED
+ * - status: TODO | SCHEDULED | DONE | IGNORED
  * - type: SEND | CALL | FOLLOW_UP | PAY | VALIDATE
  * - limit: nombre d'actions par page (défaut: 20, max: 100)
  * - offset: décalage pour la pagination (défaut: 0)
@@ -35,7 +36,26 @@ export async function GET(req: NextRequest) {
       userId: session.user.id, // Sécurité: on ne récupère QUE les actions de l'utilisateur
     };
 
-    if (status && ["TODO", "DONE", "IGNORED"].includes(status)) {
+    if (status === "SCHEDULED" || status === "TODO") {
+      // Frontière jour : tout ce qui est planifié APRÈS aujourd'hui va dans Planifiées
+      // Tout ce qui est pour aujourd'hui ou sans date va dans À faire
+      const endOfToday = getEndOfTodayParis();
+
+      if (status === "SCHEDULED") {
+        // Planifiées : isScheduled=true ET dueDate strictement après aujourd'hui
+        where.status = "TODO" as ActionStatus;
+        where.isScheduled = true;
+        where.dueDate = { gt: endOfToday };
+      } else {
+        // À faire : sans date, pour aujourd'hui, ou non planifiées manuellement
+        where.status = "TODO" as ActionStatus;
+        where.OR = [
+          { isScheduled: false },
+          { isScheduled: true, dueDate: null },
+          { isScheduled: true, dueDate: { lte: endOfToday } },
+        ];
+      }
+    } else if (status && ["DONE", "IGNORED"].includes(status)) {
       where.status = status as ActionStatus;
     }
 

@@ -64,8 +64,11 @@ export type UpdateActionInput = Partial<{
   emailFrom: string;
 }>;
 
+// "SCHEDULED" est un filtre virtuel (isScheduled=true + dueDate > now), pas un statut DB
+export type ActionFilter = ActionStatus | "SCHEDULED";
+
 export type GetActionsParams = {
-  status?: ActionStatus;
+  status?: ActionFilter;
   type?: ActionType;
   limit?: number;
   offset?: number;

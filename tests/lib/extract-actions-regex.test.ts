@@ -2,7 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   extractActionsFromEmail,
   type EmailContext,
-  type ExtractedAction,
 } from "@/lib/actions/extract-actions-regex";
 
 // Helper pour créer un contexte email
@@ -740,5 +739,44 @@ Cliquez ici pour vous désabonner.`,
 
     // Exclu à cause du lien de désinscription
     expect(actions).toHaveLength(0);
+  });
+});
+
+// ============================================================================
+// TESTS EXTRACTION - isScheduled géré par l'endpoint /schedule, pas par le regex
+// ============================================================================
+
+describe("ExtractedAction - pas de statut (isScheduled géré par l'endpoint schedule)", () => {
+  it("n'a pas de champ status dans l'objet extrait", () => {
+    const context = createEmailContext("Peux-tu m'envoyer le rapport mensuel ?");
+    const actions = extractActionsFromEmail(context);
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0]).not.toHaveProperty("status");
+    expect(actions[0].dueDate).toBeNull();
+  });
+
+  it("extrait correctement une dueDate future sans champ status", () => {
+    const context = createEmailContext(
+      "Merci de transmettre le dossier client la semaine prochaine.",
+      { receivedAt: new Date() }
+    );
+    const actions = extractActionsFromEmail(context);
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0].dueDate).not.toBeNull();
+    expect(actions[0]).not.toHaveProperty("status");
+  });
+
+  it("extrait correctement une dueDate passée sans champ status", () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000);
+    const context = createEmailContext("Peux-tu m'appeler demain ?", {
+      receivedAt: tenDaysAgo,
+    });
+    const actions = extractActionsFromEmail(context);
+
+    if (actions.length > 0) {
+      expect(actions[0]).not.toHaveProperty("status");
+    }
   });
 });

@@ -25,10 +25,9 @@ L'interface Inbox → Actions suit ces principes fondamentaux :
 **Structure** :
 ```
 ┌─────────────────────────────────────────────┐
-│ Actions                    [Nouvelle action]│
-│ Gérez vos actions...                        │
+│ Actions du jour                             │
 ├─────────────────────────────────────────────┤
-│ [À faire (4)] [Terminées (1)] [Ignorées (1)]│
+│ [Aujourd'hui 4] [À venir 2] [Terminées] [Ignorées] │
 ├─────────────────────────────────────────────┤
 │                                             │
 │  ┌─────────────────────────────────────┐    │
@@ -43,18 +42,24 @@ L'interface Inbox → Actions suit ces principes fondamentaux :
 ```
 
 **Fonctionnalités** :
-- Header avec bouton "Nouvelle action"
-- Onglets pour filtrer : TODO, DONE, IGNORED
-- Compteurs d'actions par statut
-- État de chargement (spinner)
+- 4 onglets de filtrage : **Aujourd'hui**, **À venir**, **Terminées**, **Ignorées**
+- Compteurs (badges) sur "Aujourd'hui" et "À venir" ; onglets sans actions désactivés (grisés)
+- Scroll infini avec sentinel IntersectionObserver (pagination 20 items/page)
+- Skeletons adaptés par onglet (variante `default` ou `done-ignored`)
 - État vide personnalisé par onglet
-- Rafraîchissement automatique après création/modification
+- Mises à jour optimistes des compteurs après chaque mutation
+
+**Filtres virtuels** :
+- **Aujourd'hui** : actions `TODO` sans date, ou planifiées pour aujourd'hui (`dueDate≤23:59:59`)
+- **À venir** : actions `TODO` avec `isScheduled=true` et `dueDate` strictement après aujourd'hui
+- **Terminées** : actions `DONE`
+- **Ignorées** : actions `IGNORED`
 
 **Flux utilisateur** :
-1. Arrivée sur la page → Affichage des actions TODO
-2. Clic sur "Nouvelle action" → Dialog de création
-3. Clic sur un onglet → Chargement et affichage des actions filtrées
-4. Actions sur les cartes → Mise à jour et rafraîchissement
+1. Arrivée sur la page → Affichage des actions "Aujourd'hui"
+2. Clic sur un onglet → Chargement et affichage des actions filtrées
+3. Scroll vers le bas → Chargement automatique de la page suivante
+4. Actions sur les cartes → Mises à jour optimistes des compteurs
 
 ### 2. `/actions/[id]` - Détail d'une action
 
@@ -128,26 +133,34 @@ L'interface Inbox → Actions suit ces principes fondamentaux :
 - Date d'échéance si présente (avec indicateurs d'urgence)
 
 **Actions disponibles (si TODO)** :
-- ✓ Fait - Marque l'action comme terminée
-- ✎ Modifier - Ouvre la page de détail
-- ✗ Ignorer - Marque l'action comme ignorée
+- ✓ Fait - Marque l'action comme terminée (DONE)
+- 📅 Planifier / Replanifier - Ouvre le sélecteur de date ("Planifier" si pas de dueDate, "Replanifier" sinon)
+- ✗ Ignorer - Marque l'action comme ignorée (IGNORED)
+- ··· Menu contextuel - Exclusion d'expéditeur/domaine
 
 **Actions (si DONE/IGNORED)** :
 - 🔗 Voir les détails - Ouvre la page de détail
+- Le panel de planification et le menu d'exclusion sont masqués
 
 **Indicateurs visuels** :
-- ⚠️ En retard : Bordure rouge, fond rouge léger
+- ⚠️ En retard : Bordure rouge, fond rouge léger (`dueDate` dépassée)
 - ⏰ Urgent (< 24h) : Bordure orange, fond orange léger
-- Normal : Bordure par défaut
+- 📅 Planifiée (neutre) : Bordure bleue, fond bleu léger (future, non urgente)
+- Normal : Bordure par défaut (pas de dueDate)
 
 **Props** :
 ```typescript
 interface ActionCardProps {
   action: ActionWithUser;
-  onUpdate?: () => void;
-  variant?: "default" | "compact";
+  onUpdate?: (newStatus?: "DONE" | "IGNORED" | "SCHEDULED" | "TODO") => void;
 }
 ```
+
+> Le `newStatus` passé à `onUpdate` est un signal logique :
+> - `"DONE"` / `"IGNORED"` → retirer la carte, incrémenter le counter destination
+> - `"SCHEDULED"` → la carte passe dans "À venir" (incrémenter scheduledCount)
+> - `"TODO"` → la carte reste/revient dans "Aujourd'hui" (recharger la liste)
+> - `undefined` → retrait simple sans incrément
 
 ### 2. `ActionList` - Liste d'actions
 
@@ -355,13 +368,22 @@ interface ActionsHeaderProps {
 ### Flux 5 : Filtrer les actions
 
 1. L'utilisateur arrive sur /actions
-2. Onglet "À faire" sélectionné par défaut
-3. Actions TODO affichées
-4. L'utilisateur clique sur "Terminées"
-5. Loading state affiché
-6. Requête API GET /api/actions?status=DONE
-7. Actions DONE affichées
-8. Compteur mis à jour
+2. Onglet **"Aujourd'hui"** sélectionné par défaut
+3. Actions TODO (sans date ou planifiées pour aujourd'hui) affichées
+4. L'utilisateur clique sur **"À venir"**
+5. Skeleton affiché pendant le chargement
+6. Requête API GET /api/actions?status=SCHEDULED
+7. Actions planifiées après aujourd'hui affichées
+8. Onglets sans actions sont désactivés (non cliquables, grisés)
+
+### Flux 6 : Planifier une action
+
+1. L'utilisateur clique sur **"Planifier"** (ou "Replanifier" si dueDate déjà définie)
+2. Le panel calendrier s'ouvre dans la carte
+3. L'utilisateur sélectionne une date
+4. Requête API POST /api/actions/:id/schedule
+5. Si la date est **aujourd'hui** → l'action reste dans "Aujourd'hui", la liste se recharge
+6. Si la date est **future** → l'action disparaît de "Aujourd'hui", scheduledCount +1
 
 ---
 

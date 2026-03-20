@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { createAllEmailProviders } from "@/lib/email-provider/factory";
 import { extractActionsFromEmail, type UserExclusionData } from "@/lib/actions/extract-actions-regex";
+import { getEndOfTodayParis } from "@/lib/utils/date-paris";
 import { prisma } from "@/lib/db";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 import { MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
@@ -89,7 +90,7 @@ export async function POST(req: NextRequest) {
                 imapUID: emailMetadata.imapUID,
                 emailWebUrl: emailMetadata.webUrl,
                 dueDate: action.dueDate,
-                status: "TODO",
+                isScheduled: action.dueDate ? action.dueDate > getEndOfTodayParis() : false,
                 mailboxId: emailProvider.mailboxId,
                 mailboxLabel: emailProvider.mailboxLabel,
               },

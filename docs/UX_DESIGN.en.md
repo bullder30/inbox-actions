@@ -25,10 +25,9 @@ The Inbox → Actions interface follows these fundamental principles:
 **Structure**:
 ```
 ┌─────────────────────────────────────────────┐
-│ Actions                      [New action]   │
-│ Manage your actions...                      │
+│ Today's actions                             │
 ├─────────────────────────────────────────────┤
-│ [To do (4)] [Completed (1)] [Ignored (1)]   │
+│ [Today 4] [Upcoming 2] [Completed] [Ignored]│
 ├─────────────────────────────────────────────┤
 │                                             │
 │  ┌─────────────────────────────────────┐    │
@@ -43,18 +42,24 @@ The Inbox → Actions interface follows these fundamental principles:
 ```
 
 **Features**:
-- Header with "New action" button
-- Tabs for filtering: TODO, DONE, IGNORED
-- Action counters by status
-- Loading state (spinner)
+- 4 filter tabs: **Today**, **Upcoming**, **Completed**, **Ignored**
+- Badges (counters) on "Today" and "Upcoming"; tabs with no actions are disabled (grayed out)
+- Infinite scroll with sentinel IntersectionObserver (pagination: 20 items/page)
+- Adaptive skeletons per tab (variant `default` or `done-ignored`)
 - Custom empty state per tab
-- Automatic refresh after creation/modification
+- Optimistic counter updates after each mutation
+
+**Virtual filters**:
+- **Today**: `TODO` actions with no date, or scheduled for today (`dueDate≤23:59:59`)
+- **Upcoming**: `TODO` actions with `isScheduled=true` and `dueDate` strictly after today
+- **Completed**: `DONE` actions
+- **Ignored**: `IGNORED` actions
 
 **User flow**:
-1. Arrival on page → Display TODO actions
-2. Click "New action" → Creation dialog
-3. Click on a tab → Load and display filtered actions
-4. Actions on cards → Update and refresh
+1. Arrival on page → Display "Today" actions
+2. Click on a tab → Load and display filtered actions
+3. Scroll down → Automatically load next page
+4. Actions on cards → Optimistic counter updates
 
 ### 2. `/actions/[id]` - Action Detail
 
@@ -128,26 +133,34 @@ The Inbox → Actions interface follows these fundamental principles:
 - Due date if present (with urgency indicators)
 
 **Available actions (if TODO)**:
-- ✓ Done - Marks the action as completed
-- ✎ Edit - Opens the detail page
-- ✗ Ignore - Marks the action as ignored
+- ✓ Done - Marks the action as completed (DONE)
+- 📅 Schedule / Reschedule - Opens the date picker ("Schedule" if no dueDate, "Reschedule" otherwise)
+- ✗ Ignore - Marks the action as ignored (IGNORED)
+- ··· Context menu - Sender/domain exclusion
 
 **Actions (if DONE/IGNORED)**:
 - 🔗 View details - Opens the detail page
+- The scheduling panel and exclusion menu are hidden
 
 **Visual indicators**:
-- ⚠️ Overdue: Red border, light red background
+- ⚠️ Overdue: Red border, light red background (`dueDate` is past)
 - ⏰ Urgent (< 24h): Orange border, light orange background
-- Normal: Default border
+- 📅 Scheduled (neutral): Blue border, light blue background (future, not urgent)
+- Normal: Default border (no dueDate)
 
 **Props**:
 ```typescript
 interface ActionCardProps {
   action: ActionWithUser;
-  onUpdate?: () => void;
-  variant?: "default" | "compact";
+  onUpdate?: (newStatus?: "DONE" | "IGNORED" | "SCHEDULED" | "TODO") => void;
 }
 ```
+
+> The `newStatus` passed to `onUpdate` is a logical signal:
+> - `"DONE"` / `"IGNORED"` → remove card, increment destination counter
+> - `"SCHEDULED"` → card moves to "Upcoming" (increment scheduledCount)
+> - `"TODO"` → card stays/returns in "Today" (reload list)
+> - `undefined` → simple removal without increment
 
 ### 2. `ActionList` - Action List
 

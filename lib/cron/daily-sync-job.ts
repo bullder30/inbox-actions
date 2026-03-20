@@ -10,6 +10,7 @@ import { createMicrosoftGraphServiceByMailbox } from "@/lib/microsoft-graph/grap
 import { IMAPProvider } from "@/lib/email-provider/imap-provider";
 import { MicrosoftGraphProvider } from "@/lib/email-provider/microsoft-graph-provider";
 import { extractActionsFromEmail, type UserExclusionData } from "@/lib/actions/extract-actions-regex";
+import { getEndOfTodayParis } from "@/lib/utils/date-paris";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 import { MAX_EMAILS_TO_SYNC, MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
 import type { IEmailProvider } from "@/lib/email-provider/interface";
@@ -244,7 +245,7 @@ async function syncAndAnalyzeMailbox(
             imapUID: emailMetadata.imapUID,
             emailWebUrl: emailMetadata.webUrl,
             dueDate: action.dueDate,
-            status: "TODO",
+            isScheduled: action.dueDate ? action.dueDate > getEndOfTodayParis() : false,
             mailboxId: provider.mailboxId,
             mailboxLabel: provider.mailboxLabel,
           },
