@@ -17,6 +17,7 @@ const PAGE_SIZE = 20;
 const filterConfig: {
   status: StatusFilter;
   label: string;
+  labelShort: string; // label abrégé pour mobile
   inactive: string;
   active: string;
   badgeInactive?: string; // classe Tailwind bg- pour le badge quand inactif
@@ -24,6 +25,7 @@ const filterConfig: {
   {
     status: "TODO",
     label: "Aujourd'hui",
+    labelShort: "Auj.",
     inactive: "bg-slate-100 text-slate-700 hover:bg-slate-200",
     active: "bg-slate-700 text-white",
     badgeInactive: "bg-slate-600",
@@ -31,6 +33,7 @@ const filterConfig: {
   {
     status: "SCHEDULED",
     label: "À venir",
+    labelShort: "À venir",
     inactive: "bg-blue-100 text-blue-700 hover:bg-blue-200",
     active: "bg-blue-600 text-white",
     badgeInactive: "bg-blue-600",
@@ -38,12 +41,14 @@ const filterConfig: {
   {
     status: "DONE",
     label: "Terminées",
+    labelShort: "Terminées",
     inactive: "bg-green-100 text-green-700 hover:bg-green-200",
     active: "bg-green-600 text-white",
   },
   {
     status: "IGNORED",
     label: "Ignorées",
+    labelShort: "Ignorées",
     inactive: "bg-gray-100 text-gray-600 hover:bg-gray-200",
     active: "bg-gray-500 text-white",
   },
@@ -152,6 +157,8 @@ export default function ActionsPage() {
   // Changer de filtre
   async function switchFilter(filter: StatusFilter) {
     if (filter === statusFilter) return;
+    // Scroll to top avant de vider la liste pour éviter le saut visuel
+    window.scrollTo({ top: 0, behavior: "instant" });
     setStatusFilter(filter);
     setLoading(true);
     setOffset(0);
@@ -193,6 +200,7 @@ export default function ActionsPage() {
 
   // Recharger la liste courante (ex: planification → aujourd'hui, la card reste en TODO)
   function handleReloadCurrent() {
+    window.scrollTo({ top: 0, behavior: "instant" });
     setLoading(true);
     setOffset(0);
     setActions([]);
@@ -211,8 +219,8 @@ export default function ActionsPage() {
         <h1 className="font-heading text-2xl font-semibold">{filterTitles[statusFilter]}</h1>
 
         {/* Boutons filtre */}
-        <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
-          {filterConfig.map(({ status, label, inactive, active, badgeInactive }) => {
+        <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-2">
+          {filterConfig.map(({ status, label, labelShort, inactive, active, badgeInactive }) => {
             const isActive = statusFilter === status;
             const countMap: Record<string, number> = { TODO: todayCount, SCHEDULED: scheduledCount, DONE: doneCount, IGNORED: ignoredCount };
             const count = countMap[status] ?? 0;
@@ -223,16 +231,18 @@ export default function ActionsPage() {
                 onClick={() => !isEmpty && switchFilter(status)}
                 disabled={isEmpty}
                 className={cn(
-                  "relative inline-flex items-center justify-center rounded-full px-2 py-1.5 text-xs font-medium transition-colors sm:px-4 sm:text-sm",
+                  "relative inline-flex items-center justify-center rounded-full px-1.5 py-1 text-[11px] font-medium transition-colors sm:px-4 sm:py-1.5 sm:text-sm",
                   isActive ? active : inactive,
                   isEmpty && "cursor-not-allowed opacity-40"
                 )}
               >
-                {label}
+                {/* Label court sur mobile, label complet sur sm+ */}
+                <span className="sm:hidden">{labelShort}</span>
+                <span className="hidden sm:inline">{label}</span>
                 {badgeInactive && count > 0 && (
                   <span
                     className={cn(
-                      "ml-1.5 inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold tabular-nums leading-none text-white",
+                      "ml-1 inline-flex size-4 items-center justify-center rounded-full text-[9px] font-bold tabular-nums leading-none text-white sm:ml-1.5 sm:size-5 sm:text-[10px]",
                       isActive ? "bg-white/25" : badgeInactive
                     )}
                   >
