@@ -232,7 +232,7 @@ export default function ActionsPage() {
                 {badgeInactive && count > 0 && (
                   <span
                     className={cn(
-                      "ml-1.5 inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold leading-none tabular-nums text-white",
+                      "ml-1.5 inline-flex size-5 items-center justify-center rounded-full text-[10px] font-bold leading-none text-white tabular-nums",
                       isActive ? "bg-white/25" : badgeInactive
                     )}
                   >
