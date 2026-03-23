@@ -20,17 +20,24 @@ export const env = createEnv({
     EMAIL_SUPPORT: z.string().email().optional(),
     STRIPE_API_KEY: z.string().min(1),
     STRIPE_WEBHOOK_SECRET: z.string().min(1),
-    IMAP_MASTER_KEY: z.string().length(64, "IMAP_MASTER_KEY must be a 64-character hex string").optional(),
+    IMAP_MASTER_KEY: z
+      .string()
+      .length(64, "IMAP_MASTER_KEY must be a 64-character hex string")
+      .optional(),
     CRON_SECRET: z.string().min(1).optional(),
     // Cron provider: "node" (default) or "vercel"
     CRON_PROVIDER: z.enum(["node", "vercel"]).optional().default("node"),
     // Feature flags
     FEATURE_EMAIL_COUNT: z.string().optional().default("false"),
+    // Cloudflare Turnstile (optional - for CAPTCHA on register)
+    TURNSTILE_SECRET_KEY: z.string().min(1).optional(),
   },
   client: {
     NEXT_PUBLIC_APP_URL: z.string().min(1),
     // Auth providers enabled flags
     NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED: z.string().optional().default("false"),
+    // Cloudflare Turnstile (optional - shows CAPTCHA widget on register when set)
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: z.string().min(1).optional(),
     NEXT_PUBLIC_STRIPE_PRO_MONTHLY_PLAN_ID: z.string().min(1),
     NEXT_PUBLIC_STRIPE_PRO_YEARLY_PLAN_ID: z.string().min(1),
     NEXT_PUBLIC_STRIPE_BUSINESS_MONTHLY_PLAN_ID: z.string().min(1),
@@ -50,7 +57,8 @@ export const env = createEnv({
     EMAIL_SUPPORT: process.env.EMAIL_SUPPORT,
     NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL,
     // Auth providers
-    NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED: process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED,
+    NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED:
+      process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED,
     // Stripe
     STRIPE_API_KEY: process.env.STRIPE_API_KEY,
     STRIPE_WEBHOOK_SECRET: process.env.STRIPE_WEBHOOK_SECRET,
@@ -68,5 +76,8 @@ export const env = createEnv({
     CRON_PROVIDER: process.env.CRON_PROVIDER,
     // Feature flags
     FEATURE_EMAIL_COUNT: process.env.FEATURE_EMAIL_COUNT,
+    // Cloudflare Turnstile
+    TURNSTILE_SECRET_KEY: process.env.TURNSTILE_SECRET_KEY,
+    NEXT_PUBLIC_TURNSTILE_SITE_KEY: process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY,
   },
 });

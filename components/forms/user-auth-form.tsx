@@ -1,31 +1,40 @@
 "use client";
 
 import * as React from "react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Turnstile } from "@marsidev/react-turnstile";
+import { Eye, EyeOff } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
+import { toast } from "sonner";
 import { z } from "zod";
-import Link from "next/link";
-import { Eye, EyeOff } from "lucide-react";
 
 import { cn } from "@/lib/utils";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Icons } from "@/components/shared/icons";
-import { toast } from "sonner";
+
+const turnstileSiteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY;
 
 const loginSchema = z.object({
   email: z.string().email("Email invalide"),
-  password: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
+  password: z
+    .string()
+    .min(12, "Le mot de passe doit contenir au moins 12 caractères"),
 });
 
 const registerSchema = loginSchema
   .extend({
-    confirmPassword: z.string().min(12, "Le mot de passe doit contenir au moins 12 caractères"),
-    termsAccepted: z.boolean().refine((v) => v === true, "Vous devez accepter les CGU"),
+    confirmPassword: z
+      .string()
+      .min(12, "Le mot de passe doit contenir au moins 12 caractères"),
+    termsAccepted: z
+      .boolean()
+      .refine((v) => v === true, "Vous devez accepter les CGU"),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: "Les mots de passe ne correspondent pas",
@@ -40,15 +49,23 @@ interface UserAuthFormProps extends React.HTMLAttributes<HTMLDivElement> {
 
 // Check which OAuth providers are enabled
 const isGoogleEnabled = process.env.NEXT_PUBLIC_AUTH_GOOGLE_ENABLED === "true";
-const isMicrosoftEnabled = process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
+const isMicrosoftEnabled =
+  process.env.NEXT_PUBLIC_AUTH_MICROSOFT_ENABLED === "true";
 const hasOAuthProviders = isGoogleEnabled || isMicrosoftEnabled;
 
-export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFormProps) {
+export function UserAuthForm({
+  className,
+  mode = "login",
+  ...props
+}: UserAuthFormProps) {
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const [isMicrosoftLoading, setIsMicrosoftLoading] = React.useState(false);
   const [isCredentialsLoading, setIsCredentialsLoading] = React.useState(false);
   const [showPassword, setShowPassword] = React.useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = React.useState(false);
+  const [turnstileToken, setTurnstileToken] = React.useState<string | null>(
+    null,
+  );
   const searchParams = useSearchParams();
   const error = searchParams?.get("error");
 
@@ -76,7 +93,11 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: data.email, password: data.password }),
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            turnstileToken: turnstileToken ?? undefined,
+          }),
         });
 
         const result = await response.json();
@@ -115,8 +136,8 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
           {error === "OAuthCallback" || error === "Callback"
             ? "Session expirée. Veuillez vous reconnecter."
             : error === "CredentialsSignin"
-            ? "Email ou mot de passe incorrect"
-            : "Une erreur est survenue. Veuillez réessayer."}
+              ? "Email ou mot de passe incorrect"
+              : "Une erreur est survenue. Veuillez réessayer."}
         </div>
       )}
 
@@ -157,13 +178,23 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
               onClick={() => setShowPassword((v) => !v)}
               className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               tabIndex={-1}
-              aria-label={showPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+              aria-label={
+                showPassword
+                  ? "Masquer le mot de passe"
+                  : "Afficher le mot de passe"
+              }
             >
-              {showPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+              {showPassword ? (
+                <EyeOff className="size-4" />
+              ) : (
+                <Eye className="size-4" />
+              )}
             </button>
           </div>
           {errors.password && (
-            <p className="text-xs text-destructive">{errors.password.message}</p>
+            <p className="text-xs text-destructive">
+              {errors.password.message}
+            </p>
           )}
           {!isRegister && (
             <div className="flex justify-end">
@@ -196,13 +227,23 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
                 onClick={() => setShowConfirmPassword((v) => !v)}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                 tabIndex={-1}
-                aria-label={showConfirmPassword ? "Masquer le mot de passe" : "Afficher le mot de passe"}
+                aria-label={
+                  showConfirmPassword
+                    ? "Masquer le mot de passe"
+                    : "Afficher le mot de passe"
+                }
               >
-                {showConfirmPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                {showConfirmPassword ? (
+                  <EyeOff className="size-4" />
+                ) : (
+                  <Eye className="size-4" />
+                )}
               </button>
             </div>
             {errors.confirmPassword && (
-              <p className="text-xs text-destructive">{errors.confirmPassword.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.confirmPassword.message}
+              </p>
             )}
           </div>
         )}
@@ -214,28 +255,61 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
               <Checkbox
                 id="terms"
                 checked={termsAccepted ?? false}
-                onCheckedChange={(checked) => setValue("termsAccepted", checked === true, { shouldValidate: true })}
+                onCheckedChange={(checked) =>
+                  setValue("termsAccepted", checked === true, {
+                    shouldValidate: true,
+                  })
+                }
                 disabled={isCredentialsLoading}
                 className="mt-0.5"
               />
-              <label htmlFor="terms" className="text-xs leading-relaxed text-muted-foreground">
+              <label
+                htmlFor="terms"
+                className="text-xs leading-relaxed text-muted-foreground"
+              >
                 J&apos;accepte les{" "}
-                <Link href="/terms" className="underline underline-offset-4 hover:text-primary">
+                <Link
+                  href="/terms"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
                   CGU
                 </Link>{" "}
                 et la{" "}
-                <Link href="/privacy" className="underline underline-offset-4 hover:text-primary">
+                <Link
+                  href="/privacy"
+                  className="underline underline-offset-4 hover:text-primary"
+                >
                   Politique de confidentialité
                 </Link>
               </label>
             </div>
             {errors.termsAccepted && (
-              <p className="text-xs text-destructive">{errors.termsAccepted.message}</p>
+              <p className="text-xs text-destructive">
+                {errors.termsAccepted.message}
+              </p>
             )}
           </div>
         )}
 
-        <Button type="submit" disabled={isCredentialsLoading || isOAuthLoading}>
+        {/* Turnstile CAPTCHA (register only, shown when site key is configured) */}
+        {isRegister && turnstileSiteKey && (
+          <Turnstile
+            siteKey={turnstileSiteKey}
+            onSuccess={(token) => setTurnstileToken(token)}
+            onExpire={() => setTurnstileToken(null)}
+            onError={() => setTurnstileToken(null)}
+            options={{ theme: "auto" }}
+          />
+        )}
+
+        <Button
+          type="submit"
+          disabled={
+            isCredentialsLoading ||
+            isOAuthLoading ||
+            (isRegister && !!turnstileSiteKey && !turnstileToken)
+          }
+        >
           {isCredentialsLoading && (
             <Icons.spinner className="mr-2 size-4 animate-spin" />
           )}
@@ -266,7 +340,9 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
                   setIsGoogleLoading(true);
                   signIn("google");
                 }}
-                disabled={isGoogleLoading || isMicrosoftLoading || isCredentialsLoading}
+                disabled={
+                  isGoogleLoading || isMicrosoftLoading || isCredentialsLoading
+                }
               >
                 {isGoogleLoading ? (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />
@@ -285,7 +361,9 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
                   setIsMicrosoftLoading(true);
                   signIn("microsoft-entra-id");
                 }}
-                disabled={isGoogleLoading || isMicrosoftLoading || isCredentialsLoading}
+                disabled={
+                  isGoogleLoading || isMicrosoftLoading || isCredentialsLoading
+                }
               >
                 {isMicrosoftLoading ? (
                   <Icons.spinner className="mr-2 size-4 animate-spin" />
