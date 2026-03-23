@@ -44,6 +44,7 @@ const filterConfig: {
     labelShort: "Terminées",
     inactive: "bg-green-100 text-green-700 hover:bg-green-200",
     active: "bg-green-600 text-white",
+    badgeInactive: "bg-green-600",
   },
   {
     status: "IGNORED",
@@ -51,6 +52,7 @@ const filterConfig: {
     labelShort: "Ignorées",
     inactive: "bg-gray-100 text-gray-600 hover:bg-gray-200",
     active: "bg-gray-500 text-white",
+    badgeInactive: "bg-gray-500",
   },
 ];
 
