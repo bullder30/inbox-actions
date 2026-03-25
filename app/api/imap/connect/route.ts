@@ -5,6 +5,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 import { ImapFlow } from "imapflow";
@@ -176,6 +177,8 @@ export async function POST(req: NextRequest) {
     });
 
     console.log(`[IMAP Connect] Success! Credential ID: ${credential.id}`);
+
+    revalidatePath("/dashboard");
 
     return NextResponse.json({
       success: true,

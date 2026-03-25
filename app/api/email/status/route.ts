@@ -52,14 +52,23 @@ export async function GET() {
       ? new Date(Math.max(...lastSyncCandidates.map((d) => d.getTime())))
       : null;
 
-    // Compter les emails en base
-    const emailCount = await prisma.emailMetadata.count({ where: { userId } });
-    const extractedCount = await prisma.emailMetadata.count({
-      where: { userId, status: "EXTRACTED" },
+    // Compter les emails en base — une seule requête groupBy au lieu de 3 count()
+    const emailCountsByStatus = await prisma.emailMetadata.groupBy({
+      by: ["status"],
+      where: { userId },
+      _count: { status: true },
     });
-    const analyzedCount = await prisma.emailMetadata.count({
-      where: { userId, status: "ANALYZED" },
-    });
+
+    const emailCount = emailCountsByStatus.reduce(
+      (sum, g) => sum + g._count.status,
+      0
+    );
+    const extractedCount =
+      emailCountsByStatus.find((g) => g.status === "EXTRACTED")?._count
+        .status ?? 0;
+    const analyzedCount =
+      emailCountsByStatus.find((g) => g.status === "ANALYZED")?._count
+        .status ?? 0;
 
     const graphTokenExpired = graphMailboxes.some((m) => !m.isConnected);
 

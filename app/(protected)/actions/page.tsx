@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
+import useSWR from "swr";
+import useSWRInfinite from "swr/infinite";
 
 import { ActionCard } from "@/components/actions/action-card";
 import { ActionCardSkeletonList } from "@/components/actions/action-card-skeleton";
-import { ActionWithUser } from "@/lib/api/actions";
+import { GetActionsResponse } from "@/lib/api/actions";
 import { EmptyState } from "@/components/actions/empty-state";
-import { getActions } from "@/lib/api/actions";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +18,10 @@ const PAGE_SIZE = 20;
 const filterConfig: {
   status: StatusFilter;
   label: string;
-  labelShort: string; // label abrégé pour mobile
+  labelShort: string;
   inactive: string;
   active: string;
-  badgeInactive?: string; // classe Tailwind bg- pour le badge quand inactif
+  badgeInactive?: string;
 }[] = [
   {
     status: "TODO",
@@ -61,88 +62,79 @@ const filterTitles: Record<StatusFilter, string> = {
   IGNORED: "Actions ignorées",
 };
 
-export default function ActionsPage() {
-  const [actions, setActions] = useState<ActionWithUser[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [emailsAnalyzed, setEmailsAnalyzed] = useState(0);
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("TODO");
-  const [todayCount, setTodayCount] = useState(0);
-  const [scheduledCount, setScheduledCount] = useState(0);
-  const [doneCount, setDoneCount] = useState(0);
-  const [ignoredCount, setIgnoredCount] = useState(0);
-  const sentinelRef = useRef<HTMLDivElement>(null);
-  const loadingMoreRef = useRef(false);
-
-  // Charger les actions pour le filtre courant
-  async function loadActions(filter: StatusFilter, currentOffset: number, append = false) {
-    try {
-      const data = await getActions({ status: filter, limit: PAGE_SIZE, offset: currentOffset });
-      if (append) {
-        setActions((prev) => [...prev, ...data.actions]);
-      } else {
-        setActions(data.actions);
-      }
-      setHasMore(data.hasMore);
-      setOffset(currentOffset + PAGE_SIZE);
-      if (filter === "TODO") setTodayCount(data.total);
-      if (filter === "SCHEDULED") setScheduledCount(data.total);
-      if (filter === "DONE") setDoneCount(data.total);
-      if (filter === "IGNORED") setIgnoredCount(data.total);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erreur de chargement");
-    }
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Erreur de chargement");
   }
+  return res.json();
+};
 
-  // Chargement initial
+export default function ActionsPage() {
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("TODO");
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  // ── Compteurs badges (4 requêtes légères, limit=1 → juste le total) ────
+  const { data: todoCountData, mutate: mutateTodoCount } =
+    useSWR<GetActionsResponse>(`/api/actions?status=TODO&limit=1&offset=0`, fetcher);
+  const { data: scheduledCountData, mutate: mutateScheduledCount } =
+    useSWR<GetActionsResponse>(`/api/actions?status=SCHEDULED&limit=1&offset=0`, fetcher);
+  const { data: doneCountData, mutate: mutateDoneCount } =
+    useSWR<GetActionsResponse>(`/api/actions?status=DONE&limit=1&offset=0`, fetcher);
+  const { data: ignoredCountData, mutate: mutateIgnoredCount } =
+    useSWR<GetActionsResponse>(`/api/actions?status=IGNORED&limit=1&offset=0`, fetcher);
+
+  const todayCount = todoCountData?.total ?? 0;
+  const scheduledCount = scheduledCountData?.total ?? 0;
+  const doneCount = doneCountData?.total ?? 0;
+  const ignoredCount = ignoredCountData?.total ?? 0;
+
+  // ── Stats emails ────────────────────────────────────────────────────────
+  const { data: emailStats } = useSWR<{ analyzedCount: number }>(
+    "/api/email/stats",
+    fetcher
+  );
+  const emailsAnalyzed = emailStats?.analyzedCount ?? 0;
+
+  // ── Liste paginée (clé inclut le filtre → cache par filtre) ────────────
+  const getKey = useCallback(
+    (pageIndex: number, previousPageData: GetActionsResponse | null) => {
+      if (previousPageData && !previousPageData.hasMore) return null;
+      return `/api/actions?status=${statusFilter}&limit=${PAGE_SIZE}&offset=${pageIndex * PAGE_SIZE}`;
+    },
+    [statusFilter]
+  );
+
+  const {
+    data: pages,
+    size,
+    setSize,
+    isLoading,
+    isValidating,
+    mutate: mutateList,
+    error: listError,
+  } = useSWRInfinite<GetActionsResponse>(getKey, fetcher, {
+    revalidateFirstPage: false,
+    revalidateOnFocus: false,
+  });
+
+  const actions = pages?.flatMap((p) => p.actions) ?? [];
+  const hasMore = pages?.[pages.length - 1]?.hasMore ?? false;
+  // isLoadingMore : on a demandé une page supplémentaire mais elle n'est pas encore arrivée
+  const isLoadingMore = size > 1 && typeof pages?.[size - 1] === "undefined";
+
+  // Erreur réseau sur la liste → toast
   useEffect(() => {
-    async function init() {
-      try {
-        const [data, statsRes, scheduledRes, doneRes, ignoredRes] = await Promise.all([
-          getActions({ status: "TODO", limit: PAGE_SIZE, offset: 0 }),
-          fetch("/api/email/stats"),
-          getActions({ status: "SCHEDULED", limit: 1, offset: 0 }),
-          getActions({ status: "DONE", limit: 1, offset: 0 }),
-          getActions({ status: "IGNORED", limit: 1, offset: 0 }),
-        ]);
-        setActions(data.actions);
-        setHasMore(data.hasMore);
-        setOffset(PAGE_SIZE);
-        setTodayCount(data.total);
-        setScheduledCount(scheduledRes.total);
-        setDoneCount(doneRes.total);
-        setIgnoredCount(ignoredRes.total);
-        if (statsRes.ok) {
-          const stats = await statsRes.json();
-          setEmailsAnalyzed(stats.analyzedCount || 0);
-        }
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Erreur de chargement");
-      } finally {
-        setLoading(false);
-      }
-    }
-    init();
-  }, []);
+    if (listError) toast.error(listError.message || "Erreur de chargement");
+  }, [listError]);
 
-  // Charger la page suivante
-  const loadMore = useCallback(async () => {
-    if (!hasMore || loadingMoreRef.current) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    try {
-      await loadActions(statusFilter, offset, true);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erreur de chargement");
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
-  }, [hasMore, offset, statusFilter]);
+  // ── Scroll infini ───────────────────────────────────────────────────────
+  const loadMore = useCallback(() => {
+    if (!hasMore || isValidating) return;
+    setSize((s) => s + 1);
+  }, [hasMore, isValidating, setSize]);
 
-  // Observer la sentinelle
   useEffect(() => {
     const el = sentinelRef.current;
     if (!el) return;
@@ -154,62 +146,51 @@ export default function ActionsPage() {
     return () => observer.disconnect();
   }, [loadMore]);
 
-  // Changer de filtre
-  async function switchFilter(filter: StatusFilter) {
+  // ── Changement de filtre — pas de blink : SWR sert le cache si disponible
+  function switchFilter(filter: StatusFilter) {
     if (filter === statusFilter) return;
-    // Scroll to top avant de vider la liste pour éviter le saut visuel
     window.scrollTo({ top: 0, behavior: "instant" });
     setStatusFilter(filter);
-    setLoading(true);
-    setOffset(0);
-    setActions([]);
-    try {
-      await loadActions(filter, 0, false);
-    } finally {
-      setLoading(false);
-    }
   }
+
+  // ── Revalidation de tous les compteurs après mutation ───────────────────
+  const revalidateAllCounts = useCallback(() => {
+    mutateTodoCount();
+    mutateScheduledCount();
+    mutateDoneCount();
+    mutateIgnoredCount();
+  }, [mutateTodoCount, mutateScheduledCount, mutateDoneCount, mutateIgnoredCount]);
 
   type MutationStatus = "DONE" | "IGNORED" | "SCHEDULED" | "TODO";
 
-  // Incrémenter le counter du filtre de destination après une mutation
-  function incrementCount(newStatus?: MutationStatus) {
-    if (newStatus === "DONE") setDoneCount((prev) => prev + 1);
-    if (newStatus === "IGNORED") setIgnoredCount((prev) => prev + 1);
-    if (newStatus === "SCHEDULED") {
-      getActions({ status: "SCHEDULED", limit: 1, offset: 0 })
-        .then((res) => setScheduledCount(res.total))
-        .catch(() => {});
-    }
+  // Suppression optimiste : retire la card instantanément, revalide les compteurs
+  function handleRemove(id: string, _newStatus?: MutationStatus) {
+    mutateList(
+      (pages) =>
+        pages?.map((page) => ({
+          ...page,
+          actions: page.actions.filter((a) => a.id !== id),
+          total: Math.max(0, page.total - 1),
+        })),
+      { revalidate: false }
+    );
+    revalidateAllCounts();
   }
 
-  // Suppression optimiste après mutation (DONE ou IGNORED depuis un onglet quelconque)
-  function handleRemove(id: string, newStatus?: MutationStatus) {
-    setActions((prev) => prev.filter((a) => a.id !== id));
-    if (statusFilter === "TODO") setTodayCount((prev) => Math.max(0, prev - 1));
-    if (statusFilter === "SCHEDULED") setScheduledCount((prev) => Math.max(0, prev - 1));
-    incrementCount(newStatus);
-  }
-
-  // Après une planification depuis TODO : retirer la card + MAJ badges
   function handleUpdate(id: string, newStatus?: MutationStatus) {
-    setActions((prev) => prev.filter((a) => a.id !== id));
-    if (statusFilter === "TODO") setTodayCount((prev) => Math.max(0, prev - 1));
-    incrementCount(newStatus);
+    handleRemove(id, newStatus);
   }
 
-  // Recharger la liste courante (ex: planification → aujourd'hui, la card reste en TODO)
+  // Recharge la liste courante (ex: planification aujourd'hui → la card reste en TODO)
   function handleReloadCurrent() {
     window.scrollTo({ top: 0, behavior: "instant" });
-    setLoading(true);
-    setOffset(0);
-    setActions([]);
-    loadActions(statusFilter, 0, false).finally(() => setLoading(false));
+    mutateList();
   }
 
-  // Après une replanification depuis SCHEDULED, recharger la liste (la date a changé)
+  // Après replanification depuis SCHEDULED (date changée)
   function handleReschedule() {
-    loadActions("SCHEDULED", 0, false).catch(() => {});
+    mutateList();
+    revalidateAllCounts();
   }
 
   return (
@@ -222,7 +203,12 @@ export default function ActionsPage() {
         <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-2">
           {filterConfig.map(({ status, label, labelShort, inactive, active, badgeInactive }) => {
             const isActive = statusFilter === status;
-            const countMap: Record<string, number> = { TODO: todayCount, SCHEDULED: scheduledCount, DONE: doneCount, IGNORED: ignoredCount };
+            const countMap: Record<string, number> = {
+              TODO: todayCount,
+              SCHEDULED: scheduledCount,
+              DONE: doneCount,
+              IGNORED: ignoredCount,
+            };
             const count = countMap[status] ?? 0;
             const isEmpty = status !== "TODO" && !isActive && count === 0;
             return (
@@ -236,7 +222,6 @@ export default function ActionsPage() {
                   isEmpty && "cursor-not-allowed opacity-40"
                 )}
               >
-                {/* Label court sur mobile, label complet sur sm+ */}
                 <span className="sm:hidden">{labelShort}</span>
                 <span className="hidden sm:inline">{label}</span>
                 {badgeInactive && count > 0 && (
@@ -256,7 +241,7 @@ export default function ActionsPage() {
       </div>
 
       {/* Liste */}
-      {loading ? (
+      {isLoading ? (
         <ActionCardSkeletonList
           count={1}
           variant={statusFilter === "DONE" || statusFilter === "IGNORED" ? "done-ignored" : "default"}
@@ -275,17 +260,17 @@ export default function ActionsPage() {
                       newStatus === "SCHEDULED"
                         ? handleReschedule()
                         : newStatus === "TODO"
-                        ? handleRemove(action.id, undefined) // retour en TODO → retirer de SCHEDULED
+                        ? handleRemove(action.id, undefined)
                         : handleRemove(action.id, newStatus)
                   : (newStatus) =>
                       newStatus === "TODO"
-                        ? handleReloadCurrent() // planifié aujourd'hui → reste en TODO, rafraîchir
+                        ? handleReloadCurrent()
                         : handleUpdate(action.id, newStatus)
               }
             />
           ))}
           <div ref={sentinelRef} className="h-1" />
-          {loadingMore && <ActionCardSkeletonList count={1} />}
+          {isLoadingMore && <ActionCardSkeletonList count={1} />}
         </div>
       )}
     </>

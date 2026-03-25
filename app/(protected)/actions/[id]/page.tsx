@@ -26,7 +26,6 @@ import {
   Calendar,
   Mail,
   Clock,
-  Loader2,
   MailOpen,
 } from "lucide-react";
 import { BackButton } from "@/components/shared/back-button";
@@ -87,12 +86,14 @@ export default function ActionDetailPage({
 
   async function handleMarkDone() {
     if (!action) return;
+    const previous = action;
+    setAction({ ...action, status: "DONE", updatedAt: new Date() });
     try {
       setActionLoading(true);
       await markActionAsDone(action.id);
       toast.success("Action marquée comme terminée");
-      loadAction();
     } catch (error) {
+      setAction(previous);
       toast.error(error instanceof Error ? error.message : "Erreur");
     } finally {
       setActionLoading(false);
@@ -101,12 +102,14 @@ export default function ActionDetailPage({
 
   async function handleMarkIgnored() {
     if (!action) return;
+    const previous = action;
+    setAction({ ...action, status: "IGNORED", updatedAt: new Date() });
     try {
       setActionLoading(true);
       await markActionAsIgnored(action.id);
       toast.success("Action marquée comme ignorée");
-      loadAction();
     } catch (error) {
+      setAction(previous);
       toast.error(error instanceof Error ? error.message : "Erreur");
     } finally {
       setActionLoading(false);

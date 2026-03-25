@@ -1,6 +1,12 @@
 import "@testing-library/jest-dom";
 import { vi } from "vitest";
 
+// Mock next/cache (revalidatePath/revalidateTag require Next.js runtime context)
+vi.mock("next/cache", () => ({
+  revalidatePath: vi.fn(),
+  revalidateTag: vi.fn(),
+}));
+
 // Mock NextAuth
 vi.mock("@/auth", () => ({
   auth: vi.fn(),

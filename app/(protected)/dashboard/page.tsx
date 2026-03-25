@@ -20,8 +20,6 @@ import { prisma } from "@/lib/db";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 
-export const dynamic = "force-dynamic";
-
 export const metadata = constructMetadata({
   title: "Tableau de bord – Inbox Actions",
   description: "Gérez vos actions et tâches extraites de vos emails.",

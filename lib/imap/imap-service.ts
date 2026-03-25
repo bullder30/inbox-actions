@@ -323,6 +323,20 @@ export class IMAPService {
 
         let lastProcessedUID: bigint | null = null;
 
+        // Pré-charger les UIDs déjà présents en base : 1 requête au lieu de N
+        const bigIntUids = uidsToFetch.map((u) => BigInt(u));
+        const existingInDb = await prisma.emailMetadata.findMany({
+          where: {
+            userId: this.userId,
+            mailboxId: this.credentialId,
+            imapUID: { in: bigIntUids },
+          },
+          select: { imapUID: true },
+        });
+        const existingUidSet = new Set(
+          existingInDb.map((e) => e.imapUID!.toString())
+        );
+
         console.log(`[IMAP] Processing emails for userId: ${this.userId}`);
 
         // Récupérer les métadonnées de chaque message
@@ -333,16 +347,8 @@ export class IMAPService {
         }, { uid: true })) {
           const uid = BigInt(message.uid);
 
-          // Vérifier si l'email existe déjà en base (scoped par mailbox)
-          const existing = await prisma.emailMetadata.findFirst({
-            where: {
-              userId: this.userId,
-              imapUID: uid,
-              mailboxId: this.credentialId,
-            },
-          });
-
-          if (existing) {
+          // Vérifier si l'email existe déjà en base via le Set pré-chargé (O(1))
+          if (existingUidSet.has(uid.toString())) {
             continue;
           }
 
