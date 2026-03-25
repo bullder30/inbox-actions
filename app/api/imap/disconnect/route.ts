@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,8 @@ export async function POST(req: NextRequest) {
         { status: 404 }
       );
     }
+
+    revalidatePath("/dashboard");
 
     return NextResponse.json({
       success: true,

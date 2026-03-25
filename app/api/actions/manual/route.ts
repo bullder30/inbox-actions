@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
 import { prisma } from "@/lib/db";
 import { ActionType } from "@prisma/client";
@@ -54,6 +55,8 @@ export async function POST(request: Request) {
         status: "TODO",
       },
     });
+
+    revalidatePath("/dashboard");
 
     // Convertir BigInt en string pour la sérialisation JSON
     return NextResponse.json({

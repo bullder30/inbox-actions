@@ -4,6 +4,7 @@
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 export const dynamic = "force-dynamic";
 
@@ -37,6 +38,8 @@ export async function POST(req: NextRequest) {
     }
 
     console.log(`[Graph Disconnect] Deleted mailbox ${mailboxId} for user ${session.user.id}`);
+
+    revalidatePath("/dashboard");
 
     return NextResponse.json({ success: true, message: "Microsoft mailbox disconnected" });
   } catch (error) {

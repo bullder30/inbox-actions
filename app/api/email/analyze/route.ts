@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 
 import { auth } from "@/auth";
 import { createAllEmailProviders } from "@/lib/email-provider/factory";
@@ -49,66 +50,78 @@ export async function POST(req: NextRequest) {
       select: { type: true, value: true },
     }) as UserExclusionData[];
 
-    let processedCount = 0;
-    let extractedActionsCount = 0;
-    let skippedCount = 0;
+    const userId = session.user.id as string;
 
-    for (const emailProvider of providers) {
-      const extractedEmails = await emailProvider.getExtractedEmails();
-      const emailsToProcess = extractedEmails.slice(0, maxEmails);
+    // Traiter toutes les boîtes en parallèle (connexions indépendantes)
+    const providerResults = await Promise.all(
+      providers.map(async (emailProvider) => {
+        let processedCount = 0;
+        let extractedActionsCount = 0;
+        let skippedCount = 0;
 
-      console.log(`[Analyze] Mailbox ${emailProvider.mailboxId}: ${emailsToProcess.length}/${extractedEmails.length} emails à traiter`);
+        const extractedEmails = await emailProvider.getExtractedEmails();
+        const emailsToProcess = extractedEmails.slice(0, maxEmails);
 
-      for (const emailMetadata of emailsToProcess) {
-        try {
-          const messageId = getMessageId(emailMetadata);
-          const emailBody = await emailProvider.getEmailBodyForAnalysis(messageId);
+        console.log(`[Analyze] Mailbox ${emailProvider.mailboxId}: ${emailsToProcess.length}/${extractedEmails.length} emails à traiter`);
 
-          if (!emailBody) {
+        // Emails traités séquentiellement pour éviter le rate-limiting IMAP/Graph
+        for (const emailMetadata of emailsToProcess) {
+          try {
+            const messageId = getMessageId(emailMetadata);
+            const emailBody = await emailProvider.getEmailBodyForAnalysis(messageId);
+
+            if (!emailBody) {
+              await emailProvider.markEmailAsAnalyzed(messageId);
+              processedCount++;
+              continue;
+            }
+
+            const extractedActions = extractActionsFromEmail({
+              from: emailMetadata.from,
+              subject: emailMetadata.subject,
+              body: emailBody,
+              receivedAt: emailMetadata.receivedAt,
+            }, userExclusions);
+
+            if (extractedActions.length > 0) {
+              await prisma.action.createMany({
+                data: extractedActions.map((action) => ({
+                  userId,
+                  title: action.title,
+                  type: action.type,
+                  sourceSentence: action.sourceSentence,
+                  emailFrom: emailMetadata.from,
+                  emailReceivedAt: emailMetadata.receivedAt,
+                  gmailMessageId: emailMetadata.gmailMessageId,
+                  imapUID: emailMetadata.imapUID,
+                  emailWebUrl: emailMetadata.webUrl,
+                  dueDate: action.dueDate,
+                  isScheduled: action.dueDate ? action.dueDate > getEndOfTodayParis() : false,
+                  mailboxId: emailProvider.mailboxId,
+                  mailboxLabel: emailProvider.mailboxLabel,
+                })),
+              });
+              extractedActionsCount += extractedActions.length;
+            }
+
             await emailProvider.markEmailAsAnalyzed(messageId);
             processedCount++;
-            continue;
+          } catch (error) {
+            const msgId = emailMetadata.gmailMessageId || emailMetadata.imapUID?.toString() || "unknown";
+            console.error(`Error processing email ${msgId}:`, error);
+            skippedCount++;
           }
-
-          const extractedActions = extractActionsFromEmail({
-            from: emailMetadata.from,
-            subject: emailMetadata.subject,
-            body: emailBody,
-            receivedAt: emailMetadata.receivedAt,
-          }, userExclusions);
-
-          for (const action of extractedActions) {
-            await prisma.action.create({
-              data: {
-                userId: session.user.id,
-                title: action.title,
-                type: action.type,
-                sourceSentence: action.sourceSentence,
-                emailFrom: emailMetadata.from,
-                emailReceivedAt: emailMetadata.receivedAt,
-                gmailMessageId: emailMetadata.gmailMessageId,
-                imapUID: emailMetadata.imapUID,
-                emailWebUrl: emailMetadata.webUrl,
-                dueDate: action.dueDate,
-                isScheduled: action.dueDate ? action.dueDate > getEndOfTodayParis() : false,
-                mailboxId: emailProvider.mailboxId,
-                mailboxLabel: emailProvider.mailboxLabel,
-              },
-            });
-            extractedActionsCount++;
-          }
-
-          await emailProvider.markEmailAsAnalyzed(messageId);
-          processedCount++;
-        } catch (error) {
-          const msgId = emailMetadata.gmailMessageId || emailMetadata.imapUID?.toString() || "unknown";
-          console.error(`Error processing email ${msgId}:`, error);
-          skippedCount++;
         }
-      }
-    }
 
-    if (extractedActionsCount > 0) {
+        return { processedCount, extractedActionsCount, skippedCount };
+      })
+    );
+
+    const totalProcessed = providerResults.reduce((sum, r) => sum + r.processedCount, 0);
+    const totalExtracted = providerResults.reduce((sum, r) => sum + r.extractedActionsCount, 0);
+    const totalSkipped = providerResults.reduce((sum, r) => sum + r.skippedCount, 0);
+
+    if (totalExtracted > 0) {
       try {
         await sendActionDigest(session.user.id);
       } catch (notifError) {
@@ -116,19 +129,19 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    revalidatePath("/dashboard");
+
     return NextResponse.json({
       success: true,
-      processedEmails: processedCount,
-      extractedActions: extractedActionsCount,
-      skippedEmails: skippedCount,
-      message: `${extractedActionsCount} action(s) extraite(s) depuis ${processedCount} email(s)`,
+      processedEmails: totalProcessed,
+      extractedActions: totalExtracted,
+      skippedEmails: totalSkipped,
+      message: `${totalExtracted} action(s) extraite(s) depuis ${totalProcessed} email(s)`,
     });
   } catch (error) {
     console.error("Error analyzing emails:", error);
     return NextResponse.json({ error: "Erreur lors de l'analyse des emails" }, { status: 500 });
   } finally {
-    for (const provider of providers) {
-      try { await provider.disconnect(); } catch {}
-    }
+    await Promise.allSettled(providers.map((p) => p.disconnect()));
   }
 }

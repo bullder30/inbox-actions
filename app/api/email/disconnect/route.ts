@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 
@@ -34,6 +35,8 @@ export async function POST() {
       where: { userId },
       data: { isActive: false, deltaLink: null },
     });
+
+    revalidatePath("/dashboard");
 
     return NextResponse.json({
       success: true,
