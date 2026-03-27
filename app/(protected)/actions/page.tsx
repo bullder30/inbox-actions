@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
+import { mutate as globalMutate } from "swr";
 import useSWRInfinite from "swr/infinite";
 
 import { ActionCard } from "@/components/actions/action-card";
@@ -163,6 +164,15 @@ export default function ActionsPage() {
 
   type MutationStatus = "DONE" | "IGNORED" | "SCHEDULED" | "TODO";
 
+  // Invalide le cache SWR de la vue de destination pour qu'elle soit fraîche lors du switch
+  function invalidateFilterCache(status: string) {
+    globalMutate(
+      (key: unknown) => typeof key === "string" && key.includes(`status=${status}`),
+      undefined,
+      { revalidate: true }
+    );
+  }
+
   // Suppression optimiste : retire la card instantanément, revalide les compteurs
   function handleRemove(id: string, _newStatus?: MutationStatus) {
     mutateList(
@@ -179,6 +189,11 @@ export default function ActionsPage() {
 
   function handleUpdate(id: string, newStatus?: MutationStatus) {
     handleRemove(id, newStatus);
+    // Invalider le cache de la vue destination pour éviter les données stale au switch
+    if (newStatus === "DONE") invalidateFilterCache("DONE");
+    else if (newStatus === "IGNORED") invalidateFilterCache("IGNORED");
+    else if (newStatus === "TODO") invalidateFilterCache("TODO");
+    else if (newStatus === "SCHEDULED") invalidateFilterCache("SCHEDULED");
   }
 
   // Recharge la liste courante (ex: planification aujourd'hui → la card reste en TODO)
