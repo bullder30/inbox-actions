@@ -16,9 +16,10 @@ import { SyncCard } from "@/components/dashboard/sync-card";
 import { EmailVerificationBanner } from "@/components/dashboard/email-verification-banner";
 import { constructMetadata } from "@/lib/utils";
 import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/db";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { getDashboardStats } from "@/lib/cache/dashboard";
+import type { ActionWithUser } from "@/lib/api/actions";
 
 export const metadata = constructMetadata({
   title: "Tableau de bord – Inbox Actions",
@@ -32,52 +33,26 @@ export default async function DashboardPage() {
     return null;
   }
 
-  // Toutes les requêtes en parallèle
-  const [
-    todoCount, doneCount, ignoredCount, gmailStatus, mailboxCount, recentActions,
-    imapSyncs, graphSyncs,
-  ] = await Promise.all([
-    // Compter les actions TODO
-    prisma.action.count({ where: { userId: user.id, status: "TODO" } }),
-    // Compter les actions DONE
-    prisma.action.count({ where: { userId: user.id, status: "DONE" } }),
-    // Compter les actions IGNORED
-    prisma.action.count({ where: { userId: user.id, status: "IGNORED" } }),
-    // Statut sync + createdAt pour le message de bienvenue
-    prisma.user.findUnique({
-      where: { id: user.id },
-      select: { createdAt: true, emailVerified: true, _count: { select: { emailMetadata: true } } },
-    }),
-    // Nombre de boîtes mail configurées (IMAP + Microsoft Graph)
-    Promise.all([
-      prisma.iMAPCredential.count({ where: { userId: user.id } }),
-      prisma.microsoftGraphMailbox.count({ where: { userId: user.id, isActive: true } }),
-    ]).then(([imap, graph]) => imap + graph),
-    // Actions récentes TODO
-    prisma.action.findMany({
-      where: { userId: user.id, status: "TODO" },
-      orderBy: [{ dueDate: "asc" }, { createdAt: "desc" }],
-      take: 5,
-      include: { user: { select: { id: true, email: true } } },
-    }),
-    // Dernière sync IMAP
-    prisma.iMAPCredential.findMany({
-      where: { userId: user.id },
-      select: { lastIMAPSync: true },
-    }),
-    // Dernière sync Microsoft Graph
-    prisma.microsoftGraphMailbox.findMany({
-      where: { userId: user.id, isActive: true },
-      select: { lastSync: true },
-    }),
-  ]);
+  const {
+    todoCount,
+    doneCount,
+    ignoredCount,
+    gmailStatus,
+    mailboxCount,
+    recentActions,
+    imapSyncs,
+    graphSyncs,
+  } = await getDashboardStats(user.id);
+
   const allSyncDates = [
     ...imapSyncs.map((c) => c.lastIMAPSync),
     ...graphSyncs.map((m) => m.lastSync),
-  ].filter((d): d is Date => d !== null);
+  ].filter((d): d is string => d !== null);
+
   const lastSyncDate = allSyncDates.length > 0
-    ? allSyncDates.reduce((a, b) => (a > b ? a : b))
+    ? new Date(allSyncDates.reduce((a, b) => (a > b ? a : b)))
     : null;
+
   const lastSyncText = lastSyncDate
     ? formatDistanceToNow(lastSyncDate, { locale: fr, addSuffix: true })
     : "jamais";
@@ -92,7 +67,7 @@ export default async function DashboardPage() {
     <div className="space-y-8">
       {/* Toast de bienvenue pour les nouveaux utilisateurs */}
       <Suspense fallback={null}>
-        <WelcomeToast userCreatedAt={gmailStatus?.createdAt || new Date()} />
+        <WelcomeToast userCreatedAt={gmailStatus ? new Date(gmailStatus.createdAt) : new Date()} />
       </Suspense>
 
       <DashboardHeader
@@ -182,7 +157,7 @@ export default async function DashboardPage() {
               {recentActions.map((action) => (
                 <ActionCard
                   key={action.id}
-                  action={action}
+                  action={action as unknown as ActionWithUser}
                 />
               ))}
             </div>

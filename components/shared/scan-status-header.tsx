@@ -6,7 +6,7 @@ import { MissingActionButton } from "./missing-action-button";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { getCurrentUser } from "@/lib/session";
-import { prisma } from "@/lib/db";
+import { getScanStatusData } from "@/lib/cache/dashboard";
 
 export async function ScanStatusHeader() {
   const user = await getCurrentUser();
@@ -15,113 +15,17 @@ export async function ScanStatusHeader() {
     return null;
   }
 
-  // Vérifier qu'au moins une boîte est configurée (IMAP ou Microsoft Graph)
-  const [imapCount, graphCount] = await Promise.all([
-    prisma.iMAPCredential.count({ where: { userId: user.id } }),
-    prisma.microsoftGraphMailbox.count({ where: { userId: user.id, isActive: true } }),
-  ]);
-  if (imapCount + graphCount === 0) return null;
+  const data = await getScanStatusData(user.id);
 
-  // Récupérer les données de scan
-  const [imapCredentials, graphMailbox, emailStats] = await Promise.all([
-    prisma.iMAPCredential.findMany({
-      where: { userId: user.id },
-      select: { lastIMAPSync: true },
-    }),
-    prisma.microsoftGraphMailbox.findFirst({
-      where: { userId: user.id, isActive: true },
-      select: { lastSync: true },
-    }),
-    // Statistiques sur les emails
-    prisma.emailMetadata.aggregate({
-      where: { userId: user.id },
-      _count: true,
-      _min: { receivedAt: true },
-      _max: { receivedAt: true },
-    }),
-  ]);
-
-  // Calculer la dernière sync (la plus récente parmi toutes les boîtes)
-  const lastSyncCandidates: Date[] = [];
-  for (const c of imapCredentials) {
-    if (c.lastIMAPSync) lastSyncCandidates.push(c.lastIMAPSync);
-  }
-  if (graphMailbox?.lastSync) lastSyncCandidates.push(graphMailbox.lastSync);
-  const userData = {
-    lastEmailSync: lastSyncCandidates.length
-      ? new Date(Math.max(...lastSyncCandidates.map((d) => d.getTime())))
-      : null,
-  };
-
-  // Compter les emails ignorés (emails analysés sans actions créées)
-  const analyzedEmails = await prisma.emailMetadata.findMany({
-    where: {
-      userId: user.id,
-      status: "ANALYZED",
-    },
-    select: {
-      id: true,
-      gmailMessageId: true,
-      imapUID: true,
-    },
-  });
-
-  // Séparer les emails Gmail et IMAP
-  const gmailMessageIds = analyzedEmails
-    .map((e) => e.gmailMessageId)
-    .filter((id): id is string => id !== null);
-  const imapUIDs = analyzedEmails
-    .map((e) => e.imapUID)
-    .filter((uid): uid is bigint => uid !== null);
-
-  // Récupérer les actions pour Gmail (si des gmailMessageIds existent)
-  const gmailActionsSet = new Set<string>();
-  if (gmailMessageIds.length > 0) {
-    const gmailActions = await prisma.action.groupBy({
-      by: ["gmailMessageId"],
-      where: {
-        userId: user.id,
-        gmailMessageId: { in: gmailMessageIds },
-      },
-    });
-    gmailActions.forEach((a) => {
-      if (a.gmailMessageId) gmailActionsSet.add(a.gmailMessageId);
-    });
+  if (!data) {
+    return null;
   }
 
-  // Récupérer les actions pour IMAP (si des imapUIDs existent)
-  const imapActionsSet = new Set<string>();
-  if (imapUIDs.length > 0) {
-    const imapActions = await prisma.action.groupBy({
-      by: ["imapUID"],
-      where: {
-        userId: user.id,
-        imapUID: { in: imapUIDs },
-      },
-    });
-    imapActions.forEach((a) => {
-      if (a.imapUID) imapActionsSet.add(a.imapUID.toString());
-    });
-  }
+  const { lastEmailSync, totalEmails, periodStart, periodEnd, ignoredEmailsCount } = data;
 
-  // Compter les emails sans actions
-  const ignoredEmailsCount = analyzedEmails.filter((e) => {
-    if (e.gmailMessageId) {
-      return !gmailActionsSet.has(e.gmailMessageId);
-    }
-    if (e.imapUID) {
-      return !imapActionsSet.has(e.imapUID.toString());
-    }
-    return true; // Email sans identifiant = ignoré
-  }).length;
-
-  const lastSync = userData?.lastEmailSync ?? null;
-  const totalEmails = emailStats._count;
-  const periodStart = emailStats._min.receivedAt;
-  const periodEnd = emailStats._max.receivedAt;
+  const lastSync = lastEmailSync ? new Date(lastEmailSync) : null;
 
   // Déterminer l'état du scan
-  let scanStatus: "ok" | "old" | "never" = "never";
   let statusIcon = <XCircle className="size-4" />;
   let statusText = "Aucun scan effectué";
   let statusVariant: "default" | "destructive" = "destructive";
@@ -130,12 +34,10 @@ export async function ScanStatusHeader() {
     const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
 
     if (hoursSinceSync > 24) {
-      scanStatus = "old";
       statusIcon = <AlertTriangle className="size-4 text-orange-600" />;
       statusText = "Scan ancien";
       statusVariant = "default";
     } else {
-      scanStatus = "ok";
       statusIcon = <CheckCircle2 className="size-4 text-green-600" />;
       statusText = "Scan à jour";
       statusVariant = "default";

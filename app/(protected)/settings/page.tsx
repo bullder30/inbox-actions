@@ -17,6 +17,7 @@ import { IMAPConnectForm, IMAPMailboxCard } from "@/components/imap";
 import type { IMAPMailboxData } from "@/components/imap";
 import { GraphStatus } from "@/components/microsoft-graph";
 import { ExclusionSection } from "@/components/settings/exclusion-section";
+import { useSettingsStore } from "@/lib/stores/settings-store";
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -25,12 +26,12 @@ export default function SettingsPage() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [emailNotifications, setEmailNotifications] = useState(true);
-  const [syncEnabled, setSyncEnabled] = useState(true);
-
-  // Mailboxes state
-  const [imapMailboxes, setImapMailboxes] = useState<IMAPMailboxData[]>([]);
   const [showAddIMAPForm, setShowAddIMAPForm] = useState(false);
+
+  const store = useSettingsStore();
+  const [emailNotifications, setEmailNotifications] = useState(store.emailNotifications);
+  const [syncEnabled, setSyncEnabled] = useState(store.syncEnabled);
+  const [imapMailboxes, setImapMailboxes] = useState<IMAPMailboxData[]>(store.mailboxes);
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -54,7 +55,11 @@ export default function SettingsPage() {
   }, [searchParams, router]);
 
   useEffect(() => {
-    loadSettings();
+    if (store.loaded) {
+      setLoading(false);
+    } else {
+      loadSettings();
+    }
   }, []);
 
   function getErrorMessage(error: string): string {
@@ -78,20 +83,26 @@ export default function SettingsPage() {
     try {
       setLoading(true);
 
-      // Charger les boîtes IMAP
-      const imapResponse = await fetch("/api/imap/status");
-      if (imapResponse.ok) {
-        const imapData = await imapResponse.json();
-        setImapMailboxes(imapData.mailboxes ?? []);
-      }
+      const [imapResponse, prefsResponse] = await Promise.all([
+        fetch("/api/imap/status"),
+        fetch("/api/user/preferences"),
+      ]);
 
-      // Charger les préférences utilisateur
-      const prefsResponse = await fetch("/api/user/preferences");
-      if (prefsResponse.ok) {
-        const prefsData = await prefsResponse.json();
-        setEmailNotifications(prefsData.emailNotifications ?? true);
-        setSyncEnabled(prefsData.syncEnabled ?? true);
-      }
+      const mailboxes = imapResponse.ok
+        ? ((await imapResponse.json()).mailboxes ?? [])
+        : store.mailboxes;
+
+      const prefsData = prefsResponse.ok ? await prefsResponse.json() : null;
+      const emailNotifs = prefsData?.emailNotifications ?? store.emailNotifications;
+      const syncEn = prefsData?.syncEnabled ?? store.syncEnabled;
+
+      setImapMailboxes(mailboxes);
+      setEmailNotifications(emailNotifs);
+      setSyncEnabled(syncEn);
+
+      store.setMailboxes(mailboxes);
+      store.setPreferences({ emailNotifications: emailNotifs, syncEnabled: syncEn });
+      store.setLoaded(true);
     } catch (error) {
       console.error("Error loading settings:", error);
     } finally {
@@ -108,8 +119,8 @@ export default function SettingsPage() {
         body: JSON.stringify({ emailNotifications }),
       });
       if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
+      store.setPreferences({ emailNotifications, syncEnabled: store.syncEnabled });
       toast.success("Préférences enregistrées");
-      router.refresh();
     } catch (error) {
       toast.error("Erreur lors de l'enregistrement");
       console.error(error);
@@ -127,8 +138,8 @@ export default function SettingsPage() {
         body: JSON.stringify({ syncEnabled }),
       });
       if (!response.ok) throw new Error("Erreur lors de l'enregistrement");
+      store.setPreferences({ emailNotifications: store.emailNotifications, syncEnabled });
       toast.success("Préférences enregistrées");
-      router.refresh();
     } catch (error) {
       toast.error("Erreur lors de l'enregistrement");
       console.error(error);
@@ -138,7 +149,9 @@ export default function SettingsPage() {
   }
 
   function handleIMAPDisconnect(credentialId: string) {
-    setImapMailboxes((prev) => prev.filter((m) => m.id !== credentialId));
+    const updated = imapMailboxes.filter((m) => m.id !== credentialId);
+    setImapMailboxes(updated);
+    store.setMailboxes(updated);
   }
 
   return (
@@ -195,12 +208,12 @@ export default function SettingsPage() {
                   key={mailbox.id}
                   mailbox={mailbox}
                   onDisconnect={handleIMAPDisconnect}
-                  onUpdate={loadSettings}
+                  onUpdate={() => { store.invalidate(); loadSettings(); }}
                 />
               ))}
 
               {/* Microsoft Graph (Outlook, Hotmail, M365) */}
-              <GraphStatus onStatusChange={loadSettings} />
+              <GraphStatus onStatusChange={() => { store.invalidate(); loadSettings(); }} />
 
               {/* Formulaire d'ajout IMAP */}
               {showAddIMAPForm ? (
@@ -218,6 +231,7 @@ export default function SettingsPage() {
                   <IMAPConnectForm
                     onSuccess={() => {
                       setShowAddIMAPForm(false);
+                      store.invalidate();
                       loadSettings();
                     }}
                   />

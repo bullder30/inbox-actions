@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { auth } from "@/auth";
+import { dashboardTag } from "@/lib/cache/dashboard";
 import { prisma } from "@/lib/db";
 
 export const dynamic = "force-dynamic";
@@ -62,6 +63,7 @@ export async function POST(
     });
 
     revalidatePath("/dashboard");
+    revalidateTag(dashboardTag(session.user.id));
 
     // Convertir BigInt en string pour la sérialisation JSON
     return NextResponse.json({

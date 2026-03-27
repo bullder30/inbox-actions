@@ -7,6 +7,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useCallback, useEffect, useRef, useState } from "react";
+import useSWRInfinite from "swr/infinite";
 
 import { ActionType } from "@/lib/api/actions";
 import { Button } from "@/components/ui/button";
@@ -17,79 +18,58 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { MissingActionCardSkeletonList, MissingActionSkeleton } from "@/components/actions/missing-action-skeleton";
+import type { CachedIgnoredEmail } from "@/lib/cache/dashboard";
 
-interface EmailMetadata {
-  id: string;
-  gmailMessageId: string;
-  from: string;
-  subject: string | null;
-  snippet: string;
-  receivedAt: string;
-  hasActions: boolean;
-  reason: string;
-  webUrl: string | null;
-  mailboxLabel: string | null;
-}
+const PAGE_SIZE = 20;
+
+type PageData = { emails: CachedIgnoredEmail[]; total: number; hasMore: boolean };
+
+const fetcher = async (url: string) => {
+  const res = await fetch(url);
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.error || "Erreur de chargement");
+  }
+  return res.json() as Promise<PageData>;
+};
 
 export default function MissingActionPage() {
   const router = useRouter();
-  const [emails, setEmails] = useState<EmailMetadata[]>([]);
-  const [offset, setOffset] = useState(0);
-  const [hasMore, setHasMore] = useState(true);
-  const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const sentinelRef = useRef<HTMLDivElement>(null);
-  const [selectedEmail, setSelectedEmail] = useState<EmailMetadata | null>(null);
+  const [selectedEmail, setSelectedEmail] = useState<CachedIgnoredEmail | null>(null);
   const [selectedSentence, setSelectedSentence] = useState("");
   const [actionType, setActionType] = useState<ActionType>("SEND");
   const [actionTitle, setActionTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const PAGE_SIZE = 20;
-  // Ref pour éviter les double-appels si l'observer fire avant le re-render
-  const loadingMoreRef = useRef(false);
+  const getKey = useCallback(
+    (pageIndex: number, previousPageData: PageData | null) => {
+      if (previousPageData && !previousPageData.hasMore) return null;
+      return `/api/email/ignored-emails?limit=${PAGE_SIZE}&offset=${pageIndex * PAGE_SIZE}`;
+    },
+    []
+  );
 
-  // Logique de fetch isolée (setters stables → deps vides)
-  const fetchPage = useCallback(async (currentOffset: number) => {
-    const response = await fetch(`/api/email/ignored-emails?limit=${PAGE_SIZE}&offset=${currentOffset}`);
-    if (!response.ok) throw new Error("Erreur de chargement");
-    const data = await response.json();
-    if (currentOffset === 0) {
-      setEmails(data.emails || []);
-    } else {
-      setEmails((prev) => [...prev, ...(data.emails || [])]);
-    }
-    setHasMore(data.hasMore ?? false);
-    setOffset(currentOffset + PAGE_SIZE);
-  }, []);
+  const { data: pages, size, setSize, isLoading, isValidating, error } = useSWRInfinite<PageData>(
+    getKey,
+    fetcher,
+    { revalidateOnFocus: false, revalidateFirstPage: false }
+  );
+
+  const emails = pages?.flatMap((p) => p.emails) ?? [];
+  const hasMore = pages?.[pages.length - 1]?.hasMore ?? false;
+  const isLoadingMore = size > 1 && typeof pages?.[size - 1] === "undefined";
 
   useEffect(() => {
-    async function init() {
-      try {
-        await fetchPage(0);
-      } catch (error) {
-        toast.error(error instanceof Error ? error.message : "Erreur de chargement");
-      } finally {
-        setLoading(false);
-      }
-    }
-    init();
-  }, [fetchPage]);
+    if (error) toast.error(error.message || "Erreur de chargement");
+  }, [error]);
 
-  const loadMore = useCallback(async () => {
-    if (!hasMore || loadingMoreRef.current) return;
-    loadingMoreRef.current = true;
-    setLoadingMore(true);
-    try {
-      await fetchPage(offset);
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : "Erreur de chargement");
-    } finally {
-      loadingMoreRef.current = false;
-      setLoadingMore(false);
-    }
-  }, [hasMore, offset, fetchPage]);
+  // Scroll infini
+  const loadMore = useCallback(() => {
+    if (!hasMore || isValidating) return;
+    setSize((s) => s + 1);
+  }, [hasMore, isValidating, setSize]);
 
   useEffect(() => {
     const el = sentinelRef.current;
@@ -102,7 +82,7 @@ export default function MissingActionPage() {
     return () => observer.disconnect();
   }, [loadMore]);
 
-  function handleOpenDialog(email: EmailMetadata) {
+  function handleOpenDialog(email: CachedIgnoredEmail) {
     setSelectedEmail(email);
     setSelectedSentence("");
     setActionTitle("");
@@ -136,6 +116,7 @@ export default function MissingActionPage() {
           emailFrom: selectedEmail.from,
           emailReceivedAt: selectedEmail.receivedAt,
           gmailMessageId: selectedEmail.gmailMessageId,
+          imapUID: selectedEmail.imapUID,
           emailWebUrl: selectedEmail.webUrl,
         }),
       });
@@ -156,7 +137,7 @@ export default function MissingActionPage() {
     }
   }
 
-  if (loading) {
+  if (isLoading) {
     return <MissingActionSkeleton />;
   }
 
@@ -186,18 +167,15 @@ export default function MissingActionPage() {
       ) : (
         <div className="space-y-4">
           <h2 className="text-lg font-semibold">
-            Emails ignorés ({emails.length})
+            Emails ignorés ({pages?.[0]?.total ?? emails.length})
           </h2>
           <div className="space-y-3">
             {emails.map((email) => (
-
               <Card key={email.id} className="overflow-hidden transition-all hover:shadow-lg">
                 <CardHeader className="space-y-2 pb-3">
-                  {/* Ligne 1 : sujet */}
                   <CardTitle className="break-words text-base leading-snug sm:text-lg">
                     {email.subject || "(sans objet)"}
                   </CardTitle>
-                  {/* Ligne 2 : métadonnées groupées */}
                   <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">
                       <Mail className="size-3 shrink-0" />
@@ -246,9 +224,8 @@ export default function MissingActionPage() {
                 </CardFooter>
               </Card>
             ))}
-            {/* Sentinelle infinite scroll */}
             <div ref={sentinelRef} className="h-1" />
-            {loadingMore && <MissingActionCardSkeletonList count={1} />}
+            {isLoadingMore && <MissingActionCardSkeletonList count={1} />}
           </div>
         </div>
       )}
@@ -345,9 +322,7 @@ export default function MissingActionPage() {
               </Button>
               <Button
                 onClick={handleCreateAction}
-                disabled={
-                  creating || !selectedSentence.trim() || !actionTitle.trim()
-                }
+                disabled={creating || !selectedSentence.trim() || !actionTitle.trim()}
                 className="h-9 w-full text-sm sm:h-10 sm:w-auto"
               >
                 {creating ? (

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
+import { dashboardTag } from "@/lib/cache/dashboard";
 import { prisma } from "@/lib/db";
 import { getEndOfTodayParis, getStartOfTodayParis } from "@/lib/utils/date-paris";
 
@@ -73,6 +75,8 @@ export async function POST(
         user: { select: { id: true, email: true } },
       },
     });
+
+    revalidateTag(dashboardTag(session.user.id));
 
     return NextResponse.json({
       action: {
