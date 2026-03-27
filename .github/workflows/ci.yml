@@ -12,7 +12,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '24'
   # env.mjs (t3-env) est importé par next lint, tsc et vitest — skip la validation Zod partout
   SKIP_ENV_VALIDATION: '1'
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
