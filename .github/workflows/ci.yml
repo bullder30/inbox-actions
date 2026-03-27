@@ -13,6 +13,8 @@ concurrency:
 
 env:
   NODE_VERSION: '24'
+  # Force les actions GitHub (checkout, setup-node, pnpm/action-setup) à tourner sur Node 24
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
   # env.mjs (t3-env) est importé par next lint, tsc et vitest — skip la validation Zod partout
   SKIP_ENV_VALIDATION: '1'
   DATABASE_URL: postgresql://ci:ci@localhost:5432/ci
