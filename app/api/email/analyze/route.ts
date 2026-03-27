@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
+import { dashboardTag } from "@/lib/cache/dashboard";
 
 import { auth } from "@/auth";
 import { createAllEmailProviders } from "@/lib/email-provider/factory";
@@ -130,6 +131,7 @@ export async function POST(req: NextRequest) {
     }
 
     revalidatePath("/dashboard");
+    revalidateTag(dashboardTag(session.user.id));
 
     return NextResponse.json({
       success: true,

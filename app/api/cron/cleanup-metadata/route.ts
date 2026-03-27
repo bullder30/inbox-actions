@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { revalidateTag } from "next/cache";
 import { prisma } from "@/lib/db";
+import { dashboardTag } from "@/lib/cache/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -40,8 +42,19 @@ export async function GET(req: NextRequest) {
 
     console.log("[CRON CLEANUP] 🧹 Cleanup started");
 
+    // Récupérer les userIds affectés avant suppression pour invalider leurs caches
+    const affectedUsers = await prisma.emailMetadata.findMany({
+      distinct: ["userId"],
+      select: { userId: true },
+    });
+
     // Supprimer TOUTES les métadonnées d'emails (MVP: rétention = 0)
     const deleteResult = await prisma.emailMetadata.deleteMany({});
+
+    // Invalider le cache dashboard de chaque utilisateur affecté
+    for (const { userId } of affectedUsers) {
+      revalidateTag(dashboardTag(userId));
+    }
 
     const duration = Date.now() - startTime;
 

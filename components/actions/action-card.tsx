@@ -111,8 +111,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
       setLoading(true);
       await markActionAsDone(action.id);
       toast.success("Action marquée comme terminée");
-      if (onUpdate) onUpdate("DONE");
-      else router.refresh();
+      onUpdate?.("DONE");
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur");
     } finally {
@@ -125,8 +125,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
       setLoading(true);
       await markActionAsIgnored(action.id);
       toast.success("Action marquée comme ignorée");
-      if (onUpdate) onUpdate("IGNORED");
-      else router.refresh();
+      onUpdate?.("IGNORED");
+      router.refresh();
     } catch (error) {
       toast.error(error instanceof Error ? error.message : "Erreur");
     } finally {
@@ -155,8 +155,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           : `Action planifiée pour le ${format(date, "d MMMM", { locale: fr })}`
       );
       setScheduleOpen(false);
-      if (onUpdate) onUpdate(isToday ? "TODO" : "SCHEDULED");
-      else router.refresh();
+      onUpdate?.(isToday ? "TODO" : "SCHEDULED");
+      router.refresh();
     } catch {
       toast.error("Erreur lors de la planification");
     } finally {
@@ -212,8 +212,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           ? `Exclusion ajoutée : ${label} (${deleted} action${deleted > 1 ? "s" : ""} supprimée${deleted > 1 ? "s" : ""})`
           : `Exclusion ajoutée : ${label}`
       );
-      if (onUpdate) onUpdate();
-      else router.refresh();
+      onUpdate?.();
+      router.refresh();
     } catch {
       toast.error("Erreur lors de l'ajout de l'exclusion");
     }

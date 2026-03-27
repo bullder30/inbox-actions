@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
+import { dashboardTag } from "@/lib/cache/dashboard";
 
 export const dynamic = "force-dynamic";
 
@@ -89,6 +91,8 @@ export async function POST(req: NextRequest) {
       deletedCount = result.count;
     }
     // SUBJECT : le sujet n'est pas stocké sur Action, aucune suppression possible
+
+    revalidateTag(dashboardTag(session.user.id));
 
     return NextResponse.json({ exclusion, deletedActions: deletedCount }, { status: 201 });
   } catch (error: unknown) {

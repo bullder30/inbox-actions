@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { revalidateTag } from "next/cache";
 import { auth } from "@/auth";
+import { dashboardTag } from "@/lib/cache/dashboard";
 import { createAllEmailProviders } from "@/lib/email-provider/factory";
 import { MAX_EMAILS_TO_SYNC } from "@/lib/config/sync";
 import type { EmailMetadata } from "@/lib/email-provider/interface";
@@ -48,6 +50,8 @@ export async function GET(req: NextRequest) {
         try { await provider.disconnect(); } catch {}
       }
     }
+
+    revalidateTag(dashboardTag(session.user.id));
 
     return NextResponse.json({
       success: true,

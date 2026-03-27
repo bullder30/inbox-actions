@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
-import { revalidatePath } from "next/cache";
+import { revalidatePath, revalidateTag } from "next/cache";
 import { getCurrentUser } from "@/lib/session";
+import { dashboardTag } from "@/lib/cache/dashboard";
 import { prisma } from "@/lib/db";
 import { ActionType } from "@prisma/client";
 
@@ -22,6 +23,7 @@ export async function POST(request: Request) {
       emailFrom,
       emailReceivedAt,
       gmailMessageId,
+      imapUID: imapUIDStr,
       emailWebUrl,
     } = body;
 
@@ -41,6 +43,16 @@ export async function POST(request: Request) {
       );
     }
 
+    // Convertir imapUID string → BigInt (BigInt n'est pas sérialisable en JSON)
+    let imapUID: bigint | null = null;
+    if (imapUIDStr) {
+      try {
+        imapUID = BigInt(imapUIDStr);
+      } catch {
+        return NextResponse.json({ error: "imapUID invalide" }, { status: 400 });
+      }
+    }
+
     // Créer l'action
     const action = await prisma.action.create({
       data: {
@@ -51,12 +63,14 @@ export async function POST(request: Request) {
         emailFrom,
         emailReceivedAt: new Date(emailReceivedAt),
         gmailMessageId: gmailMessageId || null,
+        imapUID,
         emailWebUrl: emailWebUrl || null,
         status: "TODO",
       },
     });
 
     revalidatePath("/dashboard");
+    revalidateTag(dashboardTag(user.id));
 
     // Convertir BigInt en string pour la sérialisation JSON
     return NextResponse.json({
