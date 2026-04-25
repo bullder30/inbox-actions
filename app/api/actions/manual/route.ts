@@ -6,47 +6,21 @@ import { dashboardTag } from "@/lib/cache/dashboard";
 import { prisma } from "@/lib/db";
 import { ActionType } from "@prisma/client";
 import { nameToSlug } from "@/lib/slug";
-import { FRENCH_STOPLIST } from "@/lib/stoplist-fr";
 import { isCustomActionColor } from "@/lib/custom-action-colors";
+import {
+  MAX_TYPES_PER_USER,
+  normalizeKeywords,
+  validateKeywords,
+} from "@/lib/custom-action-types/validation";
+import {
+  duplicateTypeNameResponse,
+  isPrismaUniqueConstraintError,
+} from "@/lib/custom-action-types/errors";
 
 export const dynamic = "force-dynamic";
 
 const NATIVE_TYPES = ["SEND", "CALL", "FOLLOW_UP", "PAY", "VALIDATE"] as const;
-const MAX_TYPES_PER_USER = 10;
-const MIN_KEYWORD_LENGTH = 4;
-const MAX_KEYWORD_LENGTH = 60;
-
-function validateKeywords(rawKeywords: string[]): string[] | null {
-  const invalid: string[] = [];
-  const deduped = Array.from(
-    new Set(rawKeywords.map((k) => k.trim()).filter((k) => k.length > 0))
-  );
-
-  for (const keyword of deduped) {
-    const lower = keyword.toLowerCase();
-    const isAllLowercase = keyword === lower;
-
-    if (keyword.length > MAX_KEYWORD_LENGTH) {
-      invalid.push(keyword);
-      continue;
-    }
-    if (keyword.length < MIN_KEYWORD_LENGTH && isAllLowercase) {
-      invalid.push(keyword);
-      continue;
-    }
-    if (FRENCH_STOPLIST.has(lower)) {
-      invalid.push(keyword);
-    }
-  }
-
-  return invalid.length > 0 ? invalid : null;
-}
-
-function normalizeKeywords(rawKeywords: string[]): string[] {
-  return Array.from(
-    new Set(rawKeywords.map((k) => k.trim()).filter((k) => k.length > 0))
-  );
-}
+const MAX_KEYWORDS_PER_RULE = 50;
 
 type ManualBody = {
   title?: string;
@@ -64,6 +38,21 @@ type ManualBody = {
   persistAsRule?: boolean;
   keywords?: string[];
 };
+
+/**
+ * Sérialise une Action Prisma pour la réponse JSON (BigInt imapUID → string).
+ */
+function serializeAction(action: { imapUID: bigint | null }): Record<string, unknown> {
+  return { ...action, imapUID: action.imapUID?.toString() ?? null };
+}
+
+/**
+ * Invalide le cache dashboard pour l'utilisateur courant après une mutation Action.
+ */
+function invalidateDashboardCache(userId: string): void {
+  revalidatePath("/dashboard");
+  revalidateTag(dashboardTag(userId));
+}
 
 export async function POST(request: Request) {
   try {
@@ -130,12 +119,8 @@ export async function POST(request: Request) {
       const action = await prisma.action.create({
         data: { ...baseData, type: type as ActionType },
       });
-      revalidatePath("/dashboard");
-      revalidateTag(dashboardTag(user.id));
-      return NextResponse.json(
-        { action: { ...action, imapUID: action.imapUID?.toString() ?? null } },
-        { status: 201 }
-      );
+      invalidateDashboardCache(user.id);
+      return NextResponse.json({ action: serializeAction(action) }, { status: 201 });
     }
 
     // ─── Cas CUSTOM ──────────────────────────────────────────────────────────
@@ -161,12 +146,8 @@ export async function POST(request: Request) {
           customTypeColor: existingType.color,
         },
       });
-      revalidatePath("/dashboard");
-      revalidateTag(dashboardTag(user.id));
-      return NextResponse.json(
-        { action: { ...action, imapUID: action.imapUID?.toString() ?? null } },
-        { status: 201 }
-      );
+      invalidateDashboardCache(user.id);
+      return NextResponse.json({ action: serializeAction(action) }, { status: 201 });
     }
 
     // Cas B / Cas C : customTypeName + customTypeColor obligatoires
@@ -186,9 +167,9 @@ export async function POST(request: Request) {
     // Cas B : persistAsRule = true → créer le type ET l'action en transaction
     if (persistAsRule === true) {
       const rawKeywords = Array.isArray(keywords) ? keywords : [];
-      if (rawKeywords.length === 0 || rawKeywords.length > 50) {
+      if (rawKeywords.length === 0 || rawKeywords.length > MAX_KEYWORDS_PER_RULE) {
         return NextResponse.json(
-          { error: "Liste de keywords invalide (1-50)" },
+          { error: `Liste de keywords invalide (1-${MAX_KEYWORDS_PER_RULE})` },
           { status: 422 }
         );
       }
@@ -237,28 +218,17 @@ export async function POST(request: Request) {
           return { newType, newAction };
         });
 
-        revalidatePath("/dashboard");
-        revalidateTag(dashboardTag(user.id));
+        invalidateDashboardCache(user.id);
         return NextResponse.json(
           {
-            action: {
-              ...result.newAction,
-              imapUID: result.newAction.imapUID?.toString() ?? null,
-            },
+            action: serializeAction(result.newAction),
             createdCustomType: result.newType,
           },
           { status: 201 }
         );
       } catch (txErr: unknown) {
-        if (
-          txErr instanceof Error &&
-          "code" in txErr &&
-          (txErr as { code: string }).code === "P2002"
-        ) {
-          return NextResponse.json(
-            { error: "Un type avec un nom équivalent existe déjà" },
-            { status: 409 }
-          );
+        if (isPrismaUniqueConstraintError(txErr)) {
+          return duplicateTypeNameResponse();
         }
         throw txErr;
       }
@@ -274,12 +244,8 @@ export async function POST(request: Request) {
         customTypeColor,
       },
     });
-    revalidatePath("/dashboard");
-    revalidateTag(dashboardTag(user.id));
-    return NextResponse.json(
-      { action: { ...action, imapUID: action.imapUID?.toString() ?? null } },
-      { status: 201 }
-    );
+    invalidateDashboardCache(user.id);
+    return NextResponse.json({ action: serializeAction(action) }, { status: 201 });
   } catch (error) {
     console.error("Error creating manual action:", error);
     return NextResponse.json(
