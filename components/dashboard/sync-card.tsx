@@ -17,32 +17,34 @@ export function SyncCard({ lastSyncText }: SyncCardProps) {
   const router = useRouter();
 
   async function handleSync() {
-    try {
-      setSyncing(true);
+    setSyncing(true);
 
-      // Étape 1 : Extraction des emails depuis la dernière synchro
-      toast.info("Extraction des emails en cours...");
+    const promise = (async () => {
       const syncResult = await syncGmail();
-
       if (syncResult.count === 0) {
-        toast.info("Aucun nouvel email à extraire");
-        return;
+        return { emails: 0, actions: 0 };
       }
-
-      toast.success(`${syncResult.count} email(s) extrait(s)`);
-
-      // Étape 2 : Analyse des emails pour créer les actions
-      toast.info("Analyse des emails en cours...");
       const analyzeResult = await analyzeGmail();
-      toast.success(
-        `${analyzeResult.extractedActions} action(s) créée(s) à partir de ${analyzeResult.processedEmails} email(s)`
-      );
+      return {
+        emails: syncResult.count,
+        actions: analyzeResult.extractedActions,
+      };
+    })();
 
+    toast.promise(promise, {
+      loading: "Synchronisation en cours…",
+      success: ({ emails, actions }) => {
+        if (emails === 0) return "Aucun nouvel email à extraire";
+        return `${emails} email${emails > 1 ? "s" : ""} synchronisé${emails > 1 ? "s" : ""} • ${actions} action${actions > 1 ? "s" : ""} créée${actions > 1 ? "s" : ""}`;
+      },
+      error: (err) => err instanceof Error ? err.message : "Erreur lors de la synchronisation",
+    });
+
+    try {
+      await promise;
       router.refresh();
-    } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Erreur lors de la synchronisation"
-      );
+    } catch {
+      // Erreur déjà signalée par toast.promise
     } finally {
       setSyncing(false);
     }

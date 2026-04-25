@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CheckCircle2, Clock, Info, XCircle } from "lucide-react";
 
-import { ActionCard } from "@/components/actions/action-card";
+import { RecentActionsList } from "@/components/dashboard/recent-actions-list";
 import { Button } from "@/components/ui/button";
 import { DashboardHeader } from "@/components/dashboard/header";
 import { WelcomeToast } from "@/components/dashboard/welcome-toast";
@@ -153,14 +153,9 @@ export default async function DashboardPage() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 sm:space-y-4">
-              {recentActions.map((action) => (
-                <ActionCard
-                  key={action.id}
-                  action={action as unknown as ActionWithUser}
-                />
-              ))}
-            </div>
+            <RecentActionsList
+              actions={recentActions as unknown as ActionWithUser[]}
+            />
           )}
         </CardContent>
       </Card>
