@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Icons } from "@/components/shared/icons";
+import { HoneypotInput, HONEYPOT_FIELD_NAME } from "@/components/shared/honeypot-input";
 import { toast } from "sonner";
 
 const loginSchema = z.object({
@@ -73,10 +74,15 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
 
     try {
       if (isRegister) {
+        const honeypotValue = (data as Record<string, unknown>)[HONEYPOT_FIELD_NAME] ?? "";
         const response = await fetch("/api/auth/register", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email: data.email, password: data.password }),
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            [HONEYPOT_FIELD_NAME]: honeypotValue,
+          }),
         });
 
         const result = await response.json();
@@ -121,6 +127,11 @@ export function UserAuthForm({ className, mode = "login", ...props }: UserAuthFo
       )}
 
       <form onSubmit={handleSubmit(onCredentialsSubmit)} className="grid gap-4">
+        {/* Honey-pot anti-bot (invisible) */}
+        {isRegister && (
+          <HoneypotInput inputProps={register(HONEYPOT_FIELD_NAME as never)} />
+        )}
+
         {/* Email */}
         <div className="grid gap-2">
           <Label htmlFor="email">Email</Label>

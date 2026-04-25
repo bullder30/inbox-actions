@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { SiteFooter } from "@/components/layout/site-footer";
 import { Icons } from "@/components/shared/icons";
 import { InboxActionsIcon } from "@/components/shared/inbox-actions-logo";
+import { HoneypotInput, HONEYPOT_FIELD_NAME } from "@/components/shared/honeypot-input";
 import { toast } from "sonner";
 
 export default function ContactPage() {
@@ -21,6 +22,7 @@ export default function ContactPage() {
     email: "",
     subject: "",
     message: "",
+    [HONEYPOT_FIELD_NAME]: "",
   });
 
   async function handleSubmit(e: React.FormEvent) {
@@ -48,7 +50,7 @@ export default function ContactPage() {
         description: "Nous vous répondrons dans les plus brefs délais.",
       });
 
-      setFormData({ name: "", email: "", subject: "", message: "" });
+      setFormData({ name: "", email: "", subject: "", message: "", [HONEYPOT_FIELD_NAME]: "" });
     } catch (error) {
       toast.error("Erreur lors de l'envoi", {
         description: "Veuillez réessayer ou nous contacter directement par email.",
@@ -87,6 +89,13 @@ export default function ContactPage() {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-4">
+              <HoneypotInput
+                inputProps={{
+                  value: formData[HONEYPOT_FIELD_NAME],
+                  onChange: (e) =>
+                    setFormData({ ...formData, [HONEYPOT_FIELD_NAME]: e.target.value }),
+                }}
+              />
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="name">

@@ -15,14 +15,24 @@
  * react-hook-form `register(HONEYPOT_FIELD_NAME)`.
  */
 
+import type { InputHTMLAttributes } from "react";
+
 export const HONEYPOT_FIELD_NAME = "_hp_website";
 
 interface HoneypotInputProps {
-  /** Permet de surcharger la valeur par défaut (utile en test). */
-  name?: string;
+  /**
+   * Props additionnels à spread sur l'input. Typiquement le résultat
+   * de `register("_hp_website")` de react-hook-form. Si fourni, écrase
+   * `name` et `defaultValue`.
+   */
+  inputProps?: InputHTMLAttributes<HTMLInputElement>;
 }
 
-export function HoneypotInput({ name = HONEYPOT_FIELD_NAME }: HoneypotInputProps) {
+/**
+ * Champ honey-pot anti-bot — invisible visuellement et A11y.
+ * Voir lib/honeypot.ts pour la détection serveur.
+ */
+export function HoneypotInput({ inputProps }: HoneypotInputProps = {}) {
   return (
     <div
       aria-hidden="true"
@@ -34,14 +44,15 @@ export function HoneypotInput({ name = HONEYPOT_FIELD_NAME }: HoneypotInputProps
         overflow: "hidden",
       }}
     >
-      <label htmlFor={name}>Ne pas remplir (champ anti-spam)</label>
+      <label htmlFor={HONEYPOT_FIELD_NAME}>Ne pas remplir (champ anti-spam)</label>
       <input
         type="text"
-        id={name}
-        name={name}
+        id={HONEYPOT_FIELD_NAME}
+        name={HONEYPOT_FIELD_NAME}
         tabIndex={-1}
         autoComplete="off"
         defaultValue=""
+        {...inputProps}
       />
     </div>
   );
