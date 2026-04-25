@@ -34,6 +34,7 @@ export function RecentActionsList({ actions }: RecentActionsListProps) {
             exit={{ opacity: 0, x: 60, transition: { duration: 0.18, ease: "easeIn" } }}
             transition={{ type: "spring", stiffness: 380, damping: 30 }}
             whileHover={{ scale: 1.003, transition: { duration: 0.15 } }}
+            whileTap={{ scale: 0.99, transition: { duration: 0.12 } }}
           >
             <ActionCard
               action={action}

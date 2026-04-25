@@ -113,14 +113,24 @@
     @apply ring-0 ring-offset-0;
   }
 
-  /* Respect prefers-reduced-motion globalement (en complément de motion lib) */
+  /* Touch : enlever le delai de 300ms du double-tap historique sur mobile,
+     tout en preservant pinch-to-zoom (Apple HIG, Material Design). */
+  button,
+  [role="button"],
+  a,
+  input[type="button"],
+  input[type="submit"],
+  input[type="reset"],
+  label[for] {
+    touch-action: manipulation;
+  }
+
+  /* prefers-reduced-motion : on s'appuie sur motion lib (qui gere sa propre
+     adaptation) + on coupe seulement le scroll smooth pour eviter le motion
+     sickness sur les ancres. Pas de kill global qui casserait spinners
+     et feedback essentiels. */
   @media (prefers-reduced-motion: reduce) {
-    *,
-    *::before,
-    *::after {
-      animation-duration: 0.01ms !important;
-      animation-iteration-count: 1 !important;
-      transition-duration: 0.01ms !important;
+    html {
       scroll-behavior: auto !important;
     }
   }

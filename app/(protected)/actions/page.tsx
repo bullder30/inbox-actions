@@ -301,6 +301,7 @@ export default function ActionsPage() {
                     exit={cardItem.exit}
                     transition={cardItem.transition}
                     whileHover={{ scale: 1.003, transition: { duration: 0.15 } }}
+                    whileTap={{ scale: 0.99, transition: { duration: 0.12 } }}
                   >
                     <ActionCard
                       action={action}
