@@ -8,6 +8,9 @@ const config = {
     "./app/**/*.{ts,tsx}",
     "./components/**/*.{ts,tsx}",
     "./ui/**/*.{ts,tsx}",
+    // Inclure lib/ pour que Tailwind detecte les classes utilisees dans
+    // les helpers de mapping (custom-action-colors, action-display, etc.)
+    "./lib/**/*.{ts,tsx}",
   ],
   future: {
     hoverOnlyWhenSupported: true,
