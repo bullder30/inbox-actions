@@ -71,9 +71,32 @@
     font-feature-settings: "rlig" 1, "calt" 1;
   }
 
-  /* Focus visible cohérent — accessibilité clavier (WCAG 2.4.7) */
-  :focus-visible {
+  /* Focus visible cohérent — accessibilité clavier (WCAG 2.4.7).
+     Limité aux contrôles primaires : les items de menu/popover Radix gèrent
+     leur propre highlight via focus:bg-accent (sinon le ring s'affiche au
+     survol parce que Radix déplace le focus sur les items). */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible,
+  [role="switch"]:focus-visible,
+  [role="checkbox"]:focus-visible,
+  [role="tab"]:focus-visible {
     @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Désactive le ring sur les éléments à l'intérieur d'un menu/listbox Radix :
+     leur état actif est déjà visible via focus:bg-accent (DropdownMenuItem). */
+  [role="menu"] :focus-visible,
+  [role="menubar"] :focus-visible,
+  [role="listbox"] :focus-visible,
+  [role="menuitem"]:focus-visible,
+  [role="menuitemcheckbox"]:focus-visible,
+  [role="menuitemradio"]:focus-visible,
+  [role="option"]:focus-visible {
+    @apply ring-0 ring-offset-0;
   }
 
   /* Respect prefers-reduced-motion globalement (en complément de motion lib) */
