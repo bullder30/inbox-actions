@@ -12,19 +12,27 @@
     --popover-foreground: 0 0% 3.9%;
     --primary: 0 0% 9%;
     --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
+    --secondary: 258 30% 96%;
+    --secondary-foreground: 258 35% 22%;
+    /* Muted = teinte lavande très subtile (utilisé pour bg-muted/30, hover:bg-muted) */
+    --muted: 258 40% 96%;
     --muted-foreground: 0 0% 45.1%;
-    --accent: 0 0% 98%;
-    --accent-foreground: 0 0% 9%;
+    /* Accent = teinte lavande douce (hover/focus des items Radix, ghost buttons) */
+    --accent: 258 70% 94%;
+    --accent-foreground: 258 45% 25%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
     --border: 0 0% 89.8%;
     --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+    --ring: 258 70% 60%;
     --radius: 0.5rem;
-    
+
+    /* Token brand (couleur du logo : indigo->purple).
+       Aligne sur le purple du gradient (#764ba2) pour une utilisation
+       typographique (contraste AA sur fond blanc). */
+    --brand: 269 36% 47%;
+    --brand-foreground: 0 0% 100%;
+
     --chart-1: 271.5 81.3% 55.9%;
     --chart-2: 270 95% 75%;
     --chart-3: 270 91% 65%;
@@ -41,17 +49,23 @@
     --popover-foreground: 0 0% 98%;
     --primary: 0 0% 98%;
     --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
+    --secondary: 258 20% 16%;
+    --secondary-foreground: 258 30% 92%;
+    /* Muted dark = nuit pourpre subtile */
+    --muted: 258 25% 14%;
     --muted-foreground: 0 0% 63.9%;
-    --accent: 0 0% 8%;
-    --accent-foreground: 0 0% 98%;
+    /* Accent dark = pourpre profond pour les hover/focus en mode sombre */
+    --accent: 258 35% 18%;
+    --accent-foreground: 258 40% 92%;
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+    --border: 258 15% 18%;
+    --input: 258 15% 18%;
+    --ring: 258 60% 65%;
+
+    /* Brand light en dark mode (contraste sur fond sombre) */
+    --brand: 258 55% 70%;
+    --brand-foreground: 0 0% 100%;
 
     --chart-1: 271.5 81.3% 55.9%;
     --chart-2: 270 95% 75%;
@@ -69,6 +83,46 @@
   body {
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
+  }
+
+  /* Focus visible cohérent — accessibilité clavier (WCAG 2.4.7).
+     Limité aux contrôles primaires : les items de menu/popover Radix gèrent
+     leur propre highlight via focus:bg-accent (sinon le ring s'affiche au
+     survol parce que Radix déplace le focus sur les items). */
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  summary:focus-visible,
+  [role="switch"]:focus-visible,
+  [role="checkbox"]:focus-visible,
+  [role="tab"]:focus-visible {
+    @apply outline-none ring-2 ring-ring ring-offset-2 ring-offset-background;
+  }
+
+  /* Désactive le ring sur les éléments à l'intérieur d'un menu/listbox Radix :
+     leur état actif est déjà visible via focus:bg-accent (DropdownMenuItem). */
+  [role="menu"] :focus-visible,
+  [role="menubar"] :focus-visible,
+  [role="listbox"] :focus-visible,
+  [role="menuitem"]:focus-visible,
+  [role="menuitemcheckbox"]:focus-visible,
+  [role="menuitemradio"]:focus-visible,
+  [role="option"]:focus-visible {
+    @apply ring-0 ring-offset-0;
+  }
+
+  /* Respect prefers-reduced-motion globalement (en complément de motion lib) */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
   }
 }
 
@@ -89,4 +143,22 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Gradient brand canonique (logo, icones d'app, badges accent).
+   Source unique de verite — les composants doivent utiliser cette classe
+   plutot que d'inliner le linear-gradient. */
+.bg-brand-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+/* Background grid subtil — utilisé sur le hero de la landing */
+.bg-grid-subtle {
+  background-image:
+    linear-gradient(to right, hsl(var(--border) / 0.5) 1px, transparent 1px),
+    linear-gradient(to bottom, hsl(var(--border) / 0.5) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent 75%);
+  -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 30%, black, transparent 75%);
 }

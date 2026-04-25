@@ -258,7 +258,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         <CardHeader className="pb-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div className="min-w-0 flex-1 space-y-1">
-              <CardTitle className="break-words text-sm sm:text-base">{decodeHtmlEntities(action.title)}</CardTitle>
+              <CardTitle className="break-words text-sm font-bold tracking-tight sm:text-base">{decodeHtmlEntities(action.title)}</CardTitle>
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Mail className="size-3 shrink-0" />
@@ -365,7 +365,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         </div>
 
         {/* Titre */}
-        <CardTitle className="break-words text-base leading-snug sm:text-lg">
+        <CardTitle className="break-words text-base font-bold leading-snug tracking-tight sm:text-lg">
           {decodeHtmlEntities(action.title)}
         </CardTitle>
 

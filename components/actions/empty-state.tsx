@@ -1,3 +1,6 @@
+"use client";
+
+import { motion } from "motion/react";
 import { Button } from "@/components/ui/button";
 import { CalendarClock, Check, Inbox, X } from "lucide-react";
 import Link from "next/link";
@@ -43,10 +46,20 @@ export function EmptyState({ emailsAnalyzed = 0, filter = "TODO" }: EmptyStatePr
   const { icon, title, description, showCta } = filterContent[filter];
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center">
-      <div className="flex size-16 items-center justify-center rounded-full bg-muted">
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="flex flex-col items-center justify-center rounded-lg border border-dashed p-12 text-center"
+    >
+      <motion.div
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ delay: 0.1, type: "spring", stiffness: 220, damping: 18 }}
+        className="flex size-16 items-center justify-center rounded-full bg-muted"
+      >
         {icon}
-      </div>
+      </motion.div>
       <h3 className="mt-4 text-lg font-semibold">{title}</h3>
       {showCta ? (
         <>
@@ -63,6 +76,6 @@ export function EmptyState({ emailsAnalyzed = 0, filter = "TODO" }: EmptyStatePr
           <p className="mt-2 text-sm text-muted-foreground">{description}</p>
         )
       )}
-    </div>
+    </motion.div>
   );
 }

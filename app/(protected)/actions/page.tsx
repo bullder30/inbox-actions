@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import useSWR from "swr";
 import { mutate as globalMutate } from "swr";
 import useSWRInfinite from "swr/infinite";
+import { AnimatePresence, motion } from "motion/react";
 
 import { ActionCard } from "@/components/actions/action-card";
 import { ActionCardSkeletonList } from "@/components/actions/action-card-skeleton";
@@ -70,6 +71,21 @@ const fetcher = async (url: string) => {
     throw new Error(err.error || "Erreur de chargement");
   }
   return res.json();
+};
+
+// ── Animations partagées ──────────────────────────────────────────────────
+const cardItem = {
+  initial: { opacity: 0, y: 8 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, x: 60, transition: { duration: 0.18, ease: "easeIn" as const } },
+  transition: { type: "spring" as const, stiffness: 380, damping: 30 },
+};
+
+const filterPanel = {
+  initial: { opacity: 0, y: 4 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -4 },
+  transition: { duration: 0.18 },
 };
 
 export default function ActionsPage() {
@@ -215,7 +231,7 @@ export default function ActionsPage() {
         <h1 className="font-heading text-2xl font-semibold">{filterTitles[statusFilter]}</h1>
 
         {/* Boutons filtre */}
-        <div className="grid grid-cols-4 gap-1 sm:flex sm:flex-wrap sm:gap-2">
+        <div className="grid grid-cols-4 gap-1.5 sm:flex sm:flex-wrap sm:gap-2">
           {filterConfig.map(({ status, label, labelShort, inactive, active, badgeInactive }) => {
             const isActive = statusFilter === status;
             const countMap: Record<string, number> = {
@@ -227,12 +243,14 @@ export default function ActionsPage() {
             const count = countMap[status] ?? 0;
             const isEmpty = status !== "TODO" && !isActive && count === 0;
             return (
-              <button
+              <motion.button
                 key={status}
                 onClick={() => !isEmpty && switchFilter(status)}
                 disabled={isEmpty}
+                whileTap={isEmpty ? undefined : { scale: 0.94 }}
+                transition={{ duration: 0.1 }}
                 className={cn(
-                  "relative inline-flex items-center justify-center rounded-full px-1.5 py-1 text-[11px] font-medium transition-colors sm:px-4 sm:py-1.5 sm:text-sm",
+                  "relative inline-flex min-h-11 items-center justify-center rounded-full px-1.5 py-1 text-[11px] font-medium transition-colors sm:min-h-0 sm:px-4 sm:py-1.5 sm:text-sm",
                   isActive ? active : inactive,
                   isEmpty && "cursor-not-allowed opacity-40"
                 )}
@@ -249,45 +267,66 @@ export default function ActionsPage() {
                     {count > 99 ? "99+" : count}
                   </span>
                 )}
-              </button>
+              </motion.button>
             );
           })}
         </div>
       </div>
 
-      {/* Liste */}
-      {isLoading ? (
-        <ActionCardSkeletonList
-          count={1}
-          variant={statusFilter === "DONE" || statusFilter === "IGNORED" ? "done-ignored" : "default"}
-        />
-      ) : actions.length === 0 ? (
-        <EmptyState emailsAnalyzed={emailsAnalyzed} filter={statusFilter} />
-      ) : (
-        <div className="space-y-4">
-          {actions.map((action) => (
-            <ActionCard
-              key={action.id}
-              action={action}
-              onUpdate={
-                statusFilter === "SCHEDULED"
-                  ? (newStatus) =>
-                      newStatus === "SCHEDULED"
-                        ? handleReschedule()
-                        : newStatus === "TODO"
-                        ? handleRemove(action.id, undefined)
-                        : handleRemove(action.id, newStatus)
-                  : (newStatus) =>
-                      newStatus === "TODO"
-                        ? handleReloadCurrent()
-                        : handleUpdate(action.id, newStatus)
-              }
+      {/* Liste — transition fluide entre filtres + exit animations sur removal */}
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={statusFilter}
+          initial={filterPanel.initial}
+          animate={filterPanel.animate}
+          exit={filterPanel.exit}
+          transition={filterPanel.transition}
+        >
+          {isLoading ? (
+            <ActionCardSkeletonList
+              count={1}
+              variant={statusFilter === "DONE" || statusFilter === "IGNORED" ? "done-ignored" : "default"}
             />
-          ))}
-          <div ref={sentinelRef} className="h-1" />
-          {isLoadingMore && <ActionCardSkeletonList count={1} />}
-        </div>
-      )}
+          ) : actions.length === 0 ? (
+            <EmptyState emailsAnalyzed={emailsAnalyzed} filter={statusFilter} />
+          ) : (
+            <div className="space-y-4">
+              <AnimatePresence mode="popLayout" initial={false}>
+                {actions.map((action) => (
+                  <motion.div
+                    key={action.id}
+                    layout
+                    initial={cardItem.initial}
+                    animate={cardItem.animate}
+                    exit={cardItem.exit}
+                    transition={cardItem.transition}
+                    whileHover={{ scale: 1.003, transition: { duration: 0.15 } }}
+                  >
+                    <ActionCard
+                      action={action}
+                      onUpdate={
+                        statusFilter === "SCHEDULED"
+                          ? (newStatus) =>
+                              newStatus === "SCHEDULED"
+                                ? handleReschedule()
+                                : newStatus === "TODO"
+                                ? handleRemove(action.id, undefined)
+                                : handleRemove(action.id, newStatus)
+                          : (newStatus) =>
+                              newStatus === "TODO"
+                                ? handleReloadCurrent()
+                                : handleUpdate(action.id, newStatus)
+                      }
+                    />
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+              <div ref={sentinelRef} className="h-1" />
+              {isLoadingMore && <ActionCardSkeletonList count={1} />}
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
     </>
   );
 }

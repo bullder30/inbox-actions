@@ -39,12 +39,9 @@ export function InboxActionsLogo({
     <div className={cn("flex items-center", classes.gap, className)}>
       <div
         className={cn(
-          "flex shrink-0 items-center justify-center rounded-md",
+          "bg-brand-gradient flex shrink-0 items-center justify-center rounded-md",
           classes.container
         )}
-        style={{
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        }}
       >
         <Mail className={cn(classes.icon, "text-white")} strokeWidth={2} />
       </div>
@@ -66,13 +63,10 @@ export function InboxActionsIcon({
   return (
     <div
       className={cn(
-        "flex shrink-0 items-center justify-center rounded-md",
+        "bg-brand-gradient flex shrink-0 items-center justify-center rounded-md",
         classes.container,
         className
       )}
-      style={{
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-      }}
     >
       <Mail className={cn(classes.icon, "text-white")} strokeWidth={2} />
     </div>
