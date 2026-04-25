@@ -55,6 +55,23 @@ export const colorToBadgeClasses: Record<CustomActionColor, { bg: string; text: 
 };
 
 /**
+ * Classes Tailwind pour les pastilles du color picker (saturées, visibles).
+ * Distinct de `colorToBadgeClasses` qui est destiné au rendu d'un badge
+ * texte sur surface claire (bg-100 / text-800). Pour un cercle pur de
+ * picker, on utilise les valeurs 500 plus contrastées.
+ */
+export const colorToSwatchClass: Record<CustomActionColor, string> = {
+  slate: "bg-slate-500",
+  blue: "bg-blue-500",
+  indigo: "bg-indigo-500",
+  violet: "bg-violet-500",
+  pink: "bg-pink-500",
+  rose: "bg-rose-500",
+  orange: "bg-orange-500",
+  amber: "bg-amber-500",
+};
+
+/**
  * Sélectionne une couleur de la palette par rotation.
  *
  * @param index Indice (typiquement le nombre de types existants)
