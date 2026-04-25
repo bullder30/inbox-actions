@@ -53,6 +53,11 @@ enum ActionStatus {
   IGNORED
 }
 
+enum CustomActionTypeMode {
+  KEYWORDS
+  REGEX
+}
+
 model Account {
   id                String   @id @default(cuid())
   userId            String
@@ -176,21 +181,24 @@ model Action {
 
 // Types d'actions personnalisés définis par l'utilisateur (max 10 par user)
 model CustomActionType {
-  id        String   @id @default(cuid())
-  userId    String
-  name      String   @db.VarChar(50)
-  slug      String
-  keywords  String[]
-  color     String   // valeurs admises : slate | blue | indigo | violet | pink | rose | orange | amber
-  isActive  Boolean  @default(true) @map(name: "is_active")
-  createdAt DateTime @default(now()) @map(name: "created_at")
-  updatedAt DateTime @default(now()) @updatedAt @map(name: "updated_at")
+  id           String               @id @default(cuid())
+  userId       String
+  name         String               @db.VarChar(50)
+  slug         String
+  mode         CustomActionTypeMode @default(KEYWORDS)
+  keywords     String[]
+  regexPattern String?              @db.VarChar(200) @map(name: "regex_pattern")
+  validated    Boolean              @default(false)
+  color        String               // valeurs admises : slate | blue | indigo | violet | pink | rose | orange | amber
+  isActive     Boolean              @default(true) @map(name: "is_active")
+  createdAt    DateTime             @default(now()) @map(name: "created_at")
+  updatedAt    DateTime             @default(now()) @updatedAt @map(name: "updated_at")
 
   user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   actions Action[] @relation("CustomTypeActions")
 
   @@unique([userId, slug])
-  @@index([userId, isActive])
+  @@index([userId, isActive, validated])
   @@map(name: "custom_action_types")
 }
 

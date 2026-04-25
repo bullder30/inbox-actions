@@ -52,9 +52,20 @@ export async function POST(req: NextRequest) {
     }) as UserExclusionData[];
 
     // Charger les types custom actifs une seule fois (pour CRITICAL #1 / AC-8)
+    // Filtre `validated: true` pour exclure les types REGEX dont le pattern
+    // n'a pas passé safe-regex (cf. AC-5 regex-power).
     const customTypesRaw = await prisma.customActionType.findMany({
-      where: { userId: session.user.id, isActive: true },
-      select: { id: true, name: true, keywords: true, color: true, isActive: true },
+      where: { userId: session.user.id, isActive: true, validated: true },
+      select: {
+        id: true,
+        name: true,
+        keywords: true,
+        color: true,
+        isActive: true,
+        mode: true,
+        regexPattern: true,
+        validated: true,
+      },
     });
     const customTypes: CustomActionTypeData[] = customTypesRaw;
 
