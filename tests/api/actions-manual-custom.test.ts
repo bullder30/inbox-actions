@@ -216,6 +216,51 @@ describe("POST /api/actions/manual — Cas B (persistAsRule: true)", () => {
     expect(prisma.action.create).toHaveBeenCalled();
   });
 
+  // Régression CRITICAL-1 (Phase 8 review) : sans validated:true, le scan
+  // automatique (filter validated:true) excluait silencieusement les types
+  // créés depuis la page /missing-action.
+  it("should_persist_validated_true_and_mode_KEYWORDS_when_persistAsRule_true", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser as any);
+    const cat = ensureCustomActionTypeMock();
+    cat.count.mockResolvedValue(0);
+    cat.create.mockResolvedValue({
+      ...mockExistingCustomType,
+      id: "ctype-new",
+      name: "Devis",
+      slug: "devis",
+      keywords: ["devis", "proposition", "estimation"],
+      color: "amber",
+    });
+    (prisma.action.create as any).mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: "act-new", ...data, status: "TODO" } as any)
+    );
+    (prisma.$transaction as any).mockImplementation(async (arg: any) => {
+      if (typeof arg === "function") return arg(prisma);
+      return Promise.all(arg);
+    });
+
+    const body = {
+      title: "Validation devis",
+      type: "CUSTOM",
+      customTypeName: "Devis",
+      customTypeColor: "amber",
+      persistAsRule: true,
+      keywords: ["devis", "proposition", "estimation"],
+      ...baseEmailFields,
+    };
+
+    await POST(makeRequest(body));
+
+    expect(cat.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          mode: "KEYWORDS",
+          validated: true,
+        }),
+      })
+    );
+  });
+
   it("should_rollback_transaction_when_limit_reached", async () => {
     // Arrange (AC-12 + US-7.2) — déjà 10 types existants → 11ème refusé
     vi.mocked(getCurrentUser).mockResolvedValue(mockUser as any);

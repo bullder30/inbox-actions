@@ -200,6 +200,8 @@ export async function POST(request: Request) {
               slug,
               keywords: finalKeywords,
               color: customTypeColor,
+              mode: "KEYWORDS",
+              validated: true,
             },
           });
           const newAction = await tx.action.create({

@@ -55,6 +55,17 @@ function looksLikeHtml(body: string): boolean {
  */
 async function sanitizeHtml(html: string): Promise<string> {
   const { default: DOMPurify } = await import("isomorphic-dompurify");
+
+  // Hook anti-tabnabbing : tout <a href> rendu côté client doit ouvrir
+  // dans un nouvel onglet et ne pas exposer window.opener.
+  DOMPurify.removeAllHooks();
+  DOMPurify.addHook("afterSanitizeAttributes", (node) => {
+    if (node.tagName === "A") {
+      node.setAttribute("target", "_blank");
+      node.setAttribute("rel", "noopener noreferrer");
+    }
+  });
+
   return DOMPurify.sanitize(html, {
     ALLOWED_TAGS: [
       "p",
@@ -76,8 +87,18 @@ async function sanitizeHtml(html: string): Promise<string> {
       "h2",
       "h3",
       "h4",
+      // Tableaux (factures, récap email pro) — fix HIGH-3
+      "table",
+      "thead",
+      "tbody",
+      "tfoot",
+      "tr",
+      "th",
+      "td",
     ],
-    ALLOWED_ATTR: ["href", "title"],
+    ALLOWED_ATTR: ["href", "title", "target", "rel"],
+    // = default DOMPurify ALLOWED_URI_REGEXP, copié pour explicit lock
+    // (NE PAS simplifier : bloque javascript: / data: schemes).
     ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto):|[^a-z]|[a-z+.\-]+(?:[^a-z+.\-:]|$))/i,
   });
 }
@@ -91,10 +112,15 @@ function getProviderMessageId(meta: EmailMeta): string | bigint | null {
   return null;
 }
 
+type FetchResult =
+  | { body: string; mimeType: CachedMimeType }
+  | { error: "TOKEN_EXPIRED" }
+  | { error: "UNAVAILABLE" };
+
 async function fetchBodyFromProviders(
   userId: string,
   meta: EmailMeta
-): Promise<{ body: string; mimeType: CachedMimeType } | { error: "TOKEN_EXPIRED" }> {
+): Promise<FetchResult> {
   const providers = await createAllEmailProviders(userId);
 
   // Filtrer par mailboxId si présent (sinon, tenter tous)
@@ -105,7 +131,7 @@ async function fetchBodyFromProviders(
 
   const messageId = getProviderMessageId(meta);
   if (messageId === null) {
-    return { body: "", mimeType: "text/plain" };
+    return { error: "UNAVAILABLE" };
   }
 
   for (const provider of targets) {
@@ -128,7 +154,7 @@ async function fetchBodyFromProviders(
     }
   }
 
-  return { body: "", mimeType: "text/plain" };
+  return { error: "UNAVAILABLE" };
 }
 
 export async function GET(_req: NextRequest, ctx: RouteContext) {
@@ -166,9 +192,17 @@ export async function GET(_req: NextRequest, ctx: RouteContext) {
     // Fetch via provider
     const fetched = await fetchBodyFromProviders(userId, meta);
     if ("error" in fetched) {
+      if (fetched.error === "TOKEN_EXPIRED") {
+        return NextResponse.json(
+          { error: "Token expiré, reconnectez votre boîte mail" },
+          { status: 503 }
+        );
+      }
+      // UNAVAILABLE : ne PAS cacher (fix HIGH-1) — re-fetch sera retenté
+      // au prochain appel, sans empoisonnement TTL 5min.
       return NextResponse.json(
-        { error: "Token expiré, reconnectez votre boîte mail" },
-        { status: 503 }
+        { error: "Corps email indisponible" },
+        { status: 502 }
       );
     }
 

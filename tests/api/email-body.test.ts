@@ -190,6 +190,32 @@ describe("GET /api/email/[id]/body — body retrieval", () => {
     // Assert
     expect(res.status).toBe(503);
   });
+
+  // Régression HIGH-1 (Phase 8 review) : avant le fix, un body indisponible
+  // (provider null/throw non-TOKEN_EXPIRED) était caché en mémoire 5 min,
+  // empoisonnant les requêtes suivantes même si la cause était transitoire.
+  it("should_return_502_and_not_cache_when_body_unavailable_from_providers", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as any);
+    vi.mocked(prisma.emailMetadata.findUnique).mockResolvedValue(
+      mockEmailMetadata as any
+    );
+    providerBodyResult.value = null;
+
+    // 1er appel — UNAVAILABLE
+    const res1 = await GET(req("email-1"), {
+      params: Promise.resolve({ id: "email-1" }),
+    });
+    expect(res1.status).toBe(502);
+    const callsAfterFirst = providerCallCounter.count;
+
+    // 2e appel — re-tentative obligatoire (pas de cache empoisonné)
+    providerBodyResult.value = "Le body est revenu";
+    const res2 = await GET(req("email-1"), {
+      params: Promise.resolve({ id: "email-1" }),
+    });
+    expect(res2.status).toBe(200);
+    expect(providerCallCounter.count).toBeGreaterThan(callsAfterFirst);
+  });
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -218,6 +244,29 @@ describe("GET /api/email/[id]/body — HTML sanitization", () => {
     expect(data.body).toContain("Hello FAC-2024-0042");
     expect(data.body).not.toContain("<script");
     expect(data.body).not.toContain("alert");
+  });
+
+  // Régression HIGH-3 (Phase 8 review) : tableaux email pro autorisés et
+  // links forcés en target=_blank rel="noopener noreferrer" anti-tabnabbing.
+  it("should_allow_table_tags_and_force_safe_link_attributes", async () => {
+    vi.mocked(auth).mockResolvedValue(mockSession as any);
+    vi.mocked(prisma.emailMetadata.findUnique).mockResolvedValue(
+      mockEmailMetadata as any
+    );
+    providerBodyResult.value =
+      '<table><tr><td>Total</td><td>1500€</td></tr></table>' +
+      '<a href="https://example.com">Lien</a>';
+
+    const res = await GET(req("email-1"), {
+      params: Promise.resolve({ id: "email-1" }),
+    });
+    const data = await res.json();
+
+    expect(res.status).toBe(200);
+    expect(data.body).toContain("<table>");
+    expect(data.body).toContain("<td>");
+    expect(data.body).toContain('target="_blank"');
+    expect(data.body).toContain('rel="noopener noreferrer"');
   });
 
   it("should_strip_xss_attributes_via_dompurify", async () => {
