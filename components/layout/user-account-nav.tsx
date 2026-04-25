@@ -67,7 +67,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
             </div>
 
             <ul role="list" className="mb-14 mt-1 w-full text-muted-foreground">
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="/dashboard"
                   onClick={closeDrawer}
@@ -78,7 +78,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                 </Link>
               </li>
 
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="/actions"
                   onClick={closeDrawer}
@@ -98,7 +98,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                 </Link>
               </li>
 
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="/settings"
                   onClick={closeDrawer}
@@ -111,7 +111,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
 
               <li className="my-2 border-t" />
 
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="/contact"
                   onClick={closeDrawer}
@@ -126,7 +126,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                 Informations légales
               </li>
 
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="/terms"
                   onClick={closeDrawer}
@@ -137,7 +137,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                 </Link>
               </li>
 
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="/privacy"
                   onClick={closeDrawer}
@@ -148,7 +148,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                 </Link>
               </li>
 
-              <li className="rounded-lg text-foreground hover:bg-muted">
+              <li className="rounded-lg text-foreground transition-[background-color,transform] duration-150 hover:bg-muted active:scale-[0.98] active:bg-accent">
                 <Link
                   href="https://github.com/bullder30/inbox-actions"
                   target="_blank"

@@ -18,8 +18,9 @@ export function FeatureCard({ icon, iconBg, title, children, className }: Featur
   return (
     <motion.div
       whileHover={{ y: -4, transition: { duration: 0.18, ease: "easeOut" } }}
+      whileTap={{ scale: 0.985, transition: { duration: 0.12 } }}
       className={cn(
-        "flex h-full flex-col rounded-xl border bg-card p-6 shadow-sm transition-shadow duration-200 hover:shadow-lg",
+        "flex h-full flex-col rounded-xl border bg-card p-6 shadow-sm transition-shadow duration-200 hover:shadow-lg active:shadow-md",
         className
       )}
     >
