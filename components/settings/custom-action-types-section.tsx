@@ -42,6 +42,7 @@ import {
   CUSTOM_ACTION_COLORS,
   type CustomActionColor,
   colorToBadgeClasses,
+  colorToSwatchClass,
   rotateColor,
 } from "@/lib/custom-action-colors";
 import {
@@ -472,7 +473,6 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
             <Label>Couleur du badge</Label>
             <div className="flex flex-wrap gap-2">
               {CUSTOM_ACTION_COLORS.map((c) => {
-                const classes = colorToBadgeClasses[c];
                 const selected = c === color;
                 return (
                   <button
@@ -481,9 +481,9 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
                     onClick={() => setColor(c)}
                     className={cn(
                       "flex size-8 items-center justify-center rounded-full border-2 transition-all",
-                      classes.bg,
+                      colorToSwatchClass[c],
                       selected
-                        ? "scale-110 border-foreground/60 shadow-sm"
+                        ? "scale-110 border-foreground/60 shadow-md"
                         : "border-transparent hover:scale-105"
                     )}
                     aria-label={`Couleur ${c}`}

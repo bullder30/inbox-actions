@@ -23,7 +23,7 @@ import type { CachedIgnoredEmail } from "@/lib/cache/dashboard";
 import {
   CUSTOM_ACTION_COLORS,
   type CustomActionColor,
-  colorToBadgeClasses,
+  colorToSwatchClass,
   rotateColor,
 } from "@/lib/custom-action-colors";
 import { MAX_TYPE_NAME_LENGTH, MAX_KEYWORD_LENGTH, validateKeywords } from "@/lib/custom-action-types/validation";
@@ -497,7 +497,6 @@ export default function MissingActionPage() {
                   <Label className="text-xs sm:text-sm">Couleur</Label>
                   <div className="flex flex-wrap gap-1.5">
                     {CUSTOM_ACTION_COLORS.map((c) => {
-                      const classes = colorToBadgeClasses[c];
                       const selected = c === newCustomColor;
                       return (
                         <button
@@ -506,8 +505,8 @@ export default function MissingActionPage() {
                           onClick={() => setNewCustomColor(c)}
                           className={cn(
                             "size-7 rounded-full border-2 transition-transform",
-                            classes.bg,
-                            selected ? "scale-110 border-foreground/60" : "border-transparent hover:scale-105"
+                            colorToSwatchClass[c],
+                            selected ? "scale-110 border-foreground/60 shadow-md" : "border-transparent hover:scale-105"
                           )}
                           aria-label={`Couleur ${c}`}
                           aria-pressed={selected}
