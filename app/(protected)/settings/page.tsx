@@ -17,6 +17,7 @@ import { IMAPConnectForm, IMAPMailboxCard } from "@/components/imap";
 import type { IMAPMailboxData } from "@/components/imap";
 import { GraphStatus } from "@/components/microsoft-graph";
 import { ExclusionSection } from "@/components/settings/exclusion-section";
+import { CustomActionTypesSection } from "@/components/settings/custom-action-types-section";
 import { useSettingsStore } from "@/lib/stores/settings-store";
 
 export default function SettingsPage() {
@@ -313,6 +314,9 @@ export default function SettingsPage() {
               </Button>
             </CardContent>
           </Card>
+
+          {/* ===== Mes types d'actions ===== */}
+          <CustomActionTypesSection />
 
           {/* ===== Exclusions ===== */}
           <ExclusionSection />
