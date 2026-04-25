@@ -17,8 +17,9 @@ import {
   validateRegexPattern,
 } from "@/lib/custom-action-types/validation";
 import {
-  duplicateTypeNameResponse,
-  isPrismaUniqueConstraintError,
+  LIMIT_REACHED_ERROR,
+  handleCreateCustomTypeError,
+  regexValidationErrorResponse,
 } from "@/lib/custom-action-types/errors";
 
 export const dynamic = "force-dynamic";
@@ -167,7 +168,7 @@ async function createKeywordsType(
         where: { userId },
       });
       if (existingCount >= MAX_TYPES_PER_USER) {
-        throw new Error("LIMIT_REACHED");
+        throw new Error(LIMIT_REACHED_ERROR);
       }
       const finalColor = color ?? rotateColor(existingCount);
       return tx.customActionType.create({
@@ -187,15 +188,8 @@ async function createKeywordsType(
     revalidateTag(dashboardTag(userId));
     return NextResponse.json({ type }, { status: 201 });
   } catch (createErr: unknown) {
-    if (createErr instanceof Error && createErr.message === "LIMIT_REACHED") {
-      return NextResponse.json(
-        { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
-        { status: 400 }
-      );
-    }
-    if (isPrismaUniqueConstraintError(createErr)) {
-      return duplicateTypeNameResponse();
-    }
+    const mapped = handleCreateCustomTypeError(createErr);
+    if (mapped) return mapped;
     throw createErr;
   }
 }
@@ -208,22 +202,7 @@ async function createRegexType(
 
   const validation = validateRegexPattern(regexPattern);
   if (!validation.ok) {
-    if (validation.reason === "syntax_invalid") {
-      return NextResponse.json(
-        { error: "Pattern syntax invalide", reason: validation.reason, details: validation.details },
-        { status: 422 }
-      );
-    }
-    if (validation.reason === "polynomial_backtracking") {
-      return NextResponse.json(
-        { error: "Pattern dangereux", reason: validation.reason },
-        { status: 422 }
-      );
-    }
-    return NextResponse.json(
-      { error: "Pattern invalide", reason: validation.reason },
-      { status: 422 }
-    );
+    return regexValidationErrorResponse(validation);
   }
 
   const slug = nameToSlug(name);
@@ -234,7 +213,7 @@ async function createRegexType(
         where: { userId },
       });
       if (existingCount >= MAX_TYPES_PER_USER) {
-        throw new Error("LIMIT_REACHED");
+        throw new Error(LIMIT_REACHED_ERROR);
       }
       const finalColor = color ?? rotateColor(existingCount);
       return tx.customActionType.create({
@@ -254,15 +233,8 @@ async function createRegexType(
     revalidateTag(dashboardTag(userId));
     return NextResponse.json({ type }, { status: 201 });
   } catch (createErr: unknown) {
-    if (createErr instanceof Error && createErr.message === "LIMIT_REACHED") {
-      return NextResponse.json(
-        { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
-        { status: 400 }
-      );
-    }
-    if (isPrismaUniqueConstraintError(createErr)) {
-      return duplicateTypeNameResponse();
-    }
+    const mapped = handleCreateCustomTypeError(createErr);
+    if (mapped) return mapped;
     throw createErr;
   }
 }

@@ -26,11 +26,15 @@ export type RegexValidationReason =
   | "syntax_invalid"
   | "polynomial_backtracking";
 
-export interface RegexValidationResult {
-  ok: boolean;
-  reason?: RegexValidationReason;
-  details?: string;
-}
+/**
+ * Discriminated union : sur `ok: false` le `reason` est garanti, et `details`
+ * est uniquement disponible pour `syntax_invalid`. Évite les `?.` côté caller.
+ */
+export type RegexValidationResult =
+  | { ok: true }
+  | { ok: false; reason: "too_long" }
+  | { ok: false; reason: "polynomial_backtracking" }
+  | { ok: false; reason: "syntax_invalid"; details: string };
 
 /**
  * Valide un pattern regex utilisateur en 3 passes :

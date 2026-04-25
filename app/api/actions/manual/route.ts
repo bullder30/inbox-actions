@@ -13,8 +13,8 @@ import {
   validateKeywords,
 } from "@/lib/custom-action-types/validation";
 import {
-  duplicateTypeNameResponse,
-  isPrismaUniqueConstraintError,
+  LIMIT_REACHED_ERROR,
+  handleCreateCustomTypeError,
 } from "@/lib/custom-action-types/errors";
 
 export const dynamic = "force-dynamic";
@@ -191,7 +191,7 @@ export async function POST(request: Request) {
         const result = await prisma.$transaction(async (tx) => {
           const existingCount = await tx.customActionType.count({ where: { userId } });
           if (existingCount >= MAX_TYPES_PER_USER) {
-            throw new Error("LIMIT_REACHED");
+            throw new Error(LIMIT_REACHED_ERROR);
           }
           const newType = await tx.customActionType.create({
             data: {
@@ -223,15 +223,8 @@ export async function POST(request: Request) {
           { status: 201 }
         );
       } catch (txErr: unknown) {
-        if (txErr instanceof Error && txErr.message === "LIMIT_REACHED") {
-          return NextResponse.json(
-            { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
-            { status: 400 }
-          );
-        }
-        if (isPrismaUniqueConstraintError(txErr)) {
-          return duplicateTypeNameResponse();
-        }
+        const mapped = handleCreateCustomTypeError(txErr);
+        if (mapped) return mapped;
         throw txErr;
       }
     }

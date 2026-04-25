@@ -18,6 +18,7 @@ import {
 import {
   duplicateTypeNameResponse,
   isPrismaUniqueConstraintError,
+  regexValidationErrorResponse,
 } from "@/lib/custom-action-types/errors";
 
 export const dynamic = "force-dynamic";
@@ -118,26 +119,7 @@ export async function PATCH(req: NextRequest, ctx: RouteContext) {
         }
         const validation = validateRegexPattern(newPattern);
         if (!validation.ok) {
-          if (validation.reason === "syntax_invalid") {
-            return NextResponse.json(
-              {
-                error: "Pattern syntax invalide",
-                reason: validation.reason,
-                details: validation.details,
-              },
-              { status: 422 }
-            );
-          }
-          if (validation.reason === "polynomial_backtracking") {
-            return NextResponse.json(
-              { error: "Pattern dangereux", reason: validation.reason },
-              { status: 422 }
-            );
-          }
-          return NextResponse.json(
-            { error: "Pattern invalide", reason: validation.reason },
-            { status: 422 }
-          );
+          return regexValidationErrorResponse(validation);
         }
         updateData.regexPattern = newPattern;
         updateData.validated = true;
