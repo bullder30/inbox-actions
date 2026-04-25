@@ -5,6 +5,7 @@
 
 import { prisma } from "@/lib/db";
 import { env } from "@/env.mjs";
+import { encryptToken, isEncryptedToken, readToken } from "./graph-token-crypto";
 
 const MICROSOFT_TOKEN_ENDPOINT = `https://login.microsoftonline.com/${env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
 
@@ -34,7 +35,14 @@ export async function getMicrosoftGraphTokenForMailbox(mailboxId: string): Promi
       return null;
     }
 
-    let accessToken = mailbox.accessToken;
+    // Lecture transparente : tokens dechiffres si chiffres, sinon plain-text legacy
+    const plainAccess = readToken(mailbox.accessToken);
+    const plainRefresh = readToken(mailbox.refreshToken);
+    if (!plainAccess || !plainRefresh) {
+      console.error("[GraphOAuth] Token decryption failed for mailbox:", mailboxId);
+      return null;
+    }
+    let accessToken = plainAccess;
 
     // Refresh if expired or expiring soon (5 minute margin)
     const now = Math.floor(Date.now() / 1000);
@@ -43,7 +51,7 @@ export async function getMicrosoftGraphTokenForMailbox(mailboxId: string): Promi
 
     if (shouldRefresh) {
       console.log("[GraphOAuth] Token expired or expiring soon, refreshing mailbox:", mailboxId);
-      const newToken = await refreshMailboxToken(mailbox.id, mailbox.refreshToken);
+      const newToken = await refreshMailboxToken(mailbox.id, plainRefresh);
       if (newToken) {
         accessToken = newToken;
       } else {
@@ -58,6 +66,24 @@ export async function getMicrosoftGraphTokenForMailbox(mailboxId: string): Promi
           },
         });
         return null;
+      }
+    }
+
+    // Migration progressive : si l'access token stocke n'est pas chiffre,
+    // re-stocker maintenant en chiffre (transparent pour le caller)
+    if (!isEncryptedToken(mailbox.accessToken)) {
+      try {
+        await prisma.microsoftGraphMailbox.update({
+          where: { id: mailbox.id },
+          data: {
+            accessToken: encryptToken(plainAccess),
+            ...(plainRefresh ? { refreshToken: encryptToken(plainRefresh) } : {}),
+          },
+        });
+        console.log("[GraphOAuth] Migrated legacy plain-text token to encrypted for mailbox:", mailboxId);
+      } catch (migrateErr) {
+        // Migration best-effort, ne bloque pas la requete
+        console.error("[GraphOAuth] Migration encrypt failed:", migrateErr);
       }
     }
 
@@ -104,9 +130,9 @@ async function refreshMailboxToken(mailboxId: string, refreshToken: string): Pro
     await prisma.microsoftGraphMailbox.update({
       where: { id: mailboxId },
       data: {
-        accessToken: data.access_token,
+        accessToken: encryptToken(data.access_token),
         expiresAt: Math.floor(Date.now() / 1000) + data.expires_in,
-        ...(data.refresh_token && { refreshToken: data.refresh_token }),
+        ...(data.refresh_token && { refreshToken: encryptToken(data.refresh_token) }),
         isConnected: true,
         connectionError: null,
         lastErrorAt: null,

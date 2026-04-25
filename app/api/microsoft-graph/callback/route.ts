@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 import { auth } from "@/auth";
 import { env } from "@/env.mjs";
 import { prisma } from "@/lib/db";
+import { encryptToken } from "@/lib/microsoft-graph/graph-token-crypto";
 import { cookies } from "next/headers";
 
 const STATE_COOKIE = "microsoft_graph_oauth_state";
@@ -143,8 +144,8 @@ export async function GET(req: NextRequest) {
         userId: session.user.id,
         microsoftAccountId,
         email: userEmail,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token,
+        accessToken: encryptToken(tokens.access_token),
+        refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : null,
         expiresAt,
         tokenScope: tokens.scope,
         isActive: true,
@@ -152,8 +153,8 @@ export async function GET(req: NextRequest) {
       },
       update: {
         email: userEmail ?? undefined,
-        accessToken: tokens.access_token,
-        refreshToken: tokens.refresh_token || undefined,
+        accessToken: encryptToken(tokens.access_token),
+        refreshToken: tokens.refresh_token ? encryptToken(tokens.refresh_token) : undefined,
         expiresAt,
         tokenScope: tokens.scope,
         isActive: true,

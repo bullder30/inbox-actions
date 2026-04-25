@@ -13,9 +13,9 @@
 | ID | Gravité | Statut | Note |
 |---|---|---|---|
 | **C-1** | CRITIQUE | ✅ **RÉSOLU** (avant 2026-04-25) | Headers HSTS/CSP/X-Frame-Options/X-Content-Type-Options/Referrer-Policy/Permissions-Policy en place dans `next.config.js` |
-| M-1 | MOYEN | ⏳ Pending | Tokens MS Graph encore en clair |
-| M-2 | MOYEN | ⏳ Pending | Pas de rate limiting global |
-| M-3 | MOYEN | ⏳ Pending | Pas de CAPTCHA |
+| **M-1** | MOYEN | ✅ **RÉSOLU** (2026-04-25) | Tokens MS Graph chiffrés AES-256-CBC via `lib/microsoft-graph/graph-token-crypto.ts` (pattern IMAP) + migration auto encrypt-on-read pour les tokens legacy. Nouvelle env var `GRAPH_MASTER_KEY` |
+| **M-2** | MOYEN | ✅ **RÉSOLU** (2026-04-25) | Rate limit in-memory (`lib/rate-limit.ts` Map sliding window) sur register (5/10min), forgot-password (3/15min), imap/connect (10/10min), contact (3/15min). Réponse 429 avec `Retry-After`. Upgrade Upstash Redis recommandé pour multi-instances |
+| **M-3** | MOYEN | ✅ **RÉSOLU** (2026-04-25) | Honey-pot anti-bot (`lib/honeypot.ts` + `components/shared/honeypot-input.tsx`) sur register, forgot-password, contact. Champ `_hp_website` invisible visuellement et A11y. Upgrade Cloudflare Turnstile recommandé contre bots avancés |
 | M-4 | MOYEN | ℹ️ Info | Vulns transitives, app principale (`next@14.2.35`) non affectée |
 | F-1 | FAIBLE | ⏳ Pending | `allowDangerousEmailAccountLinking: true` |
 | F-2 | FAIBLE | ⏳ Pending | URL reset construite sans validation stricte |

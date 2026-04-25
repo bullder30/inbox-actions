@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { resend } from "@/lib/email";
+import { rateLimitOrFail } from "@/lib/rate-limit";
+import { isHoneypotTriggered, honeypotRejectResponse } from "@/lib/honeypot";
 
 export const dynamic = "force-dynamic";
 
@@ -12,8 +14,13 @@ const schema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // Rate limit : 3 demandes / 15 min / IP (anti-spam emails reset)
+  const rl = rateLimitOrFail(req, "auth:forgot-password", { max: 3, windowMs: 15 * 60 * 1000 });
+  if (rl) return rl;
+
   try {
     const body = await req.json();
+    if (isHoneypotTriggered(body)) return honeypotRejectResponse();
     const parsed = schema.safeParse(body);
 
     if (!parsed.success) {

@@ -14,6 +14,7 @@ import { z } from "zod";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/db";
 import { encryptPassword } from "@/lib/imap/imap-credentials";
+import { rateLimitOrFail } from "@/lib/rate-limit";
 
 // Schéma de validation
 const connectSchema = z.object({
@@ -28,6 +29,10 @@ const connectSchema = z.object({
 
 export async function POST(req: NextRequest) {
   console.log("[IMAP Connect] POST request received");
+
+  // Rate limit : 10 tentatives / 10 min / IP (anti-bruteforce credentials)
+  const rl = rateLimitOrFail(req, "imap:connect", { max: 10, windowMs: 10 * 60 * 1000 });
+  if (rl) return rl;
 
   try {
     const session = await auth();

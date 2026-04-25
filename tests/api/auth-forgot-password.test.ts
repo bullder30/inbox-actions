@@ -8,6 +8,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { NextRequest } from "next/server";
 import { prisma } from "@/lib/db";
+import { __resetRateLimitForTests } from "@/lib/rate-limit";
 
 // Mock Resend
 vi.mock("@/lib/email", () => ({
@@ -43,6 +44,7 @@ const pastDate = new Date(Date.now() - 60 * 60 * 1000);   // -1h
 describe("POST /api/auth/forgot-password", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetRateLimitForTests();
   });
 
   it("devrait retourner 400 pour un email invalide", async () => {
@@ -116,6 +118,7 @@ describe("POST /api/auth/reset-password", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    __resetRateLimitForTests();
   });
 
   it("devrait retourner 400 si le token est absent", async () => {

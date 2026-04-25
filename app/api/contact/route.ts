@@ -3,12 +3,19 @@ import { Resend } from "resend";
 
 import { env } from "@/env.mjs";
 import { ContactEmail } from "@/emails/contact-email";
+import { rateLimitOrFail } from "@/lib/rate-limit";
+import { isHoneypotTriggered, honeypotRejectResponse } from "@/lib/honeypot";
 
 const resend = new Resend(env.RESEND_API_KEY);
 
 export async function POST(req: Request) {
+  // Rate limit : 3 messages / 15 min / IP (anti-spam outbound)
+  const rl = rateLimitOrFail(req, "contact", { max: 3, windowMs: 15 * 60 * 1000 });
+  if (rl) return rl;
+
   try {
     const body = await req.json();
+    if (isHoneypotTriggered(body)) return honeypotRejectResponse();
     const { name, email, subject, message } = body;
 
     if (!name || !email || !message) {
