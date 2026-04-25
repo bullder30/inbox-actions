@@ -61,6 +61,13 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
 
   return (
     <div className="relative flex min-h-screen w-full overflow-x-hidden">
+      {/* Skip link a11y — invisible jusqu'au focus clavier */}
+      <a
+        href="#main-content"
+        className="sr-only focus-visible:not-sr-only focus-visible:fixed focus-visible:left-4 focus-visible:top-4 focus-visible:z-[100] focus-visible:rounded-md focus-visible:border focus-visible:bg-background focus-visible:px-4 focus-visible:py-2 focus-visible:text-sm focus-visible:font-medium focus-visible:shadow-lg"
+      >
+        Aller au contenu principal
+      </a>
       <DashboardSidebar links={filteredLinks} />
 
       <div className="flex min-w-0 flex-1 flex-col">
@@ -82,7 +89,7 @@ export default async function Dashboard({ children }: ProtectedLayoutProps) {
           </MaxWidthWrapper>
         </header>
 
-        <main className="mt-14 flex-1 overflow-x-hidden p-4 pb-20 md:mt-0 md:pb-4 xl:px-8">
+        <main id="main-content" className="mt-14 flex-1 overflow-x-hidden p-4 pb-20 md:mt-0 md:pb-4 xl:px-8">
           <MaxWidthWrapper className="flex h-full max-w-7xl flex-col gap-4 px-0 lg:gap-6">
             {children}
           </MaxWidthWrapper>

@@ -227,7 +227,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           variant="outline"
           size="sm"
           disabled={loading}
-          className="w-full sm:w-auto"
+          className="h-11 w-full sm:h-9 sm:w-auto"
         >
           <CalendarClock className="mr-2 size-4" />
           {action.dueDate ? "Replanifier" : "Planifier"}
@@ -307,7 +307,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             )}
             <div className="flex gap-2 sm:ml-auto">
               <Link href={`/actions/${action.id}`} className="w-full sm:w-auto">
-                <Button variant="ghost" size="sm" className="w-full sm:w-auto">
+                <Button variant="ghost" size="sm" className="h-11 w-full sm:h-9 sm:w-auto">
                   <ExternalLink className="mr-2 size-4 sm:mr-0" />
                   <span className="sm:hidden">Voir</span>
                 </Button>
@@ -346,7 +346,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           {isActionable && (
             <DropdownMenu open={exclusionOpen} onOpenChange={handleExclusionOpenChange} modal={false}>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                <Button variant="ghost" size="sm" aria-label="Exclure cet expéditeur" className="size-9 shrink-0 p-0 sm:size-7">
                   <MoreHorizontal className="size-4" />
                 </Button>
               </DropdownMenuTrigger>
@@ -423,8 +423,9 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
                 target="_blank"
                 rel="noopener noreferrer"
                 onClick={(e) => e.stopPropagation()}
+                aria-label="Ouvrir l'email source"
               >
-                <Button variant="ghost" size="sm" className="size-7 shrink-0 p-0">
+                <Button variant="ghost" size="sm" className="size-9 shrink-0 p-0 sm:size-7">
                   <MailOpen className="size-3.5" />
                 </Button>
               </a>
@@ -441,7 +442,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               disabled={loading}
               variant="default"
               size="sm"
-              className="w-full sm:w-auto"
+              className="h-11 w-full sm:h-9 sm:w-auto"
             >
               <Check className="mr-2 size-4" />
               Fait
@@ -452,7 +453,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               disabled={loading}
               variant="ghost"
               size="sm"
-              className="w-full sm:w-auto"
+              className="h-11 w-full sm:h-9 sm:w-auto"
             >
               <X className="mr-2 size-4" />
               Ignorer
@@ -460,7 +461,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           </>
         ) : (
           <Link href={`/actions/${action.id}`} className="w-full">
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="h-11 w-full sm:h-10">
               <ExternalLink className="mr-2 size-4" />
               Voir les détails
             </Button>
