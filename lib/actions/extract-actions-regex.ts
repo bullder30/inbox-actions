@@ -14,6 +14,10 @@ export type ExtractedAction = {
   type: ActionType;
   sourceSentence: string;
   dueDate: Date | null;
+  // Champs custom (présents uniquement quand type === "CUSTOM")
+  customTypeId?: string | null;
+  customTypeLabel?: string | null;
+  customTypeColor?: string | null;
 };
 
 /**
@@ -34,6 +38,17 @@ export type UserExclusionData = {
   value: string;
 };
 
+/**
+ * Type custom passé à l'extracteur (subset minimal de CustomActionType Prisma).
+ */
+export type CustomActionTypeData = {
+  id: string;
+  name: string;
+  keywords: string[];
+  color: string;
+  isActive: boolean;
+};
+
 // ============================================================================
 // PATTERNS REGEX PAR TYPE D'ACTION
 // ============================================================================
@@ -45,6 +60,8 @@ export type UserExclusionData = {
 const SEND_PATTERNS = [
   // Impératif direct
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
+  // Variante "merci d'envoyer" (apostrophe collée)
+  /merci\s+d['']envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
   /(?:envoie|envoyez)(?:-moi)?\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
   /il (?:faut|faudrait)\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
 
@@ -526,6 +543,8 @@ const STRONG_MARKERS: Record<ActionType, RegExp[]> = {
     /proposition/i,
     /bon\s+pour\s+accord/i,
   ],
+  // CUSTOM : marqueurs forts non utilisés (le gating custom s'appuie sur dueDate).
+  CUSTOM: [],
 };
 
 /**
@@ -798,10 +817,15 @@ function shouldExcludeByUserRules(context: EmailContext, exclusions: UserExclusi
 /**
  * Fonction principale d'extraction d'actions depuis un email
  * Règle : Si ambigu → aucune action
+ *
+ * @param context Contexte email (from, subject, body, receivedAt)
+ * @param userExclusions Règles d'exclusion utilisateur (par défaut vide)
+ * @param customTypes Types d'actions custom de l'utilisateur (par défaut vide)
  */
 export function extractActionsFromEmail(
   context: EmailContext,
-  userExclusions: UserExclusionData[] = []
+  userExclusions: UserExclusionData[] = [],
+  customTypes: CustomActionTypeData[] = []
 ): ExtractedAction[] {
   if (userExclusions.length > 0 && shouldExcludeByUserRules(context, userExclusions)) return [];
   if (shouldExcludeEmail(context)) return [];
@@ -831,7 +855,109 @@ export function extractActionsFromEmail(
     }
   }
 
+  // Custom action types (US-5) — n'écrase jamais une action native sur la même phrase
+  if (customTypes.length > 0) {
+    const customActions = extractCustomActionsFromEmail(context, customTypes);
+    for (const customAction of customActions) {
+      const collidesWithNative = actions.some(
+        (native) => native.sourceSentence === customAction.sourceSentence
+      );
+      if (!collidesWithNative) {
+        actions.push(customAction);
+      }
+    }
+  }
+
   return deduplicateActions(actions);
+}
+
+/**
+ * Échappe les caractères spéciaux regex dans un keyword utilisateur.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Extrait les actions custom à partir des règles définies par l'utilisateur.
+ *
+ * @param context Contexte email
+ * @param customTypes Types custom (filtre interne sur isActive)
+ * @returns Actions custom détectées (avec snapshot label/color)
+ */
+export function extractCustomActionsFromEmail(
+  context: EmailContext,
+  customTypes: CustomActionTypeData[]
+): ExtractedAction[] {
+  if (customTypes.length === 0) return [];
+
+  const activeTypes = customTypes.filter((t) => t.isActive);
+  if (activeTypes.length === 0) return [];
+
+  if (shouldExcludeEmail(context)) return [];
+
+  const actions: ExtractedAction[] = [];
+  const normalizedBody = normalizeText(context.body);
+  const lines = normalizedBody.split(/\r?\n/);
+
+  // Découpage en phrases (même logique que les natifs)
+  const sentences: string[] = [];
+  for (const line of lines) {
+    const parts = line.split(/[.!?]+(?:\s+|$)/).filter(Boolean);
+    const expanded: string[] = [];
+    for (const part of parts) {
+      expanded.push(...part.split(/[;:]+(?:\s+|$)/).filter(Boolean));
+    }
+    sentences.push(...expanded);
+  }
+
+  for (const customType of activeTypes) {
+    const validKeywords = customType.keywords
+      .map((k) => k.trim())
+      .filter((k) => k.length > 0)
+      .map(escapeRegex);
+    if (validKeywords.length === 0) continue;
+
+    const keywordRegex = new RegExp(`\\b(${validKeywords.join("|")})\\b`, "i");
+
+    for (let sentence of sentences) {
+      sentence = cleanSentence(sentence);
+      if (sentence.length < 10 || sentence.length > 500) continue;
+
+      const dueDate = parseDueDate(sentence, context.receivedAt);
+
+      // Conditionnels faibles : annuler seulement si pas de deadline
+      if (!dueDate && hasWeakConditional(sentence)) continue;
+
+      if (!keywordRegex.test(sentence)) continue;
+
+      // Gating anti-ambiguïté : exiger une dueDate (signal "concrète")
+      // Faute de marqueurs forts spécifiques à un type custom inconnu, on s'appuie
+      // sur la présence d'une échéance pour considérer la phrase concrète.
+      if (!dueDate) continue;
+
+      let title = customType.name;
+      if (title.length > 100) title = title.substring(0, 97) + "...";
+
+      let sourceSentence = sentence.trim();
+      if (sourceSentence.length > 200) sourceSentence = sourceSentence.substring(0, 197) + "...";
+
+      actions.push({
+        title,
+        type: "CUSTOM" as ActionType,
+        sourceSentence,
+        dueDate,
+        customTypeId: customType.id,
+        customTypeLabel: customType.name,
+        customTypeColor: customType.color,
+      });
+
+      // Une seule action par (phrase, customType)
+      break;
+    }
+  }
+
+  return actions;
 }
 
 /**

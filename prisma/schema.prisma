@@ -22,6 +22,7 @@ enum ActionType {
   FOLLOW_UP
   PAY
   VALIDATE
+  CUSTOM
 }
 
 enum EmailStatus {
@@ -122,6 +123,7 @@ model User {
   imapCredentials       IMAPCredential[]
   microsoftGraphMailboxes MicrosoftGraphMailbox[]
   exclusions            UserExclusion[]
+  customActionTypes     CustomActionType[]
 
   @@map(name: "users")
 }
@@ -151,17 +153,45 @@ model Action {
   emailWebUrl      String?      @map(name: "email_web_url") // URL vers l'email dans le webmail
   mailboxId        String?      @map(name: "mailbox_id")    // IMAPCredential.id ou MicrosoftGraphMailbox.id
   mailboxLabel     String?      @map(name: "mailbox_label") // Label dénormalisé pour affichage
+
+  // Custom action type (nullable, snapshot label/color préservés à la suppression)
+  customTypeId     String?           @map(name: "custom_type_id")
+  customTypeLabel  String?           @db.VarChar(50) @map(name: "custom_type_label")
+  customTypeColor  String?           @map(name: "custom_type_color")
+  customType       CustomActionType? @relation("CustomTypeActions", fields: [customTypeId], references: [id], onDelete: SetNull)
+
   createdAt        DateTime     @default(now()) @map(name: "created_at")
   updatedAt        DateTime     @default(now()) @updatedAt @map(name: "updated_at")
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, status, isScheduled, dueDate]) // filtre Aujourd'hui / À venir
+  @@index([userId, status, type, customTypeId])   // filtres mixtes natif + custom
   @@index([userId])
   @@index([status])
   @@index([type])
   @@index([dueDate])
   @@map(name: "actions")
+}
+
+// Types d'actions personnalisés définis par l'utilisateur (max 10 par user)
+model CustomActionType {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String   @db.VarChar(50)
+  slug      String
+  keywords  String[]
+  color     String   // valeurs admises : slate | blue | indigo | violet | pink | rose | orange | amber
+  isActive  Boolean  @default(true) @map(name: "is_active")
+  createdAt DateTime @default(now()) @map(name: "created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map(name: "updated_at")
+
+  user    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  actions Action[] @relation("CustomTypeActions")
+
+  @@unique([userId, slug])
+  @@index([userId, isActive])
+  @@map(name: "custom_action_types")
 }
 
 // Stockage minimal des métadonnées d'emails (RGPD compliant)
