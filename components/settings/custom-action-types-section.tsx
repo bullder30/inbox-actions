@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
 import {
   AlertCircle,
   Loader2,
   Pencil,
   Plus,
+  Regex,
   Tag,
   Trash2,
   X,
@@ -20,6 +21,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog,
   DialogContent,
@@ -38,37 +40,41 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { MatchHighlighter } from "@/components/actions/match-highlighter";
 import {
   CUSTOM_ACTION_COLORS,
   type CustomActionColor,
   colorToBadgeClasses,
   colorToSwatchClass,
-  rotateColor,
 } from "@/lib/custom-action-colors";
 import {
   MAX_KEYWORD_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
   MAX_TYPE_NAME_LENGTH,
   MAX_TYPES_PER_USER,
   validateKeywords,
 } from "@/lib/custom-action-types/validation";
+import {
+  buildCreatePayload,
+  buildPatchPayload,
+  initialDialogState,
+  isPatternFieldValid,
+  resetForMode,
+  type DialogState,
+  type EditingType,
+} from "@/lib/custom-action-types/dialog-state";
+import type { MatchRange } from "@/lib/match-highlighter";
 import { cn } from "@/lib/utils";
 
-interface CustomType {
-  id: string;
-  name: string;
-  slug: string;
-  keywords: string[];
-  color: CustomActionColor;
-  isActive: boolean;
-  createdAt: string;
-}
+type CustomType = EditingType;
+
+const TEST_DEBOUNCE_MS = 300;
 
 /**
  * Section "Mes types d'actions" affichée dans /settings.
- * Permet de créer, modifier, désactiver et supprimer des types
- * d'actions personnalisés (CRUD complet).
  *
- * Voir docs/features/custom-actions.md (US-1 à US-4) pour la spec.
+ * Voir docs/features/custom-actions.md (US-1 à US-4) + docs/features/regex-power.md
+ * (US-1 toggle mode, US-2 création regex, US-3 zone de test).
  */
 export function CustomActionTypesSection() {
   const [types, setTypes] = useState<CustomType[]>([]);
@@ -126,7 +132,6 @@ export function CustomActionTypesSection() {
     try {
       const res = await fetch(`/api/custom-action-types/${id}`, { method: "DELETE" });
       if (res.status === 404) {
-        // Type déjà supprimé (ex. autre onglet) — sync silencieuse de l'UI
         setTypes((prev) => prev.filter((t) => t.id !== id));
         toast.info("Ce type avait déjà été supprimé");
         return;
@@ -198,6 +203,7 @@ export function CustomActionTypesSection() {
             <AnimatePresence mode="popLayout" initial={false}>
               {types.map((type) => {
                 const colorClasses = colorToBadgeClasses[type.color];
+                const isRegex = type.mode === "REGEX";
                 return (
                   <motion.li
                     key={type.id}
@@ -219,16 +225,28 @@ export function CustomActionTypesSection() {
                         >
                           {type.name}
                         </Badge>
+                        {isRegex && (
+                          <Badge variant="outline" className="gap-1 text-[10px] uppercase tracking-wide">
+                            <Regex className="size-2.5" />
+                            regex
+                          </Badge>
+                        )}
                         {!type.isActive && (
                           <Badge variant="outline" className="text-[10px] uppercase tracking-wide">
                             désactivé
                           </Badge>
                         )}
                       </div>
-                      <p className="break-words text-xs text-muted-foreground">
-                        {type.keywords.length} mot{type.keywords.length > 1 ? "s" : ""}-clé{type.keywords.length > 1 ? "s" : ""} :{" "}
-                        <span className="text-foreground/80">{type.keywords.join(", ")}</span>
-                      </p>
+                      {isRegex ? (
+                        <p className="break-all font-mono text-[11px] text-muted-foreground">
+                          <span className="text-foreground/80">{type.regexPattern}</span>
+                        </p>
+                      ) : (
+                        <p className="break-words text-xs text-muted-foreground">
+                          {type.keywords.length} mot{type.keywords.length > 1 ? "s" : ""}-clé{type.keywords.length > 1 ? "s" : ""} :{" "}
+                          <span className="text-foreground/80">{type.keywords.join(", ")}</span>
+                        </p>
+                      )}
                     </div>
                     <div className="flex shrink-0 gap-1">
                       <Button
@@ -258,7 +276,6 @@ export function CustomActionTypesSection() {
         )}
       </CardContent>
 
-      {/* Dialog création / édition */}
       <CustomTypeDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -267,7 +284,6 @@ export function CustomActionTypesSection() {
         onSaved={handleSaved}
       />
 
-      {/* Dialog confirm suppression */}
       <AlertDialog open={deletingType !== null} onOpenChange={(open) => !open && setDeletingType(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -298,63 +314,64 @@ interface CustomTypeDialogProps {
 }
 
 function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSaved }: CustomTypeDialogProps) {
-  const [name, setName] = useState("");
-  const [keywords, setKeywords] = useState<string[]>([]);
+  const [state, setState] = useState<DialogState>(() =>
+    initialDialogState({ existingCount, editingType })
+  );
   const [keywordInput, setKeywordInput] = useState("");
-  const [color, setColor] = useState<CustomActionColor>(CUSTOM_ACTION_COLORS[0]);
-  const [isActive, setIsActive] = useState(true);
   const [saving, setSaving] = useState(false);
 
   // Reset / pre-fill quand le dialog s'ouvre
   useEffect(() => {
     if (!open) return;
-    if (editingType) {
-      setName(editingType.name);
-      setKeywords(editingType.keywords);
-      setColor(editingType.color);
-      setIsActive(editingType.isActive);
-    } else {
-      setName("");
-      setKeywords([]);
-      setColor(rotateColor(existingCount));
-      setIsActive(true);
-    }
+    setState(initialDialogState({ existingCount, editingType }));
     setKeywordInput("");
   }, [open, editingType, existingCount]);
+
+  const setMode = (next: DialogState["mode"]) =>
+    setState((s) => resetForMode(s, next));
 
   function addKeyword(rawValue?: string) {
     const value = (rawValue ?? keywordInput).trim();
     if (!value) return;
-    // Dédup case-insensitive (corrige HIGH #1 review)
-    if (keywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
+    if (state.keywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
       setKeywordInput("");
       return;
     }
-    setKeywords([...keywords, value]);
+    setState((s) => ({ ...s, keywords: [...s.keywords, value] }));
     setKeywordInput("");
   }
 
   function removeKeyword(idx: number) {
-    setKeywords(keywords.filter((_, i) => i !== idx));
+    setState((s) => ({ ...s, keywords: s.keywords.filter((_, i) => i !== idx) }));
   }
 
   async function handleSave() {
-    // Flush un éventuel keyword non-validé encore dans l'input
-    const pendingKeyword = keywordInput.trim();
-    let finalKeywords = keywords;
-    if (pendingKeyword && !keywords.some((k) => k.toLowerCase() === pendingKeyword.toLowerCase())) {
-      finalKeywords = [...keywords, pendingKeyword];
-      setKeywords(finalKeywords);
-      setKeywordInput("");
-    }
+    let working: DialogState = state;
 
-    if (!name.trim() || finalKeywords.length === 0) return;
+    if (state.mode === "KEYWORDS") {
+      // Flush un éventuel keyword non-validé encore dans l'input
+      const pendingKeyword = keywordInput.trim();
+      if (
+        pendingKeyword &&
+        !state.keywords.some((k) => k.toLowerCase() === pendingKeyword.toLowerCase())
+      ) {
+        working = { ...state, keywords: [...state.keywords, pendingKeyword] };
+        setState(working);
+        setKeywordInput("");
+      }
 
-    // Validation client (corrige HIGH #2 review) — évite un round-trip API pour rien
-    const invalid = validateKeywords(finalKeywords);
-    if (invalid && invalid.length > 0) {
-      toast.error(`Mots-clés invalides : ${invalid.join(", ")} (4 chars min, hors stoplist FR)`);
-      return;
+      if (!working.name.trim() || working.keywords.length === 0) return;
+
+      const invalid = validateKeywords(working.keywords);
+      if (invalid && invalid.length > 0) {
+        toast.error(`Mots-clés invalides : ${invalid.join(", ")} (4 chars min, hors stoplist FR)`);
+        return;
+      }
+    } else {
+      if (!working.name.trim() || !isPatternFieldValid(working.regexPattern)) {
+        toast.error("Pattern regex invalide ou vide");
+        return;
+      }
     }
 
     setSaving(true);
@@ -363,9 +380,7 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
         ? `/api/custom-action-types/${editingType.id}`
         : "/api/custom-action-types";
       const method = editingType ? "PATCH" : "POST";
-      const body = editingType
-        ? { name: name.trim(), keywords: finalKeywords, color, isActive }
-        : { name: name.trim(), keywords: finalKeywords, color };
+      const body = editingType ? buildPatchPayload(working) : buildCreatePayload(working);
 
       const res = await fetch(url, {
         method,
@@ -394,19 +409,42 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
     }
   }
 
+  const canSubmit =
+    state.name.trim().length > 0 &&
+    (state.mode === "KEYWORDS"
+      ? state.keywords.length > 0 || keywordInput.trim().length > 0
+      : isPatternFieldValid(state.regexPattern));
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[500px]">
+      <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[560px]">
         <DialogHeader>
           <DialogTitle>{editingType ? "Modifier le type" : "Créer un type personnalisé"}</DialogTitle>
           <DialogDescription>
             {editingType
               ? "Les actions déjà extraites avec ce type gardent leur label et couleur d'origine."
-              : "Définissez un nom, des mots-clés et une couleur. Le type sera détecté automatiquement dans vos futurs emails."}
+              : "Définissez un nom, choisissez le mode de détection et une couleur."}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-2">
+          {/* Mode toggle */}
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="space-y-0.5">
+              <Label htmlFor="type-mode-regex" className="cursor-pointer text-sm font-medium">
+                Mode avancé (regex)
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                Activez pour détecter via une expression régulière (ex. <code className="font-mono">FAC-\d{"{4}"}-\d+</code>) au lieu de mots-clés.
+              </p>
+            </div>
+            <Switch
+              id="type-mode-regex"
+              checked={state.mode === "REGEX"}
+              onCheckedChange={(checked) => setMode(checked ? "REGEX" : "KEYWORDS")}
+            />
+          </div>
+
           {/* Nom */}
           <div className="space-y-1.5">
             <Label htmlFor="type-name">
@@ -414,71 +452,41 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
             </Label>
             <Input
               id="type-name"
-              placeholder="Ex: Review code, Daily stand-up…"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Review code, Facture client…"
+              value={state.name}
+              onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
               maxLength={MAX_TYPE_NAME_LENGTH}
               autoFocus
             />
-            <p className="text-[11px] text-muted-foreground">{name.length}/{MAX_TYPE_NAME_LENGTH} caractères</p>
+            <p className="text-[11px] text-muted-foreground">{state.name.length}/{MAX_TYPE_NAME_LENGTH} caractères</p>
           </div>
 
-          {/* Keywords */}
-          <div className="space-y-1.5">
-            <Label htmlFor="type-keywords">
-              Mots-clés <span className="text-destructive">*</span>
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="type-keywords"
-                placeholder="Tapez un mot-clé puis Entrée"
-                value={keywordInput}
-                onChange={(e) => setKeywordInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" || e.key === ",") {
-                    e.preventDefault();
-                    addKeyword();
-                  }
-                }}
-                maxLength={MAX_KEYWORD_LENGTH}
-              />
-              <Button type="button" size="sm" variant="outline" onClick={() => addKeyword()} disabled={!keywordInput.trim()}>
-                <Plus className="size-4" />
-              </Button>
-            </div>
-            {keywords.length > 0 && (
-              <div className="flex flex-wrap gap-1.5 pt-1">
-                {keywords.map((kw, idx) => (
-                  <Badge key={`${kw}-${idx}`} variant="secondary" className="gap-1 pl-2 pr-1">
-                    {kw}
-                    <button
-                      type="button"
-                      onClick={() => removeKeyword(idx)}
-                      className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
-                      aria-label={`Retirer ${kw}`}
-                    >
-                      <X className="size-3" />
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-            <p className="text-[11px] text-muted-foreground">
-              Min. 4 caractères (sauf acronymes en majuscules). Évitez les mots trop génériques.
-            </p>
-          </div>
+          {state.mode === "KEYWORDS" ? (
+            <KeywordsSection
+              keywords={state.keywords}
+              keywordInput={keywordInput}
+              setKeywordInput={setKeywordInput}
+              addKeyword={addKeyword}
+              removeKeyword={removeKeyword}
+            />
+          ) : (
+            <RegexSection
+              pattern={state.regexPattern}
+              setPattern={(v) => setState((s) => ({ ...s, regexPattern: v }))}
+            />
+          )}
 
           {/* Color picker */}
           <div className="space-y-1.5">
             <Label>Couleur du badge</Label>
             <div className="flex flex-wrap gap-2">
               {CUSTOM_ACTION_COLORS.map((c) => {
-                const selected = c === color;
+                const selected = c === state.color;
                 return (
                   <button
                     key={c}
                     type="button"
-                    onClick={() => setColor(c)}
+                    onClick={() => setState((s) => ({ ...s, color: c }))}
                     className={cn(
                       "flex size-8 items-center justify-center rounded-full border-2 transition-all",
                       colorToSwatchClass[c],
@@ -505,7 +513,11 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
                   Si désactivé, ce type ne sera plus détecté dans les futurs emails.
                 </p>
               </div>
-              <Switch id="type-active" checked={isActive} onCheckedChange={setIsActive} />
+              <Switch
+                id="type-active"
+                checked={state.isActive}
+                onCheckedChange={(v) => setState((s) => ({ ...s, isActive: v }))}
+              />
             </div>
           )}
         </div>
@@ -514,7 +526,7 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             Annuler
           </Button>
-          <Button onClick={handleSave} disabled={saving || !name.trim() || keywords.length === 0}>
+          <Button onClick={handleSave} disabled={saving || !canSubmit}>
             {saving ? (
               <>
                 <Loader2 className="mr-2 size-4 animate-spin" />
@@ -527,5 +539,199 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ─── Sous-section : mots-clés ─────────────────────────────────────────────────
+
+interface KeywordsSectionProps {
+  keywords: string[];
+  keywordInput: string;
+  setKeywordInput: (v: string) => void;
+  addKeyword: () => void;
+  removeKeyword: (idx: number) => void;
+}
+
+function KeywordsSection({
+  keywords,
+  keywordInput,
+  setKeywordInput,
+  addKeyword,
+  removeKeyword,
+}: KeywordsSectionProps) {
+  return (
+    <div className="space-y-1.5">
+      <Label htmlFor="type-keywords">
+        Mots-clés <span className="text-destructive">*</span>
+      </Label>
+      <div className="flex gap-2">
+        <Input
+          id="type-keywords"
+          placeholder="Tapez un mot-clé puis Entrée"
+          value={keywordInput}
+          onChange={(e) => setKeywordInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === ",") {
+              e.preventDefault();
+              addKeyword();
+            }
+          }}
+          maxLength={MAX_KEYWORD_LENGTH}
+        />
+        <Button type="button" size="sm" variant="outline" onClick={() => addKeyword()} disabled={!keywordInput.trim()}>
+          <Plus className="size-4" />
+        </Button>
+      </div>
+      {keywords.length > 0 && (
+        <div className="flex flex-wrap gap-1.5 pt-1">
+          {keywords.map((kw, idx) => (
+            <Badge key={`${kw}-${idx}`} variant="secondary" className="gap-1 pl-2 pr-1">
+              {kw}
+              <button
+                type="button"
+                onClick={() => removeKeyword(idx)}
+                className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                aria-label={`Retirer ${kw}`}
+              >
+                <X className="size-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+      <p className="text-[11px] text-muted-foreground">
+        Min. 4 caractères (sauf acronymes en majuscules). Évitez les mots trop génériques.
+      </p>
+    </div>
+  );
+}
+
+// ─── Sous-section : pattern regex + zone de test inline ───────────────────────
+
+interface RegexSectionProps {
+  pattern: string;
+  setPattern: (v: string) => void;
+}
+
+function RegexSection({ pattern, setPattern }: RegexSectionProps) {
+  const [testText, setTestText] = useState("");
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<MatchRange[] | null>(null);
+  const [testError, setTestError] = useState<string | null>(null);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const patternValid = useMemo(() => isPatternFieldValid(pattern), [pattern]);
+
+  // Debounce 300ms : toute frappe sur pattern ou testText déclenche un appel
+  // unique après pause utilisateur (cf. spec US-3 — debounce).
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (!patternValid || testText.trim().length === 0) {
+      setTestResult(null);
+      setTestError(null);
+      return;
+    }
+    debounceRef.current = setTimeout(() => {
+      void runTest(pattern, testText);
+    }, TEST_DEBOUNCE_MS);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [pattern, testText, patternValid]);
+
+  async function runTest(p: string, text: string) {
+    setTesting(true);
+    setTestError(null);
+    try {
+      const res = await fetch("/api/custom-action-types/test-regex", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pattern: p, testText: [text] }),
+      });
+      if (res.status === 408) {
+        setTestError("Pattern trop complexe (timeout)");
+        setTestResult(null);
+        return;
+      }
+      if (res.status === 422) {
+        const data = await res.json().catch(() => ({}));
+        setTestError(data.error || "Pattern invalide");
+        setTestResult(null);
+        return;
+      }
+      if (!res.ok) {
+        setTestError("Erreur serveur");
+        return;
+      }
+      const data = await res.json();
+      // Réponse: { matches: [{ index, length }, ...] } pour testText[0]
+      setTestResult(data.matches ?? []);
+    } catch {
+      setTestError("Erreur réseau");
+    } finally {
+      setTesting(false);
+    }
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1.5">
+        <Label htmlFor="type-regex-pattern">
+          Pattern regex <span className="text-destructive">*</span>
+        </Label>
+        <Input
+          id="type-regex-pattern"
+          placeholder="Ex: FAC-\d{4}-\d+"
+          value={pattern}
+          onChange={(e) => setPattern(e.target.value)}
+          maxLength={MAX_REGEX_PATTERN_LENGTH}
+          className={cn(
+            "font-mono",
+            pattern.length > 0 && !patternValid && "border-destructive focus-visible:ring-destructive"
+          )}
+        />
+        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+          <span>{pattern.length}/{MAX_REGEX_PATTERN_LENGTH} caractères · flags <code className="font-mono">gi</code> appliqués</span>
+          {pattern.length > 0 && (
+            <span className={patternValid ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
+              {patternValid ? "Pattern valide" : "Pattern invalide"}
+            </span>
+          )}
+        </div>
+      </div>
+
+      <div className="space-y-1.5 rounded-lg border bg-muted/40 p-3">
+        <Label htmlFor="type-regex-test">
+          Zone de test
+          {testing && <Loader2 className="ml-2 inline size-3 animate-spin text-muted-foreground" />}
+        </Label>
+        <Textarea
+          id="type-regex-test"
+          placeholder="Collez ici une phrase d'exemple — les matches sont surlignés en direct."
+          value={testText}
+          onChange={(e) => setTestText(e.target.value)}
+          rows={3}
+          className="font-mono text-xs"
+        />
+        {testError && (
+          <p className="flex items-start gap-1.5 text-xs text-destructive">
+            <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+            {testError}
+          </p>
+        )}
+        {testResult !== null && !testError && (
+          <div className="space-y-1 rounded border bg-background p-2">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {testResult.length} match{testResult.length > 1 ? "es" : ""}
+            </p>
+            <MatchHighlighter
+              text={testText}
+              ranges={testResult}
+              emptyHint="Tapez du texte pour tester."
+            />
+          </div>
+        )}
+      </div>
+    </div>
   );
 }

@@ -96,7 +96,8 @@
       "Bash(pnpm audit *)",
       "Bash(SKIP_ENV_VALIDATION=1 pnpm lint)",
       "Bash(pnpm vitest *)",
-      "Bash(pnpm tsc *)"
+      "Bash(pnpm tsc *)",
+      "Bash(git check-ignore *)"
     ]
   }
 }
