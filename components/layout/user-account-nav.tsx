@@ -73,7 +73,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Home className="size-4 text-[#764ba2]" />
+                  <Home className="size-4 text-brand" />
                   <p className="text-sm">Accueil</p>
                 </Link>
               </li>
@@ -84,13 +84,12 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Inbox className="size-4 text-[#764ba2]" />
+                  <Inbox className="size-4 text-brand" />
                   <p className="relative text-sm">
                     Actions
                     {todoCount > 0 && (
                       <span
-                        className="absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                        style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                        className="bg-brand-gradient absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
                       >
                         {todoCount > 9 ? "9+" : todoCount}
                       </span>
@@ -105,7 +104,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Settings className="size-4 text-[#764ba2]" />
+                  <Settings className="size-4 text-brand" />
                   <p className="text-sm">Paramètres</p>
                 </Link>
               </li>
@@ -118,7 +117,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Mail className="size-4 text-[#764ba2]" />
+                  <Mail className="size-4 text-brand" />
                   <p className="text-sm">Contact</p>
                 </Link>
               </li>
@@ -133,7 +132,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <FileText className="size-4 text-[#764ba2]" />
+                  <FileText className="size-4 text-brand" />
                   <p className="text-sm">CGU</p>
                 </Link>
               </li>
@@ -144,7 +143,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <Shield className="size-4 text-[#764ba2]" />
+                  <Shield className="size-4 text-brand" />
                   <p className="text-sm">Confidentialité</p>
                 </Link>
               </li>
@@ -157,7 +156,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                   onClick={closeDrawer}
                   className="flex w-full items-center gap-3 px-2.5 py-2"
                 >
-                  <ExternalLink className="size-4 text-[#764ba2]" />
+                  <ExternalLink className="size-4 text-brand" />
                   <p className="text-sm">Licence AGPL-3.0</p>
                 </Link>
               </li>
@@ -174,7 +173,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
                 }}
               >
                 <div className="flex w-full items-center gap-3 px-2.5 py-2">
-                  <LogOut className="size-4 text-[#764ba2]" />
+                  <LogOut className="size-4 text-brand" />
                   <p className="text-sm">Se déconnecter</p>
                 </div>
               </li>
@@ -208,20 +207,19 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
 
         <DropdownMenuItem asChild>
           <Link href="/dashboard" className="flex items-center space-x-2.5">
-            <Home className="size-4 text-[#764ba2]" />
+            <Home className="size-4 text-brand" />
             <p className="text-sm">Accueil</p>
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/actions" className="flex items-center space-x-2.5">
-            <Inbox className="size-4 text-[#764ba2]" />
+            <Inbox className="size-4 text-brand" />
             <p className="relative text-sm">
               Actions
               {todoCount > 0 && (
                 <span
-                  className="absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                  style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                  className="bg-brand-gradient absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
                 >
                   {todoCount > 9 ? "9+" : todoCount}
                 </span>
@@ -235,7 +233,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
             href="/settings"
             className="flex items-center space-x-2.5"
           >
-            <Settings className="size-4 text-[#764ba2]" />
+            <Settings className="size-4 text-brand" />
             <p className="text-sm">Paramètres</p>
           </Link>
         </DropdownMenuItem>
@@ -243,7 +241,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
 
         <DropdownMenuItem asChild>
           <Link href="/contact" className="flex items-center space-x-2.5">
-            <Mail className="size-4 text-[#764ba2]" />
+            <Mail className="size-4 text-brand" />
             <p className="text-sm">Contact</p>
           </Link>
         </DropdownMenuItem>
@@ -254,14 +252,14 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
 
         <DropdownMenuItem asChild>
           <Link href="/terms" className="flex items-center space-x-2.5">
-            <FileText className="size-4 text-[#764ba2]" />
+            <FileText className="size-4 text-brand" />
             <p className="text-sm">CGU</p>
           </Link>
         </DropdownMenuItem>
 
         <DropdownMenuItem asChild>
           <Link href="/privacy" className="flex items-center space-x-2.5">
-            <Shield className="size-4 text-[#764ba2]" />
+            <Shield className="size-4 text-brand" />
             <p className="text-sm">Confidentialité</p>
           </Link>
         </DropdownMenuItem>
@@ -273,7 +271,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
             rel="noopener noreferrer"
             className="flex items-center space-x-2.5"
           >
-            <ExternalLink className="size-4 text-[#764ba2]" />
+            <ExternalLink className="size-4 text-brand" />
             <p className="text-sm">Licence AGPL-3.0</p>
           </Link>
         </DropdownMenuItem>
@@ -289,7 +287,7 @@ export function UserAccountNav({ todoCount = 0 }: UserAccountNavProps) {
           }}
         >
           <div className="flex items-center space-x-2.5">
-            <LogOut className="size-4 text-[#764ba2]" />
+            <LogOut className="size-4 text-brand" />
             <p className="text-sm">Se déconnecter</p>
           </div>
         </DropdownMenuItem>

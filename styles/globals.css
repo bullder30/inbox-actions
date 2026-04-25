@@ -27,8 +27,10 @@
     --ring: 258 70% 60%;
     --radius: 0.5rem;
 
-    /* Token brand (couleur du logo : indigo->purple) — utilisable via hsl(var(--brand)) */
-    --brand: 258 60% 60%;
+    /* Token brand (couleur du logo : indigo->purple).
+       Aligne sur le purple du gradient (#764ba2) pour une utilisation
+       typographique (contraste AA sur fond blanc). */
+    --brand: 269 36% 47%;
     --brand-foreground: 0 0% 100%;
 
     --chart-1: 271.5 81.3% 55.9%;
@@ -61,7 +63,8 @@
     --input: 258 15% 18%;
     --ring: 258 60% 65%;
 
-    --brand: 258 60% 70%;
+    /* Brand light en dark mode (contraste sur fond sombre) */
+    --brand: 258 55% 70%;
     --brand-foreground: 0 0% 100%;
 
     --chart-1: 271.5 81.3% 55.9%;
@@ -140,6 +143,13 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* Gradient brand canonique (logo, icones d'app, badges accent).
+   Source unique de verite — les composants doivent utiliser cette classe
+   plutot que d'inliner le linear-gradient. */
+.bg-brand-gradient {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
 /* Background grid subtil — utilisé sur le hero de la landing */

@@ -39,7 +39,7 @@ export function StatsBar() {
           className="flex items-center gap-3 rounded-xl border bg-card/60 px-4 py-3 backdrop-blur-sm"
         >
           <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-indigo-500/15 to-purple-500/15">
-            <stat.icon className="size-4 text-indigo-600 dark:text-indigo-400" strokeWidth={2.2} />
+            <stat.icon className="size-4 text-brand" strokeWidth={2.2} />
           </div>
           <div className="min-w-0">
             <div className="text-base font-bold tabular-nums leading-none sm:text-lg">{stat.value}</div>

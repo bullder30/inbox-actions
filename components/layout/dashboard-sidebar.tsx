@@ -97,12 +97,12 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                   {isSidebarExpanded ? (
                     <PanelLeftClose
                       size={18}
-                      className="stroke-[#764ba2]"
+                      className="stroke-brand"
                     />
                   ) : (
                     <PanelRightClose
                       size={18}
-                      className="stroke-[#764ba2]"
+                      className="stroke-brand"
                     />
                   )}
                   <span className="sr-only">Toggle Sidebar</span>
@@ -140,13 +140,12 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                                     "cursor-not-allowed opacity-80 hover:bg-transparent hover:text-muted-foreground",
                                 )}
                               >
-                                <Icon className="size-5 text-[#764ba2]" />
+                                <Icon className="size-5 text-brand" />
                                 <span className="relative">
                                   {item.title}
                                   {item.badge && (
                                     <span
-                                      className="absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                                      style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                                      className="bg-brand-gradient absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
                                     >
                                       {item.badge > 9 ? "9+" : item.badge}
                                     </span>
@@ -169,11 +168,10 @@ export function DashboardSidebar({ links }: DashboardSidebarProps) {
                                     )}
                                   >
                                     <span className="relative flex size-full items-center justify-center">
-                                      <Icon className="size-5 text-[#764ba2]" />
+                                      <Icon className="size-5 text-brand" />
                                       {item.badge && (
                                         <span
-                                          className="absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                                          style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                                          className="bg-brand-gradient absolute -right-1 -top-1 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
                                         >
                                           {item.badge > 9 ? "9+" : item.badge}
                                         </span>
@@ -217,7 +215,7 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
             size="icon"
             className="size-9 shrink-0 md:hidden"
           >
-            <Menu className="size-5 text-[#764ba2]" />
+            <Menu className="size-5 text-brand" />
             <span className="sr-only">Toggle navigation menu</span>
           </Button>
         </SheetTrigger>
@@ -264,13 +262,12 @@ export function MobileSheetSidebar({ links }: DashboardSidebarProps) {
                                   "cursor-not-allowed opacity-80 hover:bg-transparent hover:text-muted-foreground",
                               )}
                             >
-                              <Icon className="size-5 text-[#764ba2]" />
+                              <Icon className="size-5 text-brand" />
                               <span className="relative">
                                 {item.title}
                                 {item.badge && (
                                   <span
-                                    className="absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
-                                    style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)" }}
+                                    className="bg-brand-gradient absolute -right-3.5 -top-1.5 flex size-4 items-center justify-center rounded-full text-[10px] font-medium text-white"
                                   >
                                     {item.badge > 9 ? "9+" : item.badge}
                                   </span>
