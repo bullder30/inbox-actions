@@ -4,7 +4,7 @@ import { dashboardTag } from "@/lib/cache/dashboard";
 
 import { auth } from "@/auth";
 import { createAllEmailProviders } from "@/lib/email-provider/factory";
-import { extractActionsFromEmail, type UserExclusionData } from "@/lib/actions/extract-actions-regex";
+import { extractActionsFromEmail, type UserExclusionData, type CustomActionTypeData } from "@/lib/actions/extract-actions-regex";
 import { getEndOfTodayParis } from "@/lib/utils/date-paris";
 import { prisma } from "@/lib/db";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
@@ -51,6 +51,13 @@ export async function POST(req: NextRequest) {
       select: { type: true, value: true },
     }) as UserExclusionData[];
 
+    // Charger les types custom actifs une seule fois (pour CRITICAL #1 / AC-8)
+    const customTypesRaw = await prisma.customActionType.findMany({
+      where: { userId: session.user.id, isActive: true },
+      select: { id: true, name: true, keywords: true, color: true, isActive: true },
+    });
+    const customTypes: CustomActionTypeData[] = customTypesRaw;
+
     const userId = session.user.id as string;
 
     // Traiter toutes les boîtes en parallèle (connexions indépendantes)
@@ -82,7 +89,7 @@ export async function POST(req: NextRequest) {
               subject: emailMetadata.subject,
               body: emailBody,
               receivedAt: emailMetadata.receivedAt,
-            }, userExclusions);
+            }, userExclusions, customTypes);
 
             if (extractedActions.length > 0) {
               await prisma.action.createMany({
@@ -100,6 +107,9 @@ export async function POST(req: NextRequest) {
                   isScheduled: action.dueDate ? action.dueDate > getEndOfTodayParis() : false,
                   mailboxId: emailProvider.mailboxId,
                   mailboxLabel: emailProvider.mailboxLabel,
+                  customTypeId: action.customTypeId ?? null,
+                  customTypeLabel: action.customTypeLabel ?? null,
+                  customTypeColor: action.customTypeColor ?? null,
                 })),
               });
               extractedActionsCount += extractedActions.length;

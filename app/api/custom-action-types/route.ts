@@ -25,7 +25,7 @@ const createSchema = z.object({
   name: z.string().trim().min(1).max(MAX_TYPE_NAME_LENGTH),
   keywords: z.array(z.string().trim()).min(1).max(MAX_KEYWORDS),
   color: z.enum(CUSTOM_ACTION_COLORS).optional(),
-});
+}).strict();
 
 /**
  * GET /api/custom-action-types
@@ -80,35 +80,41 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Vérifier la limite
-    const existingCount = await prisma.customActionType.count({
-      where: { userId: session.user.id },
-    });
-    if (existingCount >= MAX_TYPES_PER_USER) {
-      return NextResponse.json(
-        { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
-        { status: 400 }
-      );
-    }
-
     const slug = nameToSlug(name);
-    const finalColor = color ?? rotateColor(existingCount);
     const finalKeywords = normalizeKeywords(rawKeywords);
 
+    // Atomique : count + create dans la même transaction pour éviter la race
+    // condition sur la limite (deux requêtes parallèles voyant count=9 puis créant
+    // chacune un 11ème type). Voir spec edge case 4.4.
     try {
-      const type = await prisma.customActionType.create({
-        data: {
-          userId: session.user.id,
-          name,
-          slug,
-          keywords: finalKeywords,
-          color: finalColor,
-        },
+      const type = await prisma.$transaction(async (tx) => {
+        const existingCount = await tx.customActionType.count({
+          where: { userId: session.user.id! },
+        });
+        if (existingCount >= MAX_TYPES_PER_USER) {
+          throw new Error("LIMIT_REACHED");
+        }
+        const finalColor = color ?? rotateColor(existingCount);
+        return tx.customActionType.create({
+          data: {
+            userId: session.user.id!,
+            name,
+            slug,
+            keywords: finalKeywords,
+            color: finalColor,
+          },
+        });
       });
 
       revalidateTag(dashboardTag(session.user.id));
       return NextResponse.json({ type }, { status: 201 });
     } catch (createErr: unknown) {
+      if (createErr instanceof Error && createErr.message === "LIMIT_REACHED") {
+        return NextResponse.json(
+          { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
+          { status: 400 }
+        );
+      }
       if (isPrismaUniqueConstraintError(createErr)) {
         return duplicateTypeNameResponse();
       }

@@ -963,7 +963,10 @@ export function extractCustomActionsFromEmail(
 }
 
 /**
- * Compile la liste de keywords d'un type custom en une regex `\b(k1|k2|...)\b` insensible à la casse.
+ * Compile la liste de keywords d'un type custom en une regex Unicode-aware
+ * insensible à la casse. Frontières via lookbehind/lookahead Unicode pour
+ * matcher correctement les mots FR commençant par accent (éditer, écrire, etc.).
+ * `\b` natif JS échoue sur les frontières accent/espace.
  * Retourne `null` si aucun keyword utilisable après trim.
  */
 function compileKeywordsRegex(keywords: string[]): RegExp | null {
@@ -972,7 +975,10 @@ function compileKeywordsRegex(keywords: string[]): RegExp | null {
     .filter((k) => k.length > 0)
     .map(escapeRegex);
   if (validKeywords.length === 0) return null;
-  return new RegExp(`\\b(${validKeywords.join("|")})\\b`, "i");
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}_])(${validKeywords.join("|")})(?![\\p{L}\\p{N}_])`,
+    "iu"
+  );
 }
 
 /**

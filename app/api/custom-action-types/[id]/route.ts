@@ -25,7 +25,7 @@ const patchSchema = z.object({
   keywords: z.array(z.string().trim()).min(1).max(MAX_KEYWORDS).optional(),
   color: z.enum(CUSTOM_ACTION_COLORS).optional(),
   isActive: z.boolean().optional(),
-});
+}).strict();
 
 type RouteContext = { params: Promise<{ id: string }> };
 

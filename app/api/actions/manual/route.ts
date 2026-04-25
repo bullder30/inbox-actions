@@ -182,21 +182,17 @@ export async function POST(request: Request) {
         );
       }
 
-      const existingCount = await prisma.customActionType.count({
-        where: { userId },
-      });
-      if (existingCount >= MAX_TYPES_PER_USER) {
-        return NextResponse.json(
-          { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
-          { status: 400 }
-        );
-      }
-
       const slug = nameToSlug(customTypeName);
       const finalKeywords = normalizeKeywords(rawKeywords);
 
+      // Atomique : count + create type + create action dans la même transaction.
+      // Évite la race condition limite 10 et garantit le rollback si échec.
       try {
         const result = await prisma.$transaction(async (tx) => {
+          const existingCount = await tx.customActionType.count({ where: { userId } });
+          if (existingCount >= MAX_TYPES_PER_USER) {
+            throw new Error("LIMIT_REACHED");
+          }
           const newType = await tx.customActionType.create({
             data: {
               userId,
@@ -227,6 +223,12 @@ export async function POST(request: Request) {
           { status: 201 }
         );
       } catch (txErr: unknown) {
+        if (txErr instanceof Error && txErr.message === "LIMIT_REACHED") {
+          return NextResponse.json(
+            { error: `Vous avez atteint la limite de ${MAX_TYPES_PER_USER} types personnalisés` },
+            { status: 400 }
+          );
+        }
         if (isPrismaUniqueConstraintError(txErr)) {
           return duplicateTypeNameResponse();
         }
