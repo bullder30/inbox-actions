@@ -22,8 +22,9 @@
     --accent-foreground: 258 45% 25%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
+    /* Border light : tres legere teinte violette pour parite avec le dark */
+    --border: 258 12% 89%;
+    --input: 258 12% 89%;
     --ring: 258 70% 60%;
     --radius: 0.5rem;
 

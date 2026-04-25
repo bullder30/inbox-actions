@@ -33,7 +33,7 @@ export function BottomNav({ todoCount = 0 }: BottomNavProps) {
   const pathname = usePathname();
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 flex justify-center px-4 pb-6 md:hidden" style={{ width: "100vw" }}>
+    <div className="fixed inset-x-0 bottom-0 z-50 flex w-full justify-center px-4 pb-6 md:hidden">
       {/* Floating navigation bar with purple border */}
       <nav className="w-full max-w-md rounded-2xl border border-brand bg-background/30 shadow-lg shadow-black/5 backdrop-blur-sm dark:bg-background/25 dark:shadow-black/20">
         <div className="flex h-14 items-center justify-around px-2">
