@@ -44,6 +44,7 @@ import {
 import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
 import { markActionAsDone, markActionAsIgnored } from "@/lib/api/actions";
+import { getActionTypeDisplay } from "@/lib/actions/action-display";
 
 interface ActionCardProps {
   // Accepte les deux types: API (imapUID string) et Prisma (imapUID BigInt)
@@ -51,14 +52,6 @@ interface ActionCardProps {
   onUpdate?: (newStatus?: "DONE" | "IGNORED" | "SCHEDULED" | "TODO") => void;
   variant?: "default" | "compact";
 }
-
-const actionTypeLabels = {
-  SEND: { label: "Envoyer", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  CALL: { label: "Appeler", color: "bg-green-100 text-green-800 border-green-200" },
-  FOLLOW_UP: { label: "Relancer", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  PAY: { label: "Payer", color: "bg-purple-100 text-purple-800 border-purple-200" },
-  VALIDATE: { label: "Valider", color: "bg-orange-100 text-orange-800 border-orange-200" },
-};
 
 const actionStatusLabels = {
   TODO: { label: "À faire", color: "bg-slate-100 text-slate-800" },
@@ -86,7 +79,11 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
     }
   }
 
-  const typeInfo = actionTypeLabels[action.type];
+  const typeDisplay = getActionTypeDisplay({
+    type: action.type,
+    customTypeLabel: action.customTypeLabel,
+    customTypeColor: action.customTypeColor,
+  });
   const statusInfo = actionStatusLabels[action.status];
 
   // Urgence et retard — actifs pour TODO et SCHEDULED
@@ -278,8 +275,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className={cn(typeInfo.color, "text-xs")}>
-                {typeInfo.label}
+              <Badge variant="outline" className={cn(typeDisplay.badgeClasses, "text-xs")}>
+                {typeDisplay.label}
               </Badge>
               <Badge variant="secondary" className={cn(statusInfo.color, "text-xs")}>
                 {statusInfo.label}
@@ -336,8 +333,8 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         {/* Ligne 1 : badges + menu */}
         <div className="flex items-center justify-between gap-2">
           <div className="flex items-center gap-1.5">
-            <Badge variant="outline" className={cn(typeInfo.color, "text-xs")}>
-              {typeInfo.label}
+            <Badge variant="outline" className={cn(typeDisplay.badgeClasses, "text-xs")}>
+              {typeDisplay.label}
             </Badge>
             <Badge variant="secondary" className={cn(statusInfo.color, "text-xs")}>
               {statusInfo.label}

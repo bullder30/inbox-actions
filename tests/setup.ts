@@ -15,12 +15,31 @@ vi.mock("@/auth", () => ({
 }));
 
 // Mock Prisma
-vi.mock("@/lib/db", () => ({
-  prisma: {
-    $transaction: vi.fn((ops: unknown[]) => Promise.all(ops)),
+vi.mock("@/lib/db", () => {
+  const prismaMock: Record<string, unknown> = {
+    // $transaction supporte les deux formes :
+    // - array de Promises -> Promise.all
+    // - callback (tx) -> appelle avec `prismaMock` comme tx (les tests mockent les modèles directement)
+    $transaction: vi.fn((arg: unknown) => {
+      if (typeof arg === "function") {
+        return (arg as (tx: typeof prismaMock) => unknown)(prismaMock);
+      }
+      return Promise.all(arg as unknown[]);
+    }),
     action: {
       findMany: vi.fn(),
       findUnique: vi.fn(),
+      create: vi.fn(),
+      update: vi.fn(),
+      updateMany: vi.fn(),
+      delete: vi.fn(),
+      deleteMany: vi.fn(),
+      count: vi.fn(),
+    },
+    customActionType: {
+      findMany: vi.fn(),
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
       delete: vi.fn(),
@@ -77,5 +96,6 @@ vi.mock("@/lib/db", () => ({
       create: vi.fn(),
       delete: vi.fn(),
     },
-  },
-}));
+  };
+  return { prisma: prismaMock };
+});

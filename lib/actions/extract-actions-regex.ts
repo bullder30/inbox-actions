@@ -14,6 +14,10 @@ export type ExtractedAction = {
   type: ActionType;
   sourceSentence: string;
   dueDate: Date | null;
+  // Champs custom (présents uniquement quand type === "CUSTOM")
+  customTypeId?: string | null;
+  customTypeLabel?: string | null;
+  customTypeColor?: string | null;
 };
 
 /**
@@ -34,6 +38,17 @@ export type UserExclusionData = {
   value: string;
 };
 
+/**
+ * Type custom passé à l'extracteur (subset minimal de CustomActionType Prisma).
+ */
+export type CustomActionTypeData = {
+  id: string;
+  name: string;
+  keywords: string[];
+  color: string;
+  isActive: boolean;
+};
+
 // ============================================================================
 // PATTERNS REGEX PAR TYPE D'ACTION
 // ============================================================================
@@ -45,6 +60,8 @@ export type UserExclusionData = {
 const SEND_PATTERNS = [
   // Impératif direct
   /(?:peux-tu|pourrais-tu|pourriez-vous|merci de|veuillez)(?:\s+.{0,40}?)?\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
+  // Variante "merci d'envoyer" (apostrophe collée)
+  /merci\s+d['']envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
   /(?:envoie|envoyez)(?:-moi)?\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
   /il (?:faut|faudrait)\s+(?:m[''])?envoyer\s+(.{1,100}?)(?:\.|$|avant|d'ici|pour)/i,
 
@@ -526,6 +543,8 @@ const STRONG_MARKERS: Record<ActionType, RegExp[]> = {
     /proposition/i,
     /bon\s+pour\s+accord/i,
   ],
+  // CUSTOM : marqueurs forts non utilisés (le gating custom s'appuie sur dueDate).
+  CUSTOM: [],
 };
 
 /**
@@ -677,6 +696,19 @@ function normalizeText(text: string): string {
 // ============================================================================
 
 /**
+ * Bornes "spec-tight" pour filtrer les phrases analysables et tronquer les sorties.
+ * - SENTENCE_*  : limites avant analyse (élimine bruit / fragments / lignes très longues)
+ * - TITLE_*     : tronque le titre généré pour rester compact en UI
+ * - SOURCE_*    : tronque la source affichée à l'utilisateur
+ */
+const SENTENCE_MIN_LENGTH = 10;
+const SENTENCE_MAX_LENGTH = 500;
+const TITLE_MAX_LENGTH = 100;
+const TITLE_TRUNCATE_AT = 97;
+const SOURCE_MAX_LENGTH = 200;
+const SOURCE_TRUNCATE_AT = 197;
+
+/**
  * Nettoie une phrase en enlevant les tirets, guillemets, etc.
  */
 function cleanSentence(sentence: string): string {
@@ -689,6 +721,32 @@ function cleanSentence(sentence: string): string {
 }
 
 /**
+ * Découpe un body email en phrases analysables.
+ * Découpage robuste : ligne par ligne, puis ponctuation (`.!?`) puis séparateurs `;:`.
+ * Utilisé à la fois par l'extracteur natif et l'extracteur custom.
+ */
+function splitIntoSentences(normalizedBody: string): string[] {
+  const lines = normalizedBody.split(/\r?\n/);
+  const sentences: string[] = [];
+
+  for (const line of lines) {
+    const parts = line.split(/[.!?]+(?:\s+|$)/).filter(Boolean);
+    for (const part of parts) {
+      sentences.push(...part.split(/[;:]+(?:\s+|$)/).filter(Boolean));
+    }
+  }
+
+  return sentences;
+}
+
+/**
+ * Tronque une chaîne en respectant la limite UI (point de coupure < limite, suivi de "...").
+ */
+function truncate(text: string, max: number, cutAt: number): string {
+  return text.length > max ? text.substring(0, cutAt) + "..." : text;
+}
+
+/**
  * Extrait les actions d'un type spécifique
  */
 function extractActionsByType(
@@ -697,29 +755,12 @@ function extractActionsByType(
   context: EmailContext
 ): ExtractedAction[] {
   const actions: ExtractedAction[] = [];
-
-  // Normaliser le texte (apostrophes, guillemets) pour uniformiser avant regex
-  const normalizedBody = normalizeText(context.body);
-
-  // Découper en lignes puis en "phrases" (ponctuation + fin de ligne)
-  const lines = normalizedBody.split(/\r?\n/);
-  const sentences: string[] = [];
-
-  for (const line of lines) {
-    // Découpage robuste : ponctuation ou fin de ligne
-    const parts = line.split(/[.!?]+(?:\s+|$)/).filter(Boolean);
-    // On ajoute aussi des séparateurs utiles dans des emails (listes / consignes)
-    const expanded: string[] = [];
-    for (const part of parts) {
-      expanded.push(...part.split(/[;:]+(?:\s+|$)/).filter(Boolean));
-    }
-    sentences.push(...expanded);
-  }
+  const sentences = splitIntoSentences(normalizeText(context.body));
 
   for (let sentence of sentences) {
     sentence = cleanSentence(sentence);
 
-    if (sentence.length < 10 || sentence.length > 500) continue;
+    if (sentence.length < SENTENCE_MIN_LENGTH || sentence.length > SENTENCE_MAX_LENGTH) continue;
 
     // Détecter une échéance (utile pour lever certaines ambiguïtés)
     const dueDate = parseDueDate(sentence, context.receivedAt);
@@ -738,29 +779,8 @@ function extractActionsByType(
         break; // pattern matché, mais trop vague -> aucune action
       }
 
-      let title = "";
-      switch (type) {
-        case "SEND":
-          title = object ? `Envoyer ${object}` : "Envoyer un document";
-          break;
-        case "CALL":
-          title = object ? `Appeler ${object}` : "Appeler";
-          break;
-        case "FOLLOW_UP":
-          title = object ? `Relancer ${object}` : "Faire un suivi";
-          break;
-        case "PAY":
-          title = object ? `Payer ${object}` : "Effectuer un paiement";
-          break;
-        case "VALIDATE":
-          title = object ? `Valider ${object}` : "Valider";
-          break;
-      }
-
-      if (title.length > 100) title = title.substring(0, 97) + "...";
-
-      let sourceSentence = sentence.trim();
-      if (sourceSentence.length > 200) sourceSentence = sourceSentence.substring(0, 197) + "...";
+      const title = truncate(buildNativeTitle(type, object), TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT);
+      const sourceSentence = truncate(sentence.trim(), SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT);
 
       actions.push({
         title,
@@ -775,6 +795,27 @@ function extractActionsByType(
   }
 
   return actions;
+}
+
+/**
+ * Construit le titre d'une action native selon son type et l'objet capturé.
+ * Si `object` est vide, retourne un libellé fallback générique.
+ */
+function buildNativeTitle(type: ActionType, object: string): string {
+  switch (type) {
+    case "SEND":
+      return object ? `Envoyer ${object}` : "Envoyer un document";
+    case "CALL":
+      return object ? `Appeler ${object}` : "Appeler";
+    case "FOLLOW_UP":
+      return object ? `Relancer ${object}` : "Faire un suivi";
+    case "PAY":
+      return object ? `Payer ${object}` : "Effectuer un paiement";
+    case "VALIDATE":
+      return object ? `Valider ${object}` : "Valider";
+    default:
+      return object || "Action";
+  }
 }
 
 /**
@@ -798,10 +839,15 @@ function shouldExcludeByUserRules(context: EmailContext, exclusions: UserExclusi
 /**
  * Fonction principale d'extraction d'actions depuis un email
  * Règle : Si ambigu → aucune action
+ *
+ * @param context Contexte email (from, subject, body, receivedAt)
+ * @param userExclusions Règles d'exclusion utilisateur (par défaut vide)
+ * @param customTypes Types d'actions custom de l'utilisateur (par défaut vide)
  */
 export function extractActionsFromEmail(
   context: EmailContext,
-  userExclusions: UserExclusionData[] = []
+  userExclusions: UserExclusionData[] = [],
+  customTypes: CustomActionTypeData[] = []
 ): ExtractedAction[] {
   if (userExclusions.length > 0 && shouldExcludeByUserRules(context, userExclusions)) return [];
   if (shouldExcludeEmail(context)) return [];
@@ -819,11 +865,11 @@ export function extractActionsFromEmail(
     const normalizedSubject = normalizeText(context.subject);
     for (const pattern of SUBJECT_PAY_PATTERNS) {
       if (pattern.test(normalizedSubject)) {
-        const rawTitle = `Payer – ${context.subject.trim()}`;
+        const trimmedSubject = context.subject.trim();
         actions.push({
-          title: rawTitle.length > 100 ? rawTitle.substring(0, 97) + "..." : rawTitle,
+          title: truncate(`Payer – ${trimmedSubject}`, TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT),
           type: "PAY",
-          sourceSentence: context.subject.trim(),
+          sourceSentence: trimmedSubject,
           dueDate: null,
         });
         break;
@@ -831,7 +877,108 @@ export function extractActionsFromEmail(
     }
   }
 
+  // Custom action types (US-5) — n'écrase jamais une action native sur la même phrase
+  if (customTypes.length > 0) {
+    const customActions = extractCustomActionsFromEmail(context, customTypes);
+    for (const customAction of customActions) {
+      const collidesWithNative = actions.some(
+        (native) => native.sourceSentence === customAction.sourceSentence
+      );
+      if (!collidesWithNative) {
+        actions.push(customAction);
+      }
+    }
+  }
+
   return deduplicateActions(actions);
+}
+
+/**
+ * Échappe les caractères spéciaux regex dans un keyword utilisateur.
+ */
+function escapeRegex(str: string): string {
+  return str.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/**
+ * Extrait les actions custom à partir des règles définies par l'utilisateur.
+ *
+ * @param context Contexte email
+ * @param customTypes Types custom (filtre interne sur isActive)
+ * @returns Actions custom détectées (avec snapshot label/color)
+ */
+export function extractCustomActionsFromEmail(
+  context: EmailContext,
+  customTypes: CustomActionTypeData[]
+): ExtractedAction[] {
+  if (customTypes.length === 0) return [];
+
+  const activeTypes = customTypes.filter((t) => t.isActive);
+  if (activeTypes.length === 0) return [];
+
+  if (shouldExcludeEmail(context)) return [];
+
+  const actions: ExtractedAction[] = [];
+  const sentences = splitIntoSentences(normalizeText(context.body));
+
+  for (const customType of activeTypes) {
+    const keywordRegex = compileKeywordsRegex(customType.keywords);
+    if (!keywordRegex) continue;
+
+    for (let sentence of sentences) {
+      sentence = cleanSentence(sentence);
+      if (sentence.length < SENTENCE_MIN_LENGTH || sentence.length > SENTENCE_MAX_LENGTH) continue;
+
+      const dueDate = parseDueDate(sentence, context.receivedAt);
+
+      // Conditionnels faibles : annuler seulement si pas de deadline
+      if (!dueDate && hasWeakConditional(sentence)) continue;
+
+      if (!keywordRegex.test(sentence)) continue;
+
+      // Gating anti-ambiguïté : exiger une dueDate (signal "concrète").
+      // Faute de marqueurs forts spécifiques à un type custom inconnu, on s'appuie
+      // sur la présence d'une échéance pour considérer la phrase concrète.
+      if (!dueDate) continue;
+
+      const title = truncate(customType.name, TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT);
+      const sourceSentence = truncate(sentence.trim(), SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT);
+
+      actions.push({
+        title,
+        type: "CUSTOM" as ActionType,
+        sourceSentence,
+        dueDate,
+        customTypeId: customType.id,
+        customTypeLabel: customType.name,
+        customTypeColor: customType.color,
+      });
+
+      // Une seule action par (phrase, customType)
+      break;
+    }
+  }
+
+  return actions;
+}
+
+/**
+ * Compile la liste de keywords d'un type custom en une regex Unicode-aware
+ * insensible à la casse. Frontières via lookbehind/lookahead Unicode pour
+ * matcher correctement les mots FR commençant par accent (éditer, écrire, etc.).
+ * `\b` natif JS échoue sur les frontières accent/espace.
+ * Retourne `null` si aucun keyword utilisable après trim.
+ */
+function compileKeywordsRegex(keywords: string[]): RegExp | null {
+  const validKeywords = keywords
+    .map((k) => k.trim())
+    .filter((k) => k.length > 0)
+    .map(escapeRegex);
+  if (validKeywords.length === 0) return null;
+  return new RegExp(
+    `(?<![\\p{L}\\p{N}_])(${validKeywords.join("|")})(?![\\p{L}\\p{N}_])`,
+    "iu"
+  );
 }
 
 /**

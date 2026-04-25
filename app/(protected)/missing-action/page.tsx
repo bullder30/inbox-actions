@@ -1,15 +1,16 @@
 "use client";
 
-import { Clock, Inbox, Loader2, Mail, MailOpen, Plus } from "lucide-react";
+import { Clock, Inbox, Loader2, Mail, MailOpen, Plus, Sparkles, X } from "lucide-react";
 
 import { BackButton } from "@/components/shared/back-button";
+import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useCallback, useEffect, useRef, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 
-import { ActionType } from "@/lib/api/actions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -19,6 +20,21 @@ import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { MissingActionCardSkeletonList, MissingActionSkeleton } from "@/components/actions/missing-action-skeleton";
 import type { CachedIgnoredEmail } from "@/lib/cache/dashboard";
+import {
+  CUSTOM_ACTION_COLORS,
+  type CustomActionColor,
+  colorToBadgeClasses,
+  rotateColor,
+} from "@/lib/custom-action-colors";
+import { MAX_TYPE_NAME_LENGTH, MAX_KEYWORD_LENGTH, validateKeywords } from "@/lib/custom-action-types/validation";
+import {
+  buildManualActionBody,
+  extractCandidateKeywords,
+  NATIVE_TYPE_OPTIONS,
+  NEW_CUSTOM_SENTINEL,
+  type ManualActionCustomType,
+} from "@/lib/actions/manual-action-form";
+import { cn } from "@/lib/utils";
 
 const PAGE_SIZE = 20;
 
@@ -38,10 +54,55 @@ export default function MissingActionPage() {
   const sentinelRef = useRef<HTMLDivElement>(null);
   const [selectedEmail, setSelectedEmail] = useState<CachedIgnoredEmail | null>(null);
   const [selectedSentence, setSelectedSentence] = useState("");
-  const [actionType, setActionType] = useState<ActionType>("SEND");
+  const [typeSelection, setTypeSelection] = useState<string>("SEND");
   const [actionTitle, setActionTitle] = useState("");
   const [creating, setCreating] = useState(false);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  // Liste des types custom disponibles pour le Select
+  const [customTypes, setCustomTypes] = useState<ManualActionCustomType[]>([]);
+
+  // Sous-formulaire « Créer un nouveau type »
+  const [newCustomName, setNewCustomName] = useState("");
+  const [newCustomColor, setNewCustomColor] = useState<CustomActionColor>(CUSTOM_ACTION_COLORS[0]);
+  const [newKeywords, setNewKeywords] = useState<string[]>([]);
+  const [keywordInput, setKeywordInput] = useState("");
+  const [persistAsRule, setPersistAsRule] = useState(false);
+
+  const isNewCustomMode = typeSelection === NEW_CUSTOM_SENTINEL;
+
+  // Charger les types custom à l'ouverture du dialog
+  useEffect(() => {
+    if (!isDialogOpen) return;
+    let aborted = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/custom-action-types");
+        if (!res.ok || aborted) return;
+        const data = await res.json();
+        const types = (data.types ?? []).map((t: { id: string; name: string; color: CustomActionColor }) => ({
+          id: t.id,
+          name: t.name,
+          color: t.color,
+        })) as ManualActionCustomType[];
+        if (!aborted) setCustomTypes(types);
+      } catch {
+        // silently — la liste reste vide, l'utilisateur garde les 5 natifs + new
+      }
+    })();
+    return () => { aborted = true; };
+  }, [isDialogOpen]);
+
+  // Pré-remplir keywords + couleur quand on bascule en mode "new custom"
+  useEffect(() => {
+    if (!isNewCustomMode) return;
+    if (newKeywords.length === 0 && selectedSentence.trim().length > 0) {
+      setNewKeywords(extractCandidateKeywords(selectedSentence));
+    }
+    if (newCustomName === "") {
+      setNewCustomColor(rotateColor(customTypes.length));
+    }
+  }, [isNewCustomMode, selectedSentence, newKeywords.length, newCustomName, customTypes.length]);
 
   const getKey = useCallback(
     (pageIndex: number, previousPageData: PageData | null) => {
@@ -82,11 +143,20 @@ export default function MissingActionPage() {
     return () => observer.disconnect();
   }, [loadMore]);
 
+  function resetCustomSubForm() {
+    setNewCustomName("");
+    setNewCustomColor(CUSTOM_ACTION_COLORS[0]);
+    setNewKeywords([]);
+    setKeywordInput("");
+    setPersistAsRule(false);
+  }
+
   function handleOpenDialog(email: CachedIgnoredEmail) {
     setSelectedEmail(email);
     setSelectedSentence("");
     setActionTitle("");
-    setActionType("SEND");
+    setTypeSelection("SEND");
+    resetCustomSubForm();
     setIsDialogOpen(true);
   }
 
@@ -95,7 +165,23 @@ export default function MissingActionPage() {
     setSelectedEmail(null);
     setSelectedSentence("");
     setActionTitle("");
-    setActionType("SEND");
+    setTypeSelection("SEND");
+    resetCustomSubForm();
+  }
+
+  function addKeyword() {
+    const value = keywordInput.trim();
+    if (!value) return;
+    if (newKeywords.some((k) => k.toLowerCase() === value.toLowerCase())) {
+      setKeywordInput("");
+      return;
+    }
+    setNewKeywords([...newKeywords, value]);
+    setKeywordInput("");
+  }
+
+  function removeKeyword(idx: number) {
+    setNewKeywords(newKeywords.filter((_, i) => i !== idx));
   }
 
   async function handleCreateAction() {
@@ -104,34 +190,86 @@ export default function MissingActionPage() {
       return;
     }
 
+    // Validations spécifiques au mode "new custom"
+    if (isNewCustomMode) {
+      if (!newCustomName.trim()) {
+        toast.error("Saisissez un nom pour le nouveau type");
+        return;
+      }
+      if (persistAsRule) {
+        // Flush un éventuel keyword pending dans l'input
+        const pending = keywordInput.trim();
+        const finalKeywords = pending && !newKeywords.some((k) => k.toLowerCase() === pending.toLowerCase())
+          ? [...newKeywords, pending]
+          : newKeywords;
+        if (finalKeywords.length === 0) {
+          toast.error("Ajoutez au moins un mot-clé pour la règle");
+          return;
+        }
+        const invalid = validateKeywords(finalKeywords);
+        if (invalid && invalid.length > 0) {
+          toast.error(`Mots-clés invalides : ${invalid.join(", ")}`);
+          return;
+        }
+        if (finalKeywords !== newKeywords) {
+          setNewKeywords(finalKeywords);
+          setKeywordInput("");
+        }
+      }
+    }
+
+    // Construction du body via le helper pur (testé en isolation)
+    const body = buildManualActionBody(
+      {
+        title: actionTitle,
+        sentence: selectedSentence,
+        typeSelection,
+        newCustomName,
+        newCustomColor,
+        // Important : appliquer la même flush logic qu'au-dessus
+        newKeywords: persistAsRule && keywordInput.trim() && !newKeywords.some((k) => k.toLowerCase() === keywordInput.trim().toLowerCase())
+          ? [...newKeywords, keywordInput.trim()]
+          : newKeywords,
+        persistAsRule,
+      },
+      {
+        from: selectedEmail.from,
+        receivedAt: selectedEmail.receivedAt,
+        gmailMessageId: selectedEmail.gmailMessageId,
+        imapUID: selectedEmail.imapUID,
+        webUrl: selectedEmail.webUrl,
+      },
+      customTypes
+    );
+
     try {
       setCreating(true);
       const response = await fetch("/api/actions/manual", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: actionTitle,
-          type: actionType,
-          sourceSentence: selectedSentence,
-          emailFrom: selectedEmail.from,
-          emailReceivedAt: selectedEmail.receivedAt,
-          gmailMessageId: selectedEmail.gmailMessageId,
-          imapUID: selectedEmail.imapUID,
-          emailWebUrl: selectedEmail.webUrl,
-        }),
+        body: JSON.stringify(body),
       });
 
-      if (!response.ok) {
-        throw new Error("Erreur lors de la création");
+      if (response.status === 400 || response.status === 422) {
+        const data = await response.json().catch(() => ({}));
+        toast.error(data.error || "Validation échouée");
+        return;
       }
+      if (response.status === 409) {
+        toast.error("Un type avec un nom équivalent existe déjà");
+        return;
+      }
+      if (!response.ok) throw new Error("Erreur lors de la création");
 
-      toast.success("Action créée avec succès");
+      toast.success(
+        isNewCustomMode && persistAsRule
+          ? `Action créée + règle "${newCustomName.trim()}" activée`
+          : "Action créée avec succès"
+      );
       handleCloseDialog();
       router.push("/actions");
     } catch (error) {
-      toast.error(
-        error instanceof Error ? error.message : "Erreur de création"
-      );
+      toast.error(error instanceof Error ? error.message : "Erreur de création");
     } finally {
       setCreating(false);
     }
@@ -294,22 +432,140 @@ export default function MissingActionPage() {
 
             <div className="space-y-1.5 sm:space-y-2">
               <Label htmlFor="type" className="text-xs sm:text-sm">Type d&apos;action</Label>
-              <Select
-                value={actionType}
-                onValueChange={(value) => setActionType(value as ActionType)}
-              >
+              <Select value={typeSelection} onValueChange={setTypeSelection}>
                 <SelectTrigger id="type" className="h-9 text-sm sm:h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="SEND">Envoyer</SelectItem>
-                  <SelectItem value="CALL">Appeler</SelectItem>
-                  <SelectItem value="FOLLOW_UP">Relancer</SelectItem>
-                  <SelectItem value="PAY">Payer</SelectItem>
-                  <SelectItem value="VALIDATE">Valider</SelectItem>
+                  {NATIVE_TYPE_OPTIONS.map((t) => (
+                    <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
+                  ))}
+                  {customTypes.length > 0 && (
+                    <>
+                      <SelectSeparator />
+                      {customTypes.map((t) => (
+                        <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                      ))}
+                    </>
+                  )}
+                  <SelectSeparator />
+                  <SelectItem value={NEW_CUSTOM_SENTINEL}>
+                    <span className="flex items-center gap-1.5">
+                      <Sparkles className="size-3.5" />
+                      Créer un nouveau type…
+                    </span>
+                  </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Sous-formulaire « nouveau type custom » */}
+            {isNewCustomMode && (
+              <div className="space-y-3 rounded-lg border border-dashed bg-muted/30 p-3 sm:p-4">
+                {/* Toggle ponctuel / règle */}
+                <div className="flex items-start justify-between gap-3">
+                  <div className="min-w-0 flex-1">
+                    <Label htmlFor="persist-toggle" className="text-xs font-medium sm:text-sm">
+                      {persistAsRule ? "Toujours détecter à l'avenir" : "Cette fois seulement"}
+                    </Label>
+                    <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
+                      {persistAsRule
+                        ? "Une règle sera créée pour les futurs emails matchant les mots-clés."
+                        : "Pas de règle persistée — cette action sera créée une seule fois."}
+                    </p>
+                  </div>
+                  <Switch id="persist-toggle" checked={persistAsRule} onCheckedChange={setPersistAsRule} />
+                </div>
+
+                {/* Nom */}
+                <div className="space-y-1.5">
+                  <Label htmlFor="custom-name" className="text-xs sm:text-sm">
+                    Nom du type <span className="text-red-500">*</span>
+                  </Label>
+                  <Input
+                    id="custom-name"
+                    placeholder="Ex: Review code, Daily stand-up…"
+                    value={newCustomName}
+                    onChange={(e) => setNewCustomName(e.target.value)}
+                    maxLength={MAX_TYPE_NAME_LENGTH}
+                    className="h-9 text-sm sm:h-10"
+                  />
+                </div>
+
+                {/* Color picker */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs sm:text-sm">Couleur</Label>
+                  <div className="flex flex-wrap gap-1.5">
+                    {CUSTOM_ACTION_COLORS.map((c) => {
+                      const classes = colorToBadgeClasses[c];
+                      const selected = c === newCustomColor;
+                      return (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setNewCustomColor(c)}
+                          className={cn(
+                            "size-7 rounded-full border-2 transition-transform",
+                            classes.bg,
+                            selected ? "scale-110 border-foreground/60" : "border-transparent hover:scale-105"
+                          )}
+                          aria-label={`Couleur ${c}`}
+                          aria-pressed={selected}
+                        />
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Keywords (uniquement en mode règle) */}
+                {persistAsRule && (
+                  <div className="space-y-1.5">
+                    <Label htmlFor="custom-keywords" className="text-xs sm:text-sm">
+                      Mots-clés de détection <span className="text-red-500">*</span>
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="custom-keywords"
+                        placeholder="Tapez puis Entrée"
+                        value={keywordInput}
+                        onChange={(e) => setKeywordInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === ",") {
+                            e.preventDefault();
+                            addKeyword();
+                          }
+                        }}
+                        maxLength={MAX_KEYWORD_LENGTH}
+                        className="h-9 text-sm sm:h-10"
+                      />
+                      <Button type="button" size="sm" variant="outline" onClick={addKeyword} disabled={!keywordInput.trim()}>
+                        <Plus className="size-4" />
+                      </Button>
+                    </div>
+                    {newKeywords.length > 0 && (
+                      <div className="flex flex-wrap gap-1 pt-1">
+                        {newKeywords.map((kw, idx) => (
+                          <Badge key={`${kw}-${idx}`} variant="secondary" className="gap-1 pl-2 pr-1 text-xs">
+                            {kw}
+                            <button
+                              type="button"
+                              onClick={() => removeKeyword(idx)}
+                              className="ml-0.5 rounded-full p-0.5 hover:bg-muted-foreground/20"
+                              aria-label={`Retirer ${kw}`}
+                            >
+                              <X className="size-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                    <p className="text-[10px] text-muted-foreground sm:text-xs">
+                      Min. 4 caractères (sauf acronymes en majuscules). Mots-clés pré-remplis depuis la phrase.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col-reverse gap-2 pt-2 sm:flex-row sm:justify-end sm:pt-4">
               <Button

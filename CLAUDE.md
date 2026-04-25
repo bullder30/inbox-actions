@@ -9,7 +9,7 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 **Core Value Proposition:**
 - Connect email account via IMAP (Gmail, Yahoo, iCloud) or Microsoft Graph (Outlook, Hotmail, M365)
 - Automatically extract actionable tasks from emails
-- Organize actions by type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE)
+- Organize actions by type — 5 native types (SEND, CALL, FOLLOW_UP, PAY, VALIDATE) + custom user-defined types (since v0.5.0)
 - Track due dates and completion status
 - Receive email digests with pending actions
 
@@ -242,6 +242,12 @@ interface IEmailProvider {
   - Patterns: "payer la facture", "régler", "virement"
 - **VALIDATE**: Approvals, confirmations, reviews
   - Patterns: "valider", "approuver", "confirmer"
+- **CUSTOM** (since v0.5.0): User-defined types per business. CRUD via `/settings`
+  + creation depuis `/missing-action`. Voir `docs/features/custom-actions.md`.
+  Helpers : `lib/actions/manual-action-form.ts`, `lib/actions/action-display.ts`,
+  `lib/custom-action-types/validation.ts`, `lib/slug.ts`,
+  `lib/custom-action-colors.ts`, `lib/stoplist-fr.ts`. API CRUD :
+  `app/api/custom-action-types/{,[id]}/route.ts`. Limite 10 types/user.
 
 **Due Date Detection:**
 - Absolute dates: "avant le 15 mars", "pour vendredi", "d'ici lundi"
@@ -526,7 +532,10 @@ model Action {
 
   // Action details
   title            String              // Action description
-  type             ActionType          // SEND | CALL | FOLLOW_UP | PAY | VALIDATE
+  type             ActionType          // SEND | CALL | FOLLOW_UP | PAY | VALIDATE | CUSTOM
+  customTypeId     String?             // FK vers CustomActionType (nullable, SetNull on delete)
+  customTypeLabel  String?             // Snapshot du nom au moment de l'extraction
+  customTypeColor  String?             // Snapshot de la couleur (palette 8)
   status           ActionStatus @default(TODO)  // TODO | DONE | IGNORED
   dueDate          DateTime?           // Extracted or manual due date
 

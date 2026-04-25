@@ -9,7 +9,7 @@ import { createIMAPServiceById } from "@/lib/imap/imap-service";
 import { createMicrosoftGraphServiceByMailbox } from "@/lib/microsoft-graph/graph-service";
 import { IMAPProvider } from "@/lib/email-provider/imap-provider";
 import { MicrosoftGraphProvider } from "@/lib/email-provider/microsoft-graph-provider";
-import { extractActionsFromEmail, type UserExclusionData } from "@/lib/actions/extract-actions-regex";
+import { extractActionsFromEmail, type UserExclusionData, type CustomActionTypeData } from "@/lib/actions/extract-actions-regex";
 import { getEndOfTodayParis } from "@/lib/utils/date-paris";
 import { sendActionDigest } from "@/lib/notifications/action-digest-service";
 import { MAX_EMAILS_TO_SYNC, MAX_EMAILS_TO_ANALYZE } from "@/lib/config/sync";
@@ -82,6 +82,19 @@ export async function runDailySyncJob() {
       exclusionsByUserId.set(row.userId, list);
     }
 
+    // --- Charger tous les types custom actifs en une seule requête ---
+    const allCustomTypesRaw = await prisma.customActionType.findMany({
+      where: { userId: { in: allUserIds }, isActive: true },
+      select: { id: true, userId: true, name: true, keywords: true, color: true, isActive: true },
+    });
+
+    const customTypesByUserId = new Map<string, CustomActionTypeData[]>();
+    for (const row of allCustomTypesRaw) {
+      const list = customTypesByUserId.get(row.userId) ?? [];
+      list.push({ id: row.id, name: row.name, keywords: row.keywords, color: row.color, isActive: row.isActive });
+      customTypesByUserId.set(row.userId, list);
+    }
+
     const stats = {
       totalMailboxes: imapCredentials.length + graphMailboxes.length,
       successMailboxes: 0,
@@ -111,7 +124,8 @@ export async function runDailySyncJob() {
         provider = new IMAPProvider(service, credential.id, mailboxLabel);
 
         const userExclusions = exclusionsByUserId.get(credential.userId) ?? [];
-        const result = await syncAndAnalyzeMailbox(provider, credential.userId, mailboxLabel, userExclusions);
+        const userCustomTypes = customTypesByUserId.get(credential.userId) ?? [];
+        const result = await syncAndAnalyzeMailbox(provider, credential.userId, mailboxLabel, userExclusions, userCustomTypes);
 
         if (result.synced > 0 || result.actions > 0) {
           try {
@@ -149,7 +163,8 @@ export async function runDailySyncJob() {
         provider = new MicrosoftGraphProvider(service, mailbox.userId, mailboxLabel);
 
         const userExclusions = exclusionsByUserId.get(mailbox.userId) ?? [];
-        const result = await syncAndAnalyzeMailbox(provider, mailbox.userId, mailboxLabel, userExclusions);
+        const userCustomTypes = customTypesByUserId.get(mailbox.userId) ?? [];
+        const result = await syncAndAnalyzeMailbox(provider, mailbox.userId, mailboxLabel, userExclusions, userCustomTypes);
 
         if (result.synced > 0 || result.actions > 0) {
           try {
@@ -217,7 +232,8 @@ async function syncAndAnalyzeMailbox(
   provider: IEmailProvider,
   userId: string,
   mailboxLabel: string,
-  userExclusions: UserExclusionData[] = []
+  userExclusions: UserExclusionData[] = [],
+  customTypes: CustomActionTypeData[] = []
 ): Promise<{ synced: number; actions: number }> {
   // ÉTAPE 1: Synchroniser les nouveaux emails
   const newEmails = await provider.fetchNewEmails({
@@ -247,7 +263,7 @@ async function syncAndAnalyzeMailbox(
         subject: emailMetadata.subject,
         body,
         receivedAt: emailMetadata.receivedAt,
-      }, userExclusions);
+      }, userExclusions, customTypes);
 
       if (extractedActions.length > 0) {
         await prisma.action.createMany({
@@ -265,6 +281,9 @@ async function syncAndAnalyzeMailbox(
             isScheduled: action.dueDate ? action.dueDate > getEndOfTodayParis() : false,
             mailboxId: provider.mailboxId,
             mailboxLabel: provider.mailboxLabel,
+            customTypeId: action.customTypeId ?? null,
+            customTypeLabel: action.customTypeLabel ?? null,
+            customTypeColor: action.customTypeColor ?? null,
           })),
         });
         actionsExtracted += extractedActions.length;
