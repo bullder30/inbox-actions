@@ -191,6 +191,63 @@ describe("buildManualActionBody — cas B : nouvelle règle (persistAsRule true)
     const body = buildManualActionBody(state, baseEmail, []);
     expect(body).not.toHaveProperty("keywords");
   });
+
+  // UI Step 3/3 — extension cas B mode REGEX
+  it("should_build_new_custom_rule_body_with_regex_when_customMode_REGEX", () => {
+    const state: ManualActionFormState = {
+      ...baseState,
+      typeSelection: NEW_CUSTOM_SENTINEL,
+      newCustomName: "Facture",
+      newCustomColor: "amber",
+      customMode: "REGEX",
+      newRegexPattern: "FAC-\\d{4}-\\d+",
+      newKeywords: [],
+      persistAsRule: true,
+    };
+    const body = buildManualActionBody(state, baseEmail, []);
+    expect(body).toMatchObject({
+      type: "CUSTOM",
+      customTypeName: "Facture",
+      customTypeColor: "amber",
+      customTypeMode: "REGEX",
+      regexPattern: "FAC-\\d{4}-\\d+",
+      persistAsRule: true,
+    });
+    expect(body).not.toHaveProperty("keywords");
+  });
+
+  it("should_omit_regex_pattern_when_customMode_KEYWORDS_or_undefined", () => {
+    const state: ManualActionFormState = {
+      ...baseState,
+      typeSelection: NEW_CUSTOM_SENTINEL,
+      newCustomName: "Devis",
+      newKeywords: ["devis", "proposition"],
+      customMode: "KEYWORDS",
+      newRegexPattern: "ne_doit_pas_apparaitre",
+      persistAsRule: true,
+    };
+    const body = buildManualActionBody(state, baseEmail, []);
+    expect(body).not.toHaveProperty("regexPattern");
+    expect(body).not.toHaveProperty("customTypeMode");
+    expect(body).toMatchObject({ keywords: ["devis", "proposition"] });
+  });
+
+  it("should_ignore_customMode_REGEX_when_oneShot_mode_caseC", () => {
+    const state: ManualActionFormState = {
+      ...baseState,
+      typeSelection: NEW_CUSTOM_SENTINEL,
+      newCustomName: "Ponctuel",
+      customMode: "REGEX",
+      newRegexPattern: "FAC-\\d+",
+      newKeywords: [],
+      persistAsRule: false,
+    };
+    const body = buildManualActionBody(state, baseEmail, []);
+    // Cas C n'envoie ni keywords ni regex (action ponctuelle, pas de règle)
+    expect(body).not.toHaveProperty("regexPattern");
+    expect(body).not.toHaveProperty("customTypeMode");
+    expect(body).not.toHaveProperty("keywords");
+  });
 });
 
 describe("buildManualActionBody — preservation des champs email", () => {

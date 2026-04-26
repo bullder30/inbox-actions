@@ -11,10 +11,12 @@ import {
   MAX_TYPES_PER_USER,
   normalizeKeywords,
   validateKeywords,
+  validateRegexPattern,
 } from "@/lib/custom-action-types/validation";
 import {
   LIMIT_REACHED_ERROR,
   handleCreateCustomTypeError,
+  regexValidationErrorResponse,
 } from "@/lib/custom-action-types/errors";
 
 export const dynamic = "force-dynamic";
@@ -37,6 +39,9 @@ type ManualBody = {
   customTypeColor?: string;
   persistAsRule?: boolean;
   keywords?: string[];
+  // UI Step 3/3 — cas B mode REGEX (depuis missing-action toggle avancé)
+  customTypeMode?: "KEYWORDS" | "REGEX";
+  regexPattern?: string;
 };
 
 /**
@@ -76,6 +81,8 @@ export async function POST(request: Request) {
       customTypeColor,
       persistAsRule,
       keywords,
+      customTypeMode,
+      regexPattern,
     } = body;
 
     // Champs communs requis
@@ -166,24 +173,53 @@ export async function POST(request: Request) {
 
     // Cas B : persistAsRule = true → créer le type ET l'action en transaction
     if (persistAsRule === true) {
-      const rawKeywords = Array.isArray(keywords) ? keywords : [];
-      if (rawKeywords.length === 0 || rawKeywords.length > MAX_KEYWORDS_PER_RULE) {
-        return NextResponse.json(
-          { error: `Liste de keywords invalide (1-${MAX_KEYWORDS_PER_RULE})` },
-          { status: 422 }
-        );
-      }
+      const isRegexMode = customTypeMode === "REGEX";
 
-      const invalid = validateKeywords(rawKeywords);
-      if (invalid) {
-        return NextResponse.json(
-          { error: "Mots-clés invalides", invalidKeywords: invalid },
-          { status: 422 }
-        );
+      // Validation des champs spécifiques au mode
+      let typeData: {
+        mode: "KEYWORDS" | "REGEX";
+        keywords: string[];
+        regexPattern: string | null;
+      };
+      if (isRegexMode) {
+        if (!regexPattern || typeof regexPattern !== "string") {
+          return NextResponse.json(
+            { error: "regexPattern requis en mode REGEX" },
+            { status: 422 }
+          );
+        }
+        const validation = validateRegexPattern(regexPattern.trim());
+        if (!validation.ok) {
+          return regexValidationErrorResponse(validation);
+        }
+        typeData = {
+          mode: "REGEX",
+          keywords: [],
+          regexPattern: regexPattern.trim(),
+        };
+      } else {
+        const rawKeywords = Array.isArray(keywords) ? keywords : [];
+        if (rawKeywords.length === 0 || rawKeywords.length > MAX_KEYWORDS_PER_RULE) {
+          return NextResponse.json(
+            { error: `Liste de keywords invalide (1-${MAX_KEYWORDS_PER_RULE})` },
+            { status: 422 }
+          );
+        }
+        const invalid = validateKeywords(rawKeywords);
+        if (invalid) {
+          return NextResponse.json(
+            { error: "Mots-clés invalides", invalidKeywords: invalid },
+            { status: 422 }
+          );
+        }
+        typeData = {
+          mode: "KEYWORDS",
+          keywords: normalizeKeywords(rawKeywords),
+          regexPattern: null,
+        };
       }
 
       const slug = nameToSlug(customTypeName);
-      const finalKeywords = normalizeKeywords(rawKeywords);
 
       // Atomique : count + create type + create action dans la même transaction.
       // Évite la race condition limite 10 et garantit le rollback si échec.
@@ -198,9 +234,10 @@ export async function POST(request: Request) {
               userId,
               name: customTypeName,
               slug,
-              keywords: finalKeywords,
+              keywords: typeData.keywords,
               color: customTypeColor,
-              mode: "KEYWORDS",
+              mode: typeData.mode,
+              regexPattern: typeData.regexPattern,
               validated: true,
             },
           });

@@ -216,6 +216,102 @@ describe("POST /api/actions/manual — Cas B (persistAsRule: true)", () => {
     expect(prisma.action.create).toHaveBeenCalled();
   });
 
+  // UI Step 3/3 — extension cas B mode REGEX depuis missing-action
+  it("should_persist_REGEX_type_with_safe_pattern_when_customTypeMode_REGEX", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser as any);
+    const cat = ensureCustomActionTypeMock();
+    cat.count.mockResolvedValue(0);
+    cat.create.mockResolvedValue({
+      ...mockExistingCustomType,
+      id: "ctype-regex",
+      name: "Facture",
+      slug: "facture",
+      keywords: [],
+      color: "amber",
+      mode: "REGEX",
+      regexPattern: "FAC-\\d{4}-\\d+",
+      validated: true,
+    });
+    (prisma.action.create as any).mockImplementation(({ data }: any) =>
+      Promise.resolve({ id: "act-regex", ...data, status: "TODO" } as any)
+    );
+    (prisma.$transaction as any).mockImplementation(async (arg: any) => {
+      if (typeof arg === "function") return arg(prisma);
+      return Promise.all(arg);
+    });
+
+    const body = {
+      title: "Traiter la facture",
+      type: "CUSTOM",
+      customTypeName: "Facture",
+      customTypeColor: "amber",
+      persistAsRule: true,
+      customTypeMode: "REGEX",
+      regexPattern: "FAC-\\d{4}-\\d+",
+      ...baseEmailFields,
+    };
+
+    const res = await POST(makeRequest(body));
+    expect(res.status).toBe(201);
+
+    expect(cat.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          mode: "REGEX",
+          regexPattern: "FAC-\\d{4}-\\d+",
+          validated: true,
+          keywords: [],
+        }),
+      })
+    );
+  });
+
+  it("should_return_422_when_REGEX_pattern_dangerous_caseB", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser as any);
+    const cat = ensureCustomActionTypeMock();
+    cat.count.mockResolvedValue(0);
+    (prisma.$transaction as any).mockImplementation(async (arg: any) => {
+      if (typeof arg === "function") return arg(prisma);
+      return Promise.all(arg);
+    });
+
+    const body = {
+      title: "ReDoS attempt",
+      type: "CUSTOM",
+      customTypeName: "Bad",
+      customTypeColor: "amber",
+      persistAsRule: true,
+      customTypeMode: "REGEX",
+      regexPattern: "(a+)+", // safe-regex le rejette
+      ...baseEmailFields,
+    };
+
+    const res = await POST(makeRequest(body));
+    expect(res.status).toBe(422);
+    expect(cat.create).not.toHaveBeenCalled();
+  });
+
+  it("should_return_422_when_REGEX_pattern_missing_in_caseB", async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(mockUser as any);
+    const cat = ensureCustomActionTypeMock();
+    cat.count.mockResolvedValue(0);
+
+    const body = {
+      title: "Sans pattern",
+      type: "CUSTOM",
+      customTypeName: "X",
+      customTypeColor: "amber",
+      persistAsRule: true,
+      customTypeMode: "REGEX",
+      // regexPattern: omis
+      ...baseEmailFields,
+    };
+
+    const res = await POST(makeRequest(body));
+    expect(res.status).toBe(422);
+    expect(cat.create).not.toHaveBeenCalled();
+  });
+
   // Régression CRITICAL-1 (Phase 8 review) : sans validated:true, le scan
   // automatique (filter validated:true) excluait silencieusement les types
   // créés depuis la page /missing-action.

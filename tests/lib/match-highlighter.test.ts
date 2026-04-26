@@ -7,7 +7,11 @@
 
 import { describe, expect, it } from "vitest";
 
-import { splitByRanges, type MatchRange } from "@/lib/match-highlighter";
+import {
+  rangesFromKeywords,
+  splitByRanges,
+  type MatchRange,
+} from "@/lib/match-highlighter";
 
 describe("splitByRanges", () => {
   it("should_return_single_text_segment_when_no_ranges", () => {
@@ -87,5 +91,61 @@ describe("splitByRanges", () => {
       { kind: "match", value: "FAC-2" },
       { kind: "text", value: "024" },
     ]);
+  });
+});
+
+describe("rangesFromKeywords", () => {
+  it("should_return_empty_when_no_keywords", () => {
+    expect(rangesFromKeywords("Hello world", [])).toEqual([]);
+  });
+
+  it("should_match_single_keyword_case_insensitive", () => {
+    const ranges = rangesFromKeywords("Le devis arrive demain", ["devis"]);
+    expect(ranges).toEqual([{ index: 3, length: 5 }]);
+  });
+
+  it("should_match_keyword_in_uppercase_text_when_keyword_lowercase", () => {
+    const ranges = rangesFromKeywords("LE DEVIS ARRIVE", ["devis"]);
+    expect(ranges).toEqual([{ index: 3, length: 5 }]);
+  });
+
+  it("should_match_multiple_occurrences_of_same_keyword", () => {
+    const ranges = rangesFromKeywords("devis et devis encore", ["devis"]);
+    expect(ranges).toHaveLength(2);
+    expect(ranges[0].index).toBe(0);
+    expect(ranges[1].index).toBe(9);
+  });
+
+  it("should_match_multiple_keywords_at_different_positions", () => {
+    const ranges = rangesFromKeywords("envoyer le devis demain", [
+      "envoyer",
+      "devis",
+    ]);
+    expect(ranges).toHaveLength(2);
+    expect(ranges.map((r) => r.index).sort((a, b) => a - b)).toEqual([0, 11]);
+  });
+
+  it("should_use_word_boundary_to_avoid_substring_matches", () => {
+    // "devisable" ne doit pas matcher "devis" si word boundary
+    const ranges = rangesFromKeywords("le devisable mais aussi devis", ["devis"]);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0].index).toBe(24);
+  });
+
+  it("should_escape_regex_special_chars_in_keywords", () => {
+    // user keyword "C++" ne doit pas crasher
+    const ranges = rangesFromKeywords("Job: C++ developer", ["C++"]);
+    expect(ranges).toHaveLength(1);
+    expect(ranges[0].index).toBe(5);
+    expect(ranges[0].length).toBe(3);
+  });
+
+  it("should_skip_empty_keywords_silently", () => {
+    const ranges = rangesFromKeywords("hello", ["", "  ", "hello"]);
+    expect(ranges).toHaveLength(1);
+  });
+
+  it("should_return_empty_when_text_is_empty", () => {
+    expect(rangesFromKeywords("", ["foo"])).toEqual([]);
   });
 });
