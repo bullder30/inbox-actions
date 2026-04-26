@@ -66,7 +66,7 @@ import {
 } from "@/lib/custom-action-types/dialog-state";
 import { applyTemplateToState } from "@/lib/regex-template-picker";
 import type { RegexTemplate } from "@/lib/regex-templates";
-import type { MatchRange } from "@/lib/match-highlighter";
+import { parseTestRegexResponse, type MatchRange } from "@/lib/match-highlighter";
 import { cn } from "@/lib/utils";
 
 type CustomType = EditingType;
@@ -671,8 +671,8 @@ function RegexSection({ pattern, setPattern, onApplyTemplate }: RegexSectionProp
         return;
       }
       const data = await res.json();
-      // Réponse: { matches: [{ index, length }, ...] } pour testText[0]
-      setTestResult(data.matches ?? []);
+      // API renvoie { matches: [{ textIndex, ranges: [[start, end], ...] }] }
+      setTestResult(parseTestRegexResponse(data));
     } catch {
       setTestError("Erreur réseau");
     } finally {

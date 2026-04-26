@@ -8,6 +8,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  parseTestRegexResponse,
   rangesFromKeywords,
   splitByRanges,
   type MatchRange,
@@ -147,5 +148,62 @@ describe("rangesFromKeywords", () => {
 
   it("should_return_empty_when_text_is_empty", () => {
     expect(rangesFromKeywords("", ["foo"])).toEqual([]);
+  });
+});
+
+describe("parseTestRegexResponse", () => {
+  it("should_extract_ranges_for_first_textIndex_and_convert_tuples_to_ranges", () => {
+    const apiResponse = {
+      matches: [
+        {
+          textIndex: 0,
+          ranges: [
+            [3, 8] as [number, number], // index 3, length 5
+            [15, 23] as [number, number], // index 15, length 8
+          ],
+        },
+      ],
+    };
+    expect(parseTestRegexResponse(apiResponse)).toEqual([
+      { index: 3, length: 5 },
+      { index: 15, length: 8 },
+    ]);
+  });
+
+  it("should_return_empty_when_no_matches_for_text", () => {
+    const apiResponse = { matches: [{ textIndex: 0, ranges: [] }] };
+    expect(parseTestRegexResponse(apiResponse)).toEqual([]);
+  });
+
+  it("should_return_empty_when_matches_array_empty", () => {
+    expect(parseTestRegexResponse({ matches: [] })).toEqual([]);
+  });
+
+  it("should_return_empty_when_response_malformed", () => {
+    expect(parseTestRegexResponse(null)).toEqual([]);
+    expect(parseTestRegexResponse({})).toEqual([]);
+    expect(parseTestRegexResponse({ matches: null })).toEqual([]);
+    expect(parseTestRegexResponse({ matches: [{ textIndex: 0 }] })).toEqual([]);
+  });
+
+  it("should_skip_invalid_range_tuples_silently", () => {
+    const apiResponse = {
+      matches: [
+        {
+          textIndex: 0,
+          ranges: [
+            [0, 5],
+            [10], // tuple incomplet
+            "garbage",
+            [20, 15], // end < start
+            [30, 35],
+          ],
+        },
+      ],
+    };
+    expect(parseTestRegexResponse(apiResponse)).toEqual([
+      { index: 0, length: 5 },
+      { index: 30, length: 5 },
+    ]);
   });
 });

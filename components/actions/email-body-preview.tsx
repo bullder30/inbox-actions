@@ -6,6 +6,7 @@ import { AlertCircle, Loader2, MailOpen } from "lucide-react";
 import { MatchHighlighter } from "@/components/actions/match-highlighter";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  parseTestRegexResponse,
   rangesFromKeywords,
   type MatchRange,
 } from "@/lib/match-highlighter";
@@ -133,7 +134,7 @@ export function EmailBodyPreview({
         return;
       }
       const data = await res.json();
-      setPatternRanges(data.matches ?? []);
+      setPatternRanges(parseTestRegexResponse(data));
       setPatternError(null);
     } catch {
       setPatternError("Erreur réseau");

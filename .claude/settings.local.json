@@ -97,7 +97,10 @@
       "Bash(SKIP_ENV_VALIDATION=1 pnpm lint)",
       "Bash(pnpm vitest *)",
       "Bash(pnpm tsc *)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(pnpm prisma *)",
+      "PowerShell(psql *)",
+      "Bash(DATABASE_URL='postgresql://inbox_admin:%23Charlotte2013%23@localhost:15432/inbox_actions_imap' npx prisma *)"
     ]
   }
 }

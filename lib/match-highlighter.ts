@@ -59,6 +59,36 @@ export function splitByRanges(text: string, ranges: MatchRange[]): Segment[] {
  *
  * Les caractères regex spéciaux dans les keywords sont échappés (anti-injection).
  */
+/**
+ * Parse la réponse de POST /api/custom-action-types/test-regex et convertit
+ * les tuples `[start, end]` en `MatchRange { index, length }` consommables
+ * par `splitByRanges` / `<MatchHighlighter />`.
+ *
+ * Format API (cf. AC-7) :
+ *   { matches: [{ textIndex: 0, ranges: [[start, end], ...] }] }
+ *
+ * Le client envoie toujours un seul `testText`, on extrait donc `matches[0]`.
+ * Robust aux réponses mal formées (retourne `[]` plutôt que de throw).
+ */
+export function parseTestRegexResponse(response: unknown): MatchRange[] {
+  if (!response || typeof response !== "object") return [];
+  const { matches } = response as { matches?: unknown };
+  if (!Array.isArray(matches) || matches.length === 0) return [];
+
+  const first = matches[0] as { ranges?: unknown };
+  if (!first || !Array.isArray(first.ranges)) return [];
+
+  const out: MatchRange[] = [];
+  for (const entry of first.ranges) {
+    if (!Array.isArray(entry) || entry.length < 2) continue;
+    const [start, end] = entry;
+    if (typeof start !== "number" || typeof end !== "number") continue;
+    if (end <= start) continue;
+    out.push({ index: start, length: end - start });
+  }
+  return out;
+}
+
 export function rangesFromKeywords(text: string, keywords: string[]): MatchRange[] {
   if (text.length === 0 || keywords.length === 0) return [];
 
