@@ -41,6 +41,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { MatchHighlighter } from "@/components/actions/match-highlighter";
+import { RegexTemplatePicker } from "@/components/settings/regex-template-picker";
 import {
   CUSTOM_ACTION_COLORS,
   type CustomActionColor,
@@ -63,6 +64,8 @@ import {
   type DialogState,
   type EditingType,
 } from "@/lib/custom-action-types/dialog-state";
+import { applyTemplateToState } from "@/lib/regex-template-picker";
+import type { RegexTemplate } from "@/lib/regex-templates";
 import type { MatchRange } from "@/lib/match-highlighter";
 import { cn } from "@/lib/utils";
 
@@ -473,6 +476,9 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
             <RegexSection
               pattern={state.regexPattern}
               setPattern={(v) => setState((s) => ({ ...s, regexPattern: v }))}
+              onApplyTemplate={(tpl) =>
+                setState((s) => applyTemplateToState(s, tpl))
+              }
             />
           )}
 
@@ -611,9 +617,10 @@ function KeywordsSection({
 interface RegexSectionProps {
   pattern: string;
   setPattern: (v: string) => void;
+  onApplyTemplate: (tpl: RegexTemplate) => void;
 }
 
-function RegexSection({ pattern, setPattern }: RegexSectionProps) {
+function RegexSection({ pattern, setPattern, onApplyTemplate }: RegexSectionProps) {
   const [testText, setTestText] = useState("");
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<MatchRange[] | null>(null);
@@ -675,6 +682,8 @@ function RegexSection({ pattern, setPattern }: RegexSectionProps) {
 
   return (
     <div className="space-y-3">
+      <RegexTemplatePicker onSelect={onApplyTemplate} />
+
       <div className="space-y-1.5">
         <Label htmlFor="type-regex-pattern">
           Pattern regex <span className="text-destructive">*</span>
