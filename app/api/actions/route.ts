@@ -69,11 +69,18 @@ export async function GET(req: NextRequest) {
     const rawOffset = parseInt(searchParams.get("offset") ?? "0", 10);
     const offset = Number.isNaN(rawOffset) ? 0 : rawOffset;
 
-    const orderBy = [
-      { status: "asc" as const },
-      { dueDate: "asc" as const },
-      { createdAt: "desc" as const },
-    ];
+    // Tri : DONE/IGNORED → par date de marquage decroissante (updatedAt) car
+    // dueDate n'est plus pertinente une fois l'action terminée. Les actions
+    // custom sans dueDate étaient sinon reléguées en fin de liste (NULL last).
+    // TODO/SCHEDULED → par dueDate croissante (le plus urgent en premier).
+    const orderBy =
+      status === "DONE" || status === "IGNORED"
+        ? [{ updatedAt: "desc" as const }, { createdAt: "desc" as const }]
+        : [
+            { status: "asc" as const },
+            { dueDate: "asc" as const },
+            { createdAt: "desc" as const },
+          ];
 
     // Récupération du total + page en parallèle
     const [total, actions] = await Promise.all([
