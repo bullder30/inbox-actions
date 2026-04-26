@@ -32,6 +32,14 @@ export interface ManualActionFormState {
   newCustomColor: CustomActionColor;
   newKeywords: string[];
   persistAsRule: boolean;
+  /**
+   * Mode de détection du nouveau type custom (cas B uniquement).
+   * - `KEYWORDS` (défaut, omettre dans le state) : envoie `keywords`
+   * - `REGEX` : envoie `regexPattern` + `customTypeMode: "REGEX"` au lieu
+   */
+  customMode?: "KEYWORDS" | "REGEX";
+  /** Pattern regex pour le cas B + customMode REGEX. */
+  newRegexPattern?: string;
 }
 
 export interface ManualActionEmail {
@@ -101,7 +109,13 @@ export function buildManualActionBody(
       persistAsRule: state.persistAsRule,
     };
     if (state.persistAsRule) {
-      newCustom.keywords = state.newKeywords;
+      // Cas B : règle persistée, choix du mode KEYWORDS (défaut) ou REGEX.
+      if (state.customMode === "REGEX" && state.newRegexPattern) {
+        newCustom.customTypeMode = "REGEX";
+        newCustom.regexPattern = state.newRegexPattern.trim();
+      } else {
+        newCustom.keywords = state.newKeywords;
+      }
     }
     return newCustom;
   }

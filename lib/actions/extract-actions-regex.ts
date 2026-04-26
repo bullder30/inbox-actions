@@ -6,6 +6,10 @@
 
 import { ActionType } from "@prisma/client";
 
+import { safelyExecuteRegex } from "@/lib/actions/regex-executor";
+
+const REGEX_RUNTIME_TIMEOUT_MS = 200;
+
 /**
  * Type pour une action extraite
  */
@@ -40,6 +44,12 @@ export type UserExclusionData = {
 
 /**
  * Type custom passé à l'extracteur (subset minimal de CustomActionType Prisma).
+ *
+ * Champs `mode`, `regexPattern`, `validated` sont optionnels pour la
+ * rétro-compatibilité avec les callers qui ne les passent pas encore.
+ * - `mode` absent → traité comme "KEYWORDS"
+ * - `validated` absent → traité comme `true` (les anciens types KEYWORDS
+ *   sont auto-validés par migration)
  */
 export type CustomActionTypeData = {
   id: string;
@@ -47,6 +57,9 @@ export type CustomActionTypeData = {
   keywords: string[];
   color: string;
   isActive: boolean;
+  mode?: "KEYWORDS" | "REGEX";
+  regexPattern?: string | null;
+  validated?: boolean;
 };
 
 // ============================================================================
@@ -903,8 +916,18 @@ function escapeRegex(str: string): string {
 /**
  * Extrait les actions custom à partir des règles définies par l'utilisateur.
  *
+ * Strategy pattern : switche selon `customType.mode`.
+ *   - "KEYWORDS" (ou mode absent → backward-compat) : compile la liste de
+ *     keywords en regex Unicode-aware
+ *   - "REGEX" : exécute le pattern utilisateur dans un sandbox vm avec
+ *     timeout 200ms (cf. ADR-005 + AC-6)
+ *
+ * Filtres communs :
+ *   - `isActive: false` → skip
+ *   - `validated: false` → skip (défense en profondeur, en plus du filtre DB)
+ *
  * @param context Contexte email
- * @param customTypes Types custom (filtre interne sur isActive)
+ * @param customTypes Types custom (filtre interne sur isActive + validated)
  * @returns Actions custom détectées (avec snapshot label/color)
  */
 export function extractCustomActionsFromEmail(
@@ -913,53 +936,128 @@ export function extractCustomActionsFromEmail(
 ): ExtractedAction[] {
   if (customTypes.length === 0) return [];
 
-  const activeTypes = customTypes.filter((t) => t.isActive);
+  const activeTypes = customTypes.filter((t) => {
+    if (!t.isActive) return false;
+    // `validated` absent → traité comme valide (rétro-compat callers v0.5.0)
+    if (t.validated === false) return false;
+    return true;
+  });
   if (activeTypes.length === 0) return [];
 
   if (shouldExcludeEmail(context)) return [];
 
   const actions: ExtractedAction[] = [];
-  const sentences = splitIntoSentences(normalizeText(context.body));
+  const normalizedBody = normalizeText(context.body);
+  const sentences = splitIntoSentences(normalizedBody);
 
   for (const customType of activeTypes) {
-    const keywordRegex = compileKeywordsRegex(customType.keywords);
-    if (!keywordRegex) continue;
+    const mode = customType.mode ?? "KEYWORDS";
 
-    for (let sentence of sentences) {
-      sentence = cleanSentence(sentence);
-      if (sentence.length < SENTENCE_MIN_LENGTH || sentence.length > SENTENCE_MAX_LENGTH) continue;
-
-      const dueDate = parseDueDate(sentence, context.receivedAt);
-
-      // Conditionnels faibles : annuler seulement si pas de deadline
-      if (!dueDate && hasWeakConditional(sentence)) continue;
-
-      if (!keywordRegex.test(sentence)) continue;
-
-      // Gating anti-ambiguïté : exiger une dueDate (signal "concrète").
-      // Faute de marqueurs forts spécifiques à un type custom inconnu, on s'appuie
-      // sur la présence d'une échéance pour considérer la phrase concrète.
-      if (!dueDate) continue;
-
-      const title = truncate(customType.name, TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT);
-      const sourceSentence = truncate(sentence.trim(), SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT);
-
-      actions.push({
-        title,
-        type: "CUSTOM" as ActionType,
-        sourceSentence,
-        dueDate,
-        customTypeId: customType.id,
-        customTypeLabel: customType.name,
-        customTypeColor: customType.color,
-      });
-
-      // Une seule action par (phrase, customType)
-      break;
+    if (mode === "REGEX") {
+      const regexAction = extractCustomActionForRegexType(
+        customType,
+        sentences,
+        context.receivedAt
+      );
+      if (regexAction) actions.push(regexAction);
+    } else {
+      const keywordAction = extractCustomActionForKeywordsType(
+        customType,
+        sentences,
+        context.receivedAt
+      );
+      if (keywordAction) actions.push(keywordAction);
     }
   }
 
   return actions;
+}
+
+/**
+ * Détection custom mode KEYWORDS (compileKeywordsRegex existant).
+ */
+function extractCustomActionForKeywordsType(
+  customType: CustomActionTypeData,
+  sentences: string[],
+  receivedAt: Date
+): ExtractedAction | null {
+  const keywordRegex = compileKeywordsRegex(customType.keywords);
+  if (!keywordRegex) return null;
+
+  for (let sentence of sentences) {
+    sentence = cleanSentence(sentence);
+    if (sentence.length < SENTENCE_MIN_LENGTH || sentence.length > SENTENCE_MAX_LENGTH) continue;
+
+    const dueDate = parseDueDate(sentence, receivedAt);
+    if (!dueDate && hasWeakConditional(sentence)) continue;
+    if (!keywordRegex.test(sentence)) continue;
+
+    // Gating anti-ambiguïté : exiger une dueDate (faute de marqueurs forts)
+    if (!dueDate) continue;
+
+    return buildCustomAction(customType, sentence, dueDate);
+  }
+
+  return null;
+}
+
+/**
+ * Détection custom mode REGEX via sandbox vm (ADR-005).
+ * Skip l'email pour ce type sur timeout (US-5.4 / AC-6) sans crasher le scan.
+ */
+function extractCustomActionForRegexType(
+  customType: CustomActionTypeData,
+  sentences: string[],
+  receivedAt: Date
+): ExtractedAction | null {
+  const pattern = customType.regexPattern;
+  if (!pattern) return null;
+
+  for (let sentence of sentences) {
+    sentence = cleanSentence(sentence);
+    if (sentence.length < SENTENCE_MIN_LENGTH || sentence.length > SENTENCE_MAX_LENGTH) continue;
+
+    const dueDate = parseDueDate(sentence, receivedAt);
+    if (!dueDate && hasWeakConditional(sentence)) continue;
+
+    const result = safelyExecuteRegex(pattern, sentence, REGEX_RUNTIME_TIMEOUT_MS);
+    if (result.timedOut) {
+      console.warn(
+        `[extractCustomActionsFromEmail] Regex timeout for customTypeId=${customType.id} (pattern length=${pattern.length}). Skipping email for this type.`
+      );
+      return null;
+    }
+    if (result.matches.length === 0) continue;
+
+    // Gating anti-ambiguïté partagé : exiger une dueDate
+    if (!dueDate) continue;
+
+    return buildCustomAction(customType, sentence, dueDate);
+  }
+
+  return null;
+}
+
+/**
+ * Construit une action CUSTOM avec les snapshots label/color requis par AC-7.
+ */
+function buildCustomAction(
+  customType: CustomActionTypeData,
+  sentence: string,
+  dueDate: Date
+): ExtractedAction {
+  const title = truncate(customType.name, TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT);
+  const sourceSentence = truncate(sentence.trim(), SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT);
+
+  return {
+    title,
+    type: "CUSTOM" as ActionType,
+    sourceSentence,
+    dueDate,
+    customTypeId: customType.id,
+    customTypeLabel: customType.name,
+    customTypeColor: customType.color,
+  };
 }
 
 /**

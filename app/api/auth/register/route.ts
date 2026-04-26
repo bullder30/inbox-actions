@@ -4,6 +4,8 @@ import { z } from "zod";
 
 import { prisma } from "@/lib/db";
 import { sendVerificationEmail } from "@/lib/auth/send-verification-email";
+import { rateLimitOrFail } from "@/lib/rate-limit";
+import { isHoneypotTriggered, honeypotRejectResponse } from "@/lib/honeypot";
 
 export const dynamic = "force-dynamic";
 
@@ -15,8 +17,13 @@ const registerSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  // Rate limit : 5 inscriptions / 10 min / IP (anti-spam comptes)
+  const rl = rateLimitOrFail(req, "auth:register", { max: 5, windowMs: 10 * 60 * 1000 });
+  if (rl) return rl;
+
   try {
     const body = await req.json();
+    if (isHoneypotTriggered(body)) return honeypotRejectResponse();
     const parsed = registerSchema.safeParse(body);
 
     if (!parsed.success) {

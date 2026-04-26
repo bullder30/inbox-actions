@@ -248,6 +248,14 @@ interface IEmailProvider {
   `lib/custom-action-types/validation.ts`, `lib/slug.ts`,
   `lib/custom-action-colors.ts`, `lib/stoplist-fr.ts`. API CRUD :
   `app/api/custom-action-types/{,[id]}/route.ts`. Limite 10 types/user.
+  - **Regex Power** (extension v0.6.0) : modes `KEYWORDS` (défaut) ou `REGEX`
+    (pattern user défini avec safe-regex anti-ReDoS + vm timeout 200ms runtime).
+    Voir `docs/features/regex-power.md` + ADRs `docs/architecture/regex-power/`.
+    Helpers : `lib/actions/regex-executor.ts` (sandbox vm), `lib/regex-templates.ts`
+    (~12 templates métier Compta/Juridique/IT/RH), `lib/email-body-cache.ts`
+    (LRU TTL 5min). API : `/api/custom-action-types/test-regex` (POST, zone test
+    visuelle) + `/api/email/[id]/body` (GET, preview live missing-action,
+    ownership 404 + DOMPurify + tronquage 50 KB). Env var requise : `GRAPH_MASTER_KEY`.
 
 **Due Date Detection:**
 - Absolute dates: "avant le 15 mars", "pour vendredi", "d'ici lundi"

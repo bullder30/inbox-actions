@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Icons } from "@/components/shared/icons";
+import { HoneypotInput, HONEYPOT_FIELD_NAME } from "@/components/shared/honeypot-input";
 import { toast } from "sonner";
 
 const schema = z.object({
@@ -35,10 +36,11 @@ export default function ForgotPasswordPage() {
   async function onSubmit(data: FormData) {
     setIsLoading(true);
     try {
+      const honeypotValue = (data as Record<string, unknown>)[HONEYPOT_FIELD_NAME] ?? "";
       const response = await fetch("/api/auth/forgot-password", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify({ ...data, [HONEYPOT_FIELD_NAME]: honeypotValue }),
       });
 
       if (!response.ok) {
@@ -90,6 +92,7 @@ export default function ForgotPasswordPage() {
             <p className="text-center text-sm text-muted-foreground">
               Saisissez votre adresse email et nous vous enverrons un lien pour réinitialiser votre mot de passe.
             </p>
+            <HoneypotInput inputProps={register(HONEYPOT_FIELD_NAME as never)} />
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input

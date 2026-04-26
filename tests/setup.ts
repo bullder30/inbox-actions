@@ -1,5 +1,12 @@
 import "@testing-library/jest-dom";
-import { vi } from "vitest";
+import { beforeEach, vi } from "vitest";
+
+import { __resetCacheForTests } from "@/lib/email-body-cache";
+
+// Reset des caches in-process partagés entre tests pour éviter la pollution.
+beforeEach(() => {
+  __resetCacheForTests();
+});
 
 // Mock next/cache (revalidatePath/revalidateTag/unstable_cache require Next.js runtime context)
 vi.mock("next/cache", () => ({

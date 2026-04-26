@@ -7,6 +7,8 @@
  *   - app/api/actions/manual/route.ts (cas B persistAsRule)
  */
 
+import safeRegex from "safe-regex";
+
 import { FRENCH_STOPLIST } from "@/lib/stoplist-fr";
 
 export const MAX_TYPES_PER_USER = 10;
@@ -14,6 +16,59 @@ export const MAX_TYPE_NAME_LENGTH = 50;
 export const MIN_KEYWORD_LENGTH = 4;
 export const MAX_KEYWORD_LENGTH = 60;
 export const MAX_KEYWORDS = 50;
+export const MAX_REGEX_PATTERN_LENGTH = 200;
+
+/**
+ * Raisons de rejet d'un pattern regex (utilisé dans les réponses API 422).
+ */
+export type RegexValidationReason =
+  | "too_long"
+  | "syntax_invalid"
+  | "polynomial_backtracking";
+
+/**
+ * Discriminated union : sur `ok: false` le `reason` est garanti, et `details`
+ * est uniquement disponible pour `syntax_invalid`. Évite les `?.` côté caller.
+ */
+export type RegexValidationResult =
+  | { ok: true }
+  | { ok: false; reason: "too_long" }
+  | { ok: false; reason: "polynomial_backtracking" }
+  | { ok: false; reason: "syntax_invalid"; details: string };
+
+/**
+ * Valide un pattern regex utilisateur en 3 passes :
+ *   1. longueur ≤ MAX_REGEX_PATTERN_LENGTH
+ *   2. syntaxe (RegExp constructor ne throw pas avec flag "gi")
+ *   3. heuristique anti-ReDoS (safe-regex)
+ *
+ * @returns `{ ok: true }` si OK, sinon `{ ok: false, reason, details? }`
+ */
+export function validateRegexPattern(
+  pattern: string
+): RegexValidationResult {
+  if (pattern.length > MAX_REGEX_PATTERN_LENGTH) {
+    return { ok: false, reason: "too_long" };
+  }
+
+  try {
+    new RegExp(pattern, "gi");
+  } catch (err) {
+    return {
+      ok: false,
+      reason: "syntax_invalid",
+      details: err instanceof Error ? err.message : "Invalid regex syntax",
+    };
+  }
+
+  // Appel direct à safe-regex (pas via wrapper) pour rester indépendant
+  // des mocks de tests sur `@/lib/actions/regex-executor`.
+  if (!safeRegex(pattern)) {
+    return { ok: false, reason: "polynomial_backtracking" };
+  }
+
+  return { ok: true };
+}
 
 /**
  * Valide une liste de keywords brut.

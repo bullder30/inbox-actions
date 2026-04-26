@@ -83,15 +83,36 @@ export async function runDailySyncJob() {
     }
 
     // --- Charger tous les types custom actifs en une seule requête ---
+    // Filtre `validated: true` pour exclure les types REGEX dont le pattern
+    // n'a pas passé safe-regex (cf. AC-5 regex-power).
     const allCustomTypesRaw = await prisma.customActionType.findMany({
-      where: { userId: { in: allUserIds }, isActive: true },
-      select: { id: true, userId: true, name: true, keywords: true, color: true, isActive: true },
+      where: { userId: { in: allUserIds }, isActive: true, validated: true },
+      select: {
+        id: true,
+        userId: true,
+        name: true,
+        keywords: true,
+        color: true,
+        isActive: true,
+        mode: true,
+        regexPattern: true,
+        validated: true,
+      },
     });
 
     const customTypesByUserId = new Map<string, CustomActionTypeData[]>();
     for (const row of allCustomTypesRaw) {
       const list = customTypesByUserId.get(row.userId) ?? [];
-      list.push({ id: row.id, name: row.name, keywords: row.keywords, color: row.color, isActive: row.isActive });
+      list.push({
+        id: row.id,
+        name: row.name,
+        keywords: row.keywords,
+        color: row.color,
+        isActive: row.isActive,
+        mode: row.mode,
+        regexPattern: row.regexPattern,
+        validated: row.validated,
+      });
       customTypesByUserId.set(row.userId, list);
     }
 

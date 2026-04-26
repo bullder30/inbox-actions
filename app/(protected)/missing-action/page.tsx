@@ -1,6 +1,6 @@
 "use client";
 
-import { Clock, Inbox, Loader2, Mail, MailOpen, Plus, Sparkles, X } from "lucide-react";
+import { Clock, Inbox, Loader2, Mail, MailOpen, Plus, Regex, Sparkles, X } from "lucide-react";
 
 import { BackButton } from "@/components/shared/back-button";
 import { Badge } from "@/components/ui/badge";
@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "@/componen
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectSeparator, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import useSWRInfinite from "swr/infinite";
 
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,8 @@ import { fr } from "date-fns/locale";
 import { toast } from "sonner";
 import { useRouter } from "next/navigation";
 import { MissingActionCardSkeletonList, MissingActionSkeleton } from "@/components/actions/missing-action-skeleton";
+import { EmailBodyPreview } from "@/components/actions/email-body-preview";
+import { RegexTemplatePicker } from "@/components/settings/regex-template-picker";
 import type { CachedIgnoredEmail } from "@/lib/cache/dashboard";
 import {
   CUSTOM_ACTION_COLORS,
@@ -26,7 +28,13 @@ import {
   colorToSwatchClass,
   rotateColor,
 } from "@/lib/custom-action-colors";
-import { MAX_TYPE_NAME_LENGTH, MAX_KEYWORD_LENGTH, validateKeywords } from "@/lib/custom-action-types/validation";
+import {
+  MAX_KEYWORD_LENGTH,
+  MAX_REGEX_PATTERN_LENGTH,
+  MAX_TYPE_NAME_LENGTH,
+  validateKeywords,
+} from "@/lib/custom-action-types/validation";
+import { isPatternFieldValid } from "@/lib/custom-action-types/dialog-state";
 import {
   buildManualActionBody,
   extractCandidateKeywords,
@@ -60,7 +68,13 @@ export default function MissingActionPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
   // Liste des types custom disponibles pour le Select
-  const [customTypes, setCustomTypes] = useState<ManualActionCustomType[]>([]);
+  // Étendue avec mode/keywords/regexPattern pour le preview live (UI Step 3/3)
+  type CustomTypeWithDetection = ManualActionCustomType & {
+    mode?: "KEYWORDS" | "REGEX";
+    keywords?: string[];
+    regexPattern?: string | null;
+  };
+  const [customTypes, setCustomTypes] = useState<CustomTypeWithDetection[]>([]);
 
   // Sous-formulaire « Créer un nouveau type »
   const [newCustomName, setNewCustomName] = useState("");
@@ -68,8 +82,33 @@ export default function MissingActionPage() {
   const [newKeywords, setNewKeywords] = useState<string[]>([]);
   const [keywordInput, setKeywordInput] = useState("");
   const [persistAsRule, setPersistAsRule] = useState(false);
+  // UI Step 3/3 — toggle mode + pattern regex (cas B avancé)
+  const [customMode, setCustomMode] = useState<"KEYWORDS" | "REGEX">("KEYWORDS");
+  const [newRegexPattern, setNewRegexPattern] = useState("");
 
   const isNewCustomMode = typeSelection === NEW_CUSTOM_SENTINEL;
+
+  // Pattern / keywords à afficher en preview live :
+  //  - mode "nouveau type REGEX" : pattern en cours de saisie
+  //  - mode "nouveau type KEYWORDS" : keywords en cours de saisie
+  //  - type custom existant sélectionné : ses propres pattern/keywords
+  const previewPattern = useMemo(() => {
+    if (isNewCustomMode && customMode === "REGEX") return newRegexPattern;
+    if (!isNewCustomMode) {
+      const t = customTypes.find((c) => c.id === typeSelection);
+      if (t?.mode === "REGEX") return t.regexPattern ?? null;
+    }
+    return null;
+  }, [isNewCustomMode, customMode, newRegexPattern, typeSelection, customTypes]);
+
+  const previewKeywords = useMemo(() => {
+    if (isNewCustomMode && customMode === "KEYWORDS") return newKeywords;
+    if (!isNewCustomMode) {
+      const t = customTypes.find((c) => c.id === typeSelection);
+      if (t?.mode === "KEYWORDS") return t.keywords ?? [];
+    }
+    return [];
+  }, [isNewCustomMode, customMode, newKeywords, typeSelection, customTypes]);
 
   // Charger les types custom à l'ouverture du dialog
   useEffect(() => {
@@ -80,11 +119,23 @@ export default function MissingActionPage() {
         const res = await fetch("/api/custom-action-types");
         if (!res.ok || aborted) return;
         const data = await res.json();
-        const types = (data.types ?? []).map((t: { id: string; name: string; color: CustomActionColor }) => ({
-          id: t.id,
-          name: t.name,
-          color: t.color,
-        })) as ManualActionCustomType[];
+        const types = (data.types ?? []).map(
+          (t: {
+            id: string;
+            name: string;
+            color: CustomActionColor;
+            mode?: "KEYWORDS" | "REGEX";
+            keywords?: string[];
+            regexPattern?: string | null;
+          }) => ({
+            id: t.id,
+            name: t.name,
+            color: t.color,
+            mode: t.mode,
+            keywords: t.keywords ?? [],
+            regexPattern: t.regexPattern ?? null,
+          })
+        ) as CustomTypeWithDetection[];
         if (!aborted) setCustomTypes(types);
       } catch {
         // silently — la liste reste vide, l'utilisateur garde les 5 natifs + new
@@ -149,6 +200,8 @@ export default function MissingActionPage() {
     setNewKeywords([]);
     setKeywordInput("");
     setPersistAsRule(false);
+    setCustomMode("KEYWORDS");
+    setNewRegexPattern("");
   }
 
   function handleOpenDialog(email: CachedIgnoredEmail) {
@@ -197,23 +250,30 @@ export default function MissingActionPage() {
         return;
       }
       if (persistAsRule) {
-        // Flush un éventuel keyword pending dans l'input
-        const pending = keywordInput.trim();
-        const finalKeywords = pending && !newKeywords.some((k) => k.toLowerCase() === pending.toLowerCase())
-          ? [...newKeywords, pending]
-          : newKeywords;
-        if (finalKeywords.length === 0) {
-          toast.error("Ajoutez au moins un mot-clé pour la règle");
-          return;
-        }
-        const invalid = validateKeywords(finalKeywords);
-        if (invalid && invalid.length > 0) {
-          toast.error(`Mots-clés invalides : ${invalid.join(", ")}`);
-          return;
-        }
-        if (finalKeywords !== newKeywords) {
-          setNewKeywords(finalKeywords);
-          setKeywordInput("");
+        if (customMode === "REGEX") {
+          if (!isPatternFieldValid(newRegexPattern)) {
+            toast.error("Pattern regex invalide ou vide");
+            return;
+          }
+        } else {
+          // Flush un éventuel keyword pending dans l'input
+          const pending = keywordInput.trim();
+          const finalKeywords = pending && !newKeywords.some((k) => k.toLowerCase() === pending.toLowerCase())
+            ? [...newKeywords, pending]
+            : newKeywords;
+          if (finalKeywords.length === 0) {
+            toast.error("Ajoutez au moins un mot-clé pour la règle");
+            return;
+          }
+          const invalid = validateKeywords(finalKeywords);
+          if (invalid && invalid.length > 0) {
+            toast.error(`Mots-clés invalides : ${invalid.join(", ")}`);
+            return;
+          }
+          if (finalKeywords !== newKeywords) {
+            setNewKeywords(finalKeywords);
+            setKeywordInput("");
+          }
         }
       }
     }
@@ -231,6 +291,8 @@ export default function MissingActionPage() {
           ? [...newKeywords, keywordInput.trim()]
           : newKeywords,
         persistAsRule,
+        customMode: isNewCustomMode ? customMode : undefined,
+        newRegexPattern: isNewCustomMode ? newRegexPattern : undefined,
       },
       {
         from: selectedEmail.from,
@@ -401,8 +463,20 @@ export default function MissingActionPage() {
             )}
           </DialogHeader>
           <div className="min-w-0 space-y-3 py-2 sm:space-y-4 sm:py-4">
+            {/* Preview live du corps de l'email avec match highlighting.
+                Visible UNIQUEMENT quand un type custom est selectionne OU mode regex active
+                (Fix #2 UX audit — evite fetch + occupation visuelle inutiles pour le cas dominant). */}
+            {selectedEmail && (previewPattern !== null || previewKeywords.length > 0) && (
+              <EmailBodyPreview
+                emailId={selectedEmail.id}
+                pattern={previewPattern}
+                keywords={previewKeywords}
+                className="max-h-40 overflow-hidden sm:max-h-none"
+              />
+            )}
+
             <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="sentence" className="text-xs sm:text-sm">
+              <Label htmlFor="sentence" className="text-sm">
                 Phrase source <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -410,15 +484,15 @@ export default function MissingActionPage() {
                 placeholder="Copiez la phrase de l'email..."
                 value={selectedSentence}
                 onChange={(e) => setSelectedSentence(e.target.value)}
-                className="h-9 text-sm sm:h-10"
+                className="h-10"
               />
-              <p className="text-[10px] text-muted-foreground sm:text-xs">
+              <p className="text-xs text-muted-foreground">
                 Extrait de l&apos;email justifiant l&apos;action
               </p>
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="title" className="text-xs sm:text-sm">
+              <Label htmlFor="title" className="text-sm">
                 Titre de l&apos;action <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -426,14 +500,14 @@ export default function MissingActionPage() {
                 placeholder="Ex: Envoyer le document..."
                 value={actionTitle}
                 onChange={(e) => setActionTitle(e.target.value)}
-                className="h-9 text-sm sm:h-10"
+                className="h-10"
               />
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="type" className="text-xs sm:text-sm">Type d&apos;action</Label>
+              <Label htmlFor="type" className="text-sm">Type d&apos;action</Label>
               <Select value={typeSelection} onValueChange={setTypeSelection}>
-                <SelectTrigger id="type" className="h-9 text-sm sm:h-10">
+                <SelectTrigger id="type" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -488,7 +562,7 @@ export default function MissingActionPage() {
                     value={newCustomName}
                     onChange={(e) => setNewCustomName(e.target.value)}
                     maxLength={MAX_TYPE_NAME_LENGTH}
-                    className="h-9 text-sm sm:h-10"
+                    className="h-10"
                   />
                 </div>
 
@@ -516,8 +590,66 @@ export default function MissingActionPage() {
                   </div>
                 </div>
 
-                {/* Keywords (uniquement en mode règle) */}
+                {/* Mode KEYWORDS / REGEX (uniquement en mode règle) */}
                 {persistAsRule && (
+                  <div className="flex items-center justify-between rounded border bg-background p-2.5">
+                    <div className="min-w-0 flex-1">
+                      <Label htmlFor="missing-mode-regex" className="flex items-center gap-1.5 text-xs font-medium sm:text-sm">
+                        <Regex className="size-3.5" />
+                        Mode avancé (regex)
+                      </Label>
+                      <p className="mt-0.5 text-[10px] text-muted-foreground sm:text-xs">
+                        Pattern regex au lieu de mots-clés.
+                      </p>
+                    </div>
+                    <Switch
+                      id="missing-mode-regex"
+                      checked={customMode === "REGEX"}
+                      onCheckedChange={(checked) =>
+                        setCustomMode(checked ? "REGEX" : "KEYWORDS")
+                      }
+                    />
+                  </div>
+                )}
+
+                {/* Pattern regex (mode REGEX) */}
+                {persistAsRule && customMode === "REGEX" && (
+                  <div className="space-y-2">
+                    <RegexTemplatePicker
+                      onSelect={(tpl) => {
+                        setNewRegexPattern(tpl.pattern);
+                        setNewCustomColor(tpl.color);
+                        if (newCustomName.trim().length === 0) {
+                          setNewCustomName(tpl.name);
+                        }
+                      }}
+                    />
+                    <div className="space-y-1.5">
+                      <Label htmlFor="custom-regex" className="text-xs sm:text-sm">
+                        Pattern regex <span className="text-red-500">*</span>
+                      </Label>
+                      <Input
+                        id="custom-regex"
+                        placeholder="Ex: FAC-\d{4}-\d+"
+                        value={newRegexPattern}
+                        onChange={(e) => setNewRegexPattern(e.target.value)}
+                        maxLength={MAX_REGEX_PATTERN_LENGTH}
+                        className={cn(
+                          "h-10 font-mono",
+                          newRegexPattern.length > 0 &&
+                            !isPatternFieldValid(newRegexPattern) &&
+                            "border-destructive focus-visible:ring-destructive"
+                        )}
+                      />
+                      <p className="text-[10px] text-muted-foreground sm:text-xs">
+                        {newRegexPattern.length}/{MAX_REGEX_PATTERN_LENGTH} caractères · flags <code className="font-mono">gi</code> appliqués
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Keywords (mode KEYWORDS uniquement) */}
+                {persistAsRule && customMode === "KEYWORDS" && (
                   <div className="space-y-1.5">
                     <Label htmlFor="custom-keywords" className="text-xs sm:text-sm">
                       Mots-clés de détection <span className="text-red-500">*</span>
@@ -535,7 +667,7 @@ export default function MissingActionPage() {
                           }
                         }}
                         maxLength={MAX_KEYWORD_LENGTH}
-                        className="h-9 text-sm sm:h-10"
+                        className="h-10"
                       />
                       <Button type="button" size="sm" variant="outline" onClick={addKeyword} disabled={!keywordInput.trim()}>
                         <Plus className="size-4" />
@@ -571,14 +703,14 @@ export default function MissingActionPage() {
                 variant="outline"
                 onClick={handleCloseDialog}
                 disabled={creating}
-                className="h-9 w-full text-sm sm:h-10 sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleCreateAction}
                 disabled={creating || !selectedSentence.trim() || !actionTitle.trim()}
-                className="h-9 w-full text-sm sm:h-10 sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 {creating ? (
                   <>
