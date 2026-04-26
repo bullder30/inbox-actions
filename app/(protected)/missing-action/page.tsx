@@ -463,17 +463,20 @@ export default function MissingActionPage() {
             )}
           </DialogHeader>
           <div className="min-w-0 space-y-3 py-2 sm:space-y-4 sm:py-4">
-            {/* Preview live du corps de l'email avec match highlighting */}
-            {selectedEmail && (
+            {/* Preview live du corps de l'email avec match highlighting.
+                Visible UNIQUEMENT quand un type custom est selectionne OU mode regex active
+                (Fix #2 UX audit — evite fetch + occupation visuelle inutiles pour le cas dominant). */}
+            {selectedEmail && (previewPattern !== null || previewKeywords.length > 0) && (
               <EmailBodyPreview
                 emailId={selectedEmail.id}
                 pattern={previewPattern}
                 keywords={previewKeywords}
+                className="max-h-40 overflow-hidden sm:max-h-none"
               />
             )}
 
             <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="sentence" className="text-xs sm:text-sm">
+              <Label htmlFor="sentence" className="text-sm">
                 Phrase source <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -481,15 +484,15 @@ export default function MissingActionPage() {
                 placeholder="Copiez la phrase de l'email..."
                 value={selectedSentence}
                 onChange={(e) => setSelectedSentence(e.target.value)}
-                className="h-9 text-sm sm:h-10"
+                className="h-10"
               />
-              <p className="text-[10px] text-muted-foreground sm:text-xs">
+              <p className="text-xs text-muted-foreground">
                 Extrait de l&apos;email justifiant l&apos;action
               </p>
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="title" className="text-xs sm:text-sm">
+              <Label htmlFor="title" className="text-sm">
                 Titre de l&apos;action <span className="text-red-500">*</span>
               </Label>
               <Input
@@ -497,14 +500,14 @@ export default function MissingActionPage() {
                 placeholder="Ex: Envoyer le document..."
                 value={actionTitle}
                 onChange={(e) => setActionTitle(e.target.value)}
-                className="h-9 text-sm sm:h-10"
+                className="h-10"
               />
             </div>
 
             <div className="space-y-1.5 sm:space-y-2">
-              <Label htmlFor="type" className="text-xs sm:text-sm">Type d&apos;action</Label>
+              <Label htmlFor="type" className="text-sm">Type d&apos;action</Label>
               <Select value={typeSelection} onValueChange={setTypeSelection}>
-                <SelectTrigger id="type" className="h-9 text-sm sm:h-10">
+                <SelectTrigger id="type" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -559,7 +562,7 @@ export default function MissingActionPage() {
                     value={newCustomName}
                     onChange={(e) => setNewCustomName(e.target.value)}
                     maxLength={MAX_TYPE_NAME_LENGTH}
-                    className="h-9 text-sm sm:h-10"
+                    className="h-10"
                   />
                 </div>
 
@@ -632,7 +635,7 @@ export default function MissingActionPage() {
                         onChange={(e) => setNewRegexPattern(e.target.value)}
                         maxLength={MAX_REGEX_PATTERN_LENGTH}
                         className={cn(
-                          "h-9 font-mono text-sm sm:h-10",
+                          "h-10 font-mono",
                           newRegexPattern.length > 0 &&
                             !isPatternFieldValid(newRegexPattern) &&
                             "border-destructive focus-visible:ring-destructive"
@@ -664,7 +667,7 @@ export default function MissingActionPage() {
                           }
                         }}
                         maxLength={MAX_KEYWORD_LENGTH}
-                        className="h-9 text-sm sm:h-10"
+                        className="h-10"
                       />
                       <Button type="button" size="sm" variant="outline" onClick={addKeyword} disabled={!keywordInput.trim()}>
                         <Plus className="size-4" />
@@ -700,14 +703,14 @@ export default function MissingActionPage() {
                 variant="outline"
                 onClick={handleCloseDialog}
                 disabled={creating}
-                className="h-9 w-full text-sm sm:h-10 sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 Annuler
               </Button>
               <Button
                 onClick={handleCreateAction}
                 disabled={creating || !selectedSentence.trim() || !actionTitle.trim()}
-                className="h-9 w-full text-sm sm:h-10 sm:w-auto"
+                className="h-10 w-full sm:w-auto"
               >
                 {creating ? (
                   <>

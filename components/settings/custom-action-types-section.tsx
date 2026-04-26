@@ -431,23 +431,6 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {/* Mode toggle */}
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div className="space-y-0.5">
-              <Label htmlFor="type-mode-regex" className="cursor-pointer text-sm font-medium">
-                Mode avancé (regex)
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Activez pour détecter via une expression régulière (ex. <code className="font-mono">FAC-\d{"{4}"}-\d+</code>) au lieu de mots-clés.
-              </p>
-            </div>
-            <Switch
-              id="type-mode-regex"
-              checked={state.mode === "REGEX"}
-              onCheckedChange={(checked) => setMode(checked ? "REGEX" : "KEYWORDS")}
-            />
-          </div>
-
           {/* Nom */}
           <div className="space-y-1.5">
             <Label htmlFor="type-name">
@@ -459,26 +442,20 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
               value={state.name}
               onChange={(e) => setState((s) => ({ ...s, name: e.target.value }))}
               maxLength={MAX_TYPE_NAME_LENGTH}
+              className="h-10"
               autoFocus
             />
-            <p className="text-[11px] text-muted-foreground">{state.name.length}/{MAX_TYPE_NAME_LENGTH} caractères</p>
+            <p className="text-xs text-muted-foreground">{state.name.length}/{MAX_TYPE_NAME_LENGTH} caractères</p>
           </div>
 
-          {state.mode === "KEYWORDS" ? (
+          {/* KeywordsSection visible quand mode = KEYWORDS (défaut, 90% des cas) */}
+          {state.mode === "KEYWORDS" && (
             <KeywordsSection
               keywords={state.keywords}
               keywordInput={keywordInput}
               setKeywordInput={setKeywordInput}
               addKeyword={addKeyword}
               removeKeyword={removeKeyword}
-            />
-          ) : (
-            <RegexSection
-              pattern={state.regexPattern}
-              setPattern={(v) => setState((s) => ({ ...s, regexPattern: v }))}
-              onApplyTemplate={(tpl) =>
-                setState((s) => applyTemplateToState(s, tpl))
-              }
             />
           )}
 
@@ -506,6 +483,41 @@ function CustomTypeDialog({ open, onOpenChange, editingType, existingCount, onSa
                 );
               })}
             </div>
+          </div>
+
+          {/* Mode avancé (regex) — progressive disclosure pour les power users */}
+          <div
+            className={cn(
+              "rounded-lg border px-3 py-2.5 transition-colors",
+              state.mode === "REGEX" ? "bg-muted/40" : "bg-muted/20"
+            )}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <Label
+                htmlFor="type-mode-regex"
+                className="flex cursor-pointer items-center gap-1.5 text-xs font-medium text-muted-foreground"
+              >
+                <Regex className="size-3.5" />
+                Détection avancée par regex
+              </Label>
+              <Switch
+                id="type-mode-regex"
+                checked={state.mode === "REGEX"}
+                onCheckedChange={(checked) => setMode(checked ? "REGEX" : "KEYWORDS")}
+                aria-label="Activer le mode regex"
+              />
+            </div>
+            {state.mode === "REGEX" && (
+              <div className="mt-3 border-t pt-3">
+                <RegexSection
+                  pattern={state.regexPattern}
+                  setPattern={(v) => setState((s) => ({ ...s, regexPattern: v }))}
+                  onApplyTemplate={(tpl) =>
+                    setState((s) => applyTemplateToState(s, tpl))
+                  }
+                />
+              </div>
+            )}
           </div>
 
           {/* isActive (uniquement en édition) */}
@@ -583,8 +595,9 @@ function KeywordsSection({
             }
           }}
           maxLength={MAX_KEYWORD_LENGTH}
+          className="h-10"
         />
-        <Button type="button" size="sm" variant="outline" onClick={() => addKeyword()} disabled={!keywordInput.trim()}>
+        <Button type="button" variant="outline" onClick={() => addKeyword()} disabled={!keywordInput.trim()} className="h-10">
           <Plus className="size-4" />
         </Button>
       </div>
@@ -682,8 +695,6 @@ function RegexSection({ pattern, setPattern, onApplyTemplate }: RegexSectionProp
 
   return (
     <div className="space-y-3">
-      <RegexTemplatePicker onSelect={onApplyTemplate} />
-
       <div className="space-y-1.5">
         <Label htmlFor="type-regex-pattern">
           Pattern regex <span className="text-destructive">*</span>
@@ -695,52 +706,58 @@ function RegexSection({ pattern, setPattern, onApplyTemplate }: RegexSectionProp
           onChange={(e) => setPattern(e.target.value)}
           maxLength={MAX_REGEX_PATTERN_LENGTH}
           className={cn(
-            "font-mono",
+            "h-10 font-mono",
             pattern.length > 0 && !patternValid && "border-destructive focus-visible:ring-destructive"
           )}
         />
-        <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-          <span>{pattern.length}/{MAX_REGEX_PATTERN_LENGTH} caractères · flags <code className="font-mono">gi</code> appliqués</span>
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <span>{pattern.length}/{MAX_REGEX_PATTERN_LENGTH}</span>
           {pattern.length > 0 && (
             <span className={patternValid ? "text-emerald-600 dark:text-emerald-400" : "text-destructive"}>
-              {patternValid ? "Pattern valide" : "Pattern invalide"}
+              {patternValid ? "✓ Pattern valide" : "✗ Pattern invalide"}
             </span>
           )}
         </div>
       </div>
 
-      <div className="space-y-1.5 rounded-lg border bg-muted/40 p-3">
-        <Label htmlFor="type-regex-test">
-          Zone de test
-          {testing && <Loader2 className="ml-2 inline size-3 animate-spin text-muted-foreground" />}
-        </Label>
-        <Textarea
-          id="type-regex-test"
-          placeholder="Collez ici une phrase d'exemple — les matches sont surlignés en direct."
-          value={testText}
-          onChange={(e) => setTestText(e.target.value)}
-          rows={3}
-          className="font-mono text-xs"
-        />
-        {testError && (
-          <p className="flex items-start gap-1.5 text-xs text-destructive">
-            <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
-            {testError}
-          </p>
-        )}
-        {testResult !== null && !testError && (
-          <div className="space-y-1 rounded border bg-background p-2">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {testResult.length} match{testResult.length > 1 ? "es" : ""}
+      {/* Templates en option secondaire, sous le champ principal */}
+      <RegexTemplatePicker onSelect={onApplyTemplate} />
+
+      {/* Zone de test : visible uniquement quand le pattern est valide (Fix #3) */}
+      {patternValid && (
+        <div className="space-y-1.5 rounded-lg border bg-muted/40 p-3">
+          <Label htmlFor="type-regex-test" className="flex items-center gap-2">
+            Zone de test
+            {testing && <Loader2 className="size-3 animate-spin text-muted-foreground" />}
+          </Label>
+          <Textarea
+            id="type-regex-test"
+            placeholder="Collez une phrase d'exemple — les matches sont surlignés."
+            value={testText}
+            onChange={(e) => setTestText(e.target.value)}
+            rows={3}
+            className="font-mono text-xs"
+          />
+          {testError && (
+            <p className="flex items-start gap-1.5 text-xs text-destructive">
+              <AlertCircle className="mt-0.5 size-3.5 shrink-0" />
+              {testError}
             </p>
-            <MatchHighlighter
-              text={testText}
-              ranges={testResult}
-              emptyHint="Tapez du texte pour tester."
-            />
-          </div>
-        )}
-      </div>
+          )}
+          {testResult !== null && !testError && (
+            <div className="space-y-1 rounded border bg-background p-2">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                {testResult.length} match{testResult.length > 1 ? "es" : ""}
+              </p>
+              <MatchHighlighter
+                text={testText}
+                ranges={testResult}
+                emptyHint="Tapez du texte pour tester."
+              />
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
