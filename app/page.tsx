@@ -43,7 +43,15 @@ const faqSchema = {
       name: "Quels types d'actions sont détectés ?",
       acceptedAnswer: {
         "@type": "Answer",
-        text: "Cinq types d'actions sont détectés dans les emails en français : Envoyer (SEND), Appeler (CALL), Relancer (FOLLOW_UP), Payer (PAY) et Valider (VALIDATE).",
+        text: "Cinq types natifs sont détectés en français : Envoyer (SEND), Appeler (CALL), Relancer (FOLLOW_UP), Payer (PAY) et Valider (VALIDATE). Vous pouvez aussi définir vos propres types personnalisés (jusqu'à 10 par utilisateur) via mots-clés ou expression régulière — ex. détecter automatiquement les références de factures FAC-2024-XXXX, les tickets Jira PROJ-123, ou les demandes de congés selon vos conventions métier.",
+      },
+    },
+    {
+      "@type": "Question",
+      name: "Comment créer un type d'action personnalisé ?",
+      acceptedAnswer: {
+        "@type": "Answer",
+        text: "Depuis Paramètres → 'Mes types d'actions', cliquez 'Créer un type'. Définissez un nom, choisissez entre mode mots-clés (simple, recommandé pour la majorité) ou mode regex avancé (pour les patterns métier comme références facture, IBAN, tickets). Une zone de test inline vous permet de visualiser les matches en direct avant de valider. Des templates prêts à l'emploi (Compta, Juridique, IT, RH) sont fournis.",
       },
     },
     {
@@ -81,9 +89,11 @@ import {
   MailOpen,
   PlayCircle,
   Phone,
+  Regex,
   Send,
   Server,
   ShieldCheck,
+  Tag,
   UserPlus,
   XCircle,
   Zap,
@@ -274,7 +284,9 @@ export default async function HomePage() {
 
           <div className="mt-16 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {[
-              { icon: <Eye className="size-6 text-blue-500" />, bg: "bg-blue-500/10", title: "Détection déterministe", body: <>Règles simples et explicables. Le système détecte 5 types d&apos;actions : envoyer, appeler, suivre, payer, valider.<strong className="mt-2 block">Si c&apos;est ambigu, on ne devine pas.</strong></> },
+              { icon: <Eye className="size-6 text-blue-500" />, bg: "bg-blue-500/10", title: "Détection déterministe", body: <>Règles simples et explicables. 5 types natifs : envoyer, appeler, suivre, payer, valider.<strong className="mt-2 block">Si c&apos;est ambigu, on ne devine pas.</strong></> },
+              { icon: <Tag className="size-6 text-violet-500" />, bg: "bg-violet-500/10", title: "Types d&apos;actions personnalisés", body: <>Définissez vos propres types métier en mots-clés (jusqu&apos;à 10 par utilisateur) avec couleur et label. Détection automatique sur les futurs emails.<strong className="mt-2 block">Idéal : Code review, Daily stand-up, Demande client…</strong></> },
+              { icon: <Regex className="size-6 text-fuchsia-500" />, bg: "bg-fuchsia-500/10", title: "Mode regex avancé", body: <>Pour les power users : pattern regex sécurisé (anti-ReDoS) pour capturer des conventions métier précises. Visualisation live des matches sur le corps réel de l&apos;email.<strong className="mt-2 block">Templates Compta · Juridique · IT · RH inclus.</strong></> },
               { icon: <AlertCircle className="size-6 text-purple-500" />, bg: "bg-purple-500/10", title: "Corrigez immédiatement", body: <>Le système a manqué une action ? Un bouton <strong>&ldquo;Il manque une action&rdquo;</strong> accessible partout. Créez manuellement en 3 clics, sans justification.</> },
               { icon: <CheckCircle2 className="size-6 text-emerald-500" />, bg: "bg-emerald-500/10", title: "Phrase source visible", body: <>Chaque action affiche la phrase exacte de l&apos;email d&apos;origine. Vous comprenez toujours pourquoi le système a détecté cette action.</> },
               { icon: <Clock className="size-6 text-orange-500" />, bg: "bg-orange-500/10", title: "Synchronisation à la demande", body: <>Bouton de synchronisation manuelle directement sur le tableau de bord. Pas besoin d&apos;attendre le scan automatique.<strong className="mt-2 block">Idéal pour tester ou forcer une mise à jour.</strong></> },
@@ -366,6 +378,42 @@ export default async function HomePage() {
                 <div className="mt-4 flex items-start gap-2 text-sm text-emerald-700 dark:text-emerald-400">
                   <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                   <span><strong>Pourquoi détecté :</strong> Demande explicite (&ldquo;peux-tu envoyer&rdquo;) + objet clair + échéance précise.</span>
+                </div>
+              </div>
+            </Reveal>
+
+            {/* Exemple détecté CUSTOM regex */}
+            <Reveal variant="fade-up">
+              <div className="rounded-lg border-2 border-fuchsia-500/20 bg-fuchsia-50/50 p-6 dark:bg-fuchsia-950/20">
+                <div className="mb-4 inline-flex items-center gap-2 rounded-full bg-fuchsia-100 px-3 py-1 text-xs font-medium text-fuchsia-700 dark:bg-fuchsia-900/30 dark:text-fuchsia-400">
+                  <Regex className="size-4" />
+                  DÉTECTÉ (Type personnalisé · Mode regex)
+                </div>
+                <div className="mb-4">
+                  <span className="font-semibold">Email reçu :</span>
+                  <p className="mt-2 italic text-muted-foreground">
+                    &ldquo;Bonjour, merci de traiter <span className="rounded bg-yellow-100 px-1 font-semibold dark:bg-yellow-900/30">FAC-2024-0042</span> avant la fin du mois. Cordialement.&rdquo;
+                  </p>
+                </div>
+                <div>
+                  <span className="font-semibold">Action créée :</span>
+                  <div className="mt-2 rounded-lg border bg-card p-4">
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className="flex items-center gap-2 font-medium">
+                        <Tag className="size-4 text-amber-600" />
+                        Traiter FAC-2024-0042 avant la fin du mois
+                      </p>
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800 dark:bg-amber-900/30 dark:text-amber-400">Facture</span>
+                    </div>
+                    <p className="mt-2 text-sm text-muted-foreground">De : compta@client.com</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Pattern utilisateur : <code className="font-mono">FAC-\d{"{4}"}-\d+</code> · Match : &ldquo;FAC-2024-0042&rdquo;
+                    </p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-start gap-2 text-sm text-fuchsia-700 dark:text-fuchsia-400">
+                  <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                  <span><strong>Pourquoi détecté :</strong> Vous avez défini un type personnalisé &ldquo;Facture&rdquo; en mode regex via Paramètres. Le pattern est validé safe-regex (anti-ReDoS) et exécuté en sandbox sécurisé côté serveur.</span>
                 </div>
               </div>
             </Reveal>
@@ -497,7 +545,7 @@ export default async function HomePage() {
 
           <div className="mt-16 grid gap-6 md:grid-cols-2">
             {[
-              { title: "Pas d'IA « intelligente »", body: "Nous n'utilisons pas d'intelligence artificielle opaque pour « deviner » vos intentions. Règles simples, résultats prévisibles." },
+              { title: "Pas d'IA « intelligente »", body: "Nous n'utilisons pas d'intelligence artificielle opaque pour « deviner » vos intentions. Règles simples (mots-clés ou regex que vous contrôlez), résultats prévisibles." },
               { title: "Pas de prioritisation automatique", body: "Nous ne décidons pas pour vous ce qui est « important ». Vous voyez tout, vous décidez." },
               { title: "Pas de stockage du contenu des emails", body: "Le corps de l'email est lu une seule fois pour l'analyse, puis oublié. Seules les métadonnées minimales sont conservées (200 caractères max)." },
               { title: "Pas de « synchronisation parfaite »", body: "Nous ne prétendons pas que tout est synchronisé en temps réel. Vous voyez clairement quand le dernier scan a eu lieu." },

@@ -487,4 +487,41 @@ Migration : tous les types existants en KEYWORDS sont auto-marqués `validated: 
 | Impacted files = paths réels | ✅ aligné architecture Phase 2 |
 | Edge cases couvrent invalid/empty/unauthorized/concurrency/state/security/snapshot | ✅ 7 catégories |
 
+---
+
+## 10. Statut livraison v0.6.0 (mise à jour)
+
+### Backend (commits `ba9238f` → `29726be`)
+- ✅ Phase 4 RED — 53 tests failing
+- ✅ Phase 5 GREEN — 312 tests verts (8 fichiers NEW + 6 MODIFY)
+- ✅ Phase 6 Refactor — helpers extraits (validation/errors)
+- ✅ Phase 7 Doc — JSDoc + CLAUDE.md
+- ✅ Phase 8 Review + Security audit (1 CRITICAL + 3 HIGH fixés, 4 MEDIUM en backlog)
+- ✅ Phase 9 Smoke test consolidé (`docs/reviews/smoke-test-regex-power.md`)
+- ✅ Migration Prisma renommée `20260426000000_regex_power` (fix ordre lexicographique avec `20260425_custom_action_types`)
+
+### UI — 3 steps (commits `840af7e`, `4997ac6`, `ef8461c`)
+- ✅ **Step 1/3** — Settings : toggle Mode KEYWORDS/REGEX + champ pattern + zone test inline
+- ✅ **Step 2/3** — Picker templates métier (Popover groupé par catégorie, 15 templates)
+- ✅ **Step 3/3** — Missing-action : preview live email body + toggle mode + RegexTemplatePicker + extension backend cas B mode REGEX
+
+### Fixes post-livraison
+- ✅ Parse correct de la réponse `/api/test-regex` (helper `parseTestRegexResponse`, commit `48a48d2`)
+- ✅ UX polish 7 fixes (toggle position, preview conditionnel, zone test conditionnelle, hauteurs uniformes, templates en secondaire, info-line simplifiée, mobile preview height) — commit `8675b5c`
+
+### Métriques finales
+- **Tests** : 371/371 verts (+56 backend +5 fix +15 UI Step 3 +10 UI Step 2 +26 UI Step 1)
+- **Couverture AC** : 15/15
+- **Régression backward compat** : 0 (les 259 tests v0.5.0 restent verts)
+- **Build production** : OK
+
+### Backlog post-MVP (à traiter dans un sprint hardening)
+- Rate-limit endpoints `test-regex` et `email/[id]/body` (M-RP-1, M-RP-2 audit sécu)
+- Cache-Control no-store sur email body (M-RP-3, RGPD)
+- Compteur timeout vm runtime + auto-flip `validated: false` (M-RP-4)
+- LRU vraie au lieu de FIFO sur cache email body (MEDIUM-4 review)
+- Borne globale users sur cache email body (MEDIUM-5 review)
+- Sharing / marketplace de templates régex entre users (V2)
+- Re-scan rétroactif des emails après modification d'un pattern (V2)
+
 **Phase 4 — TDD Red** (`/amc-dev-lifecycle:tdd-red-phase`) peut démarrer.
