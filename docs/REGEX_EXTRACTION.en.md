@@ -1,6 +1,15 @@
 # Action Extraction by Regex - Documentation
 
-Complete guide of the deterministic action extraction system based on regex.
+Complete guide of the deterministic action extraction system based on regex (5 native types).
+
+> **v0.6.0 note**: This document covers the **5 native types** (SEND, CALL, FOLLOW_UP, PAY, VALIDATE).
+> For user-defined `CUSTOM` types:
+> - Keywords mode (v0.5+): see [features/custom-actions.en.md](./features/custom-actions.en.md)
+> - Advanced regex mode (v0.6+): see [features/regex-power.en.md](./features/regex-power.en.md)
+>
+> Production helpers: `lib/actions/extract-actions-regex.ts` (native + custom),
+> `lib/actions/regex-executor.ts` (vm anti-ReDoS sandbox),
+> `lib/regex-templates.ts` (12+ ready-to-use business templates).
 
 ---
 

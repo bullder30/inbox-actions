@@ -16,12 +16,22 @@ Welcome to the complete Inbox Actions documentation.
 
 ### Extraction and Analysis
 
-- **[REGEX_EXTRACTION.en.md](./REGEX_EXTRACTION.en.md)** - Regex-based action extraction system
+- **[REGEX_EXTRACTION.en.md](./REGEX_EXTRACTION.en.md)** - Regex-based action extraction (5 native types)
   - Detailed patterns by action type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE)
   - Specific hours for deadlines (12pm, 6pm, 8pm)
   - Sentence cleaning (dashes, quotes, bullet lists)
   - System exclusion rules and conditionals
   - Email webmail links
+- **[features/custom-actions.en.md](./features/custom-actions.en.md)** - **Custom action types (v0.5)**
+  - User-defined types CRUD (max 10 / user)
+  - Keywords + color picker + slug + historical snapshots
+  - API `/api/custom-action-types/*`
+- **[features/regex-power.en.md](./features/regex-power.en.md)** - **Advanced regex mode (v0.6)**
+  - KEYWORDS / REGEX toggle in Settings
+  - Anti-ReDoS: safe-regex + vm sandbox 200ms timeout
+  - Inline visual test zone + live email body preview
+  - Business templates (Accounting / Legal / IT / HR)
+  - API `/api/custom-action-types/test-regex` + `/api/email/[id]/body`
 - **[EXCLUSIONS.en.md](./EXCLUSIONS.en.md)** - User exclusion system
   - Exclude a sender, domain, or subject keyword
   - API GET / POST / DELETE
@@ -152,7 +162,30 @@ Welcome to the complete Inbox Actions documentation.
 
 ---
 
-## New Features (February 2026)
+## What's New in v0.6.0 (April 2026)
+
+### Regex Power — Advanced custom types
+
+- **KEYWORDS / REGEX toggle** per custom type in Settings
+- **Anti-ReDoS sandbox** — `safe-regex` static check + `vm` runtime timeout 200ms
+- **Inline test zone** — paste sample text, see matches highlighted
+- **Live email body preview** — test patterns against real emails on `/missing-action`
+- **Business templates** — 12+ ready-to-use patterns (invoices, IBAN, contract refs, ticket IDs, leave requests…)
+- **Microsoft Graph token encryption** — new `GRAPH_MASTER_KEY` env var (AES-256-CBC)
+- **HTML sanitization** — DOMPurify on email body preview, 50 KB truncation
+
+See [features/regex-power.en.md](./features/regex-power.en.md) and [architecture/regex-power/](./architecture/regex-power/).
+
+## Previous Features (v0.5 — Custom Actions)
+
+- **Custom action types** — define your own types beyond the 5 native ones (SEND/CALL/FOLLOW_UP/PAY/VALIDATE)
+- **Keywords-based detection** with color picker (8-color palette)
+- **Snapshot history** — actions keep `customTypeLabel` / `customTypeColor` even after type deletion
+- **Settings → Custom Action Types** — CRUD UI with limit 10 / user
+
+See [features/custom-actions.en.md](./features/custom-actions.en.md).
+
+## Earlier Features (February 2026)
 
 ### Multi-Provider Support
 
@@ -248,4 +281,5 @@ For any questions or suggestions about the documentation, feel free to create an
 
 ---
 
-Last updated: February 6, 2026
+Last updated: April 27, 2026
+Version: 0.6.0 (regex-power)
