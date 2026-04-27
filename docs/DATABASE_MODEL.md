@@ -2,6 +2,13 @@
 
 Documentation complète du modèle de données pour le système "Inbox → Actions".
 
+> **Note v0.6.0** : Ce document décrit les modèles **historiques** (User, Action, EmailMetadata, IMAPCredential).
+> Pour les modèles introduits depuis v0.5+ (`CustomActionType` avec ses colonnes `mode`, `regexPattern`, `validated`)
+> et les snapshots ajoutés sur `Action` (`customTypeLabel`, `customTypeColor`),
+> voir [docs/architecture/data-model.md](./architecture/data-model.md) et
+> [docs/architecture/regex-power/data-model.md](./architecture/regex-power/data-model.md).
+> Référence canonique : `prisma/schema.prisma`.
+
 ---
 
 ## 📋 Modèle Action

@@ -6,7 +6,7 @@ Transform your emails into clear, actionable tasks. No magic, no guessing — ju
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-blue)
 ![Prisma](https://img.shields.io/badge/Prisma-ORM-2D3748)
 ![Tailwind CSS](https://img.shields.io/badge/Tailwind-CSS-38B2AC)
-![Version](https://img.shields.io/badge/version-0.3.3-orange)
+![Version](https://img.shields.io/badge/version-0.6.0-orange)
 ![Language](https://img.shields.io/badge/emails-French%20only-blue)
 
 > **MVP Notice:** This version only analyzes emails written in **French**. Multi-language support is planned for future releases.
@@ -35,16 +35,19 @@ If the system is uncertain, it creates nothing. You can always add actions manua
 ## Features
 
 - **Multi-Provider Support** — Microsoft Graph API or IMAP for any email provider
-- **Deterministic Detection** — Simple, explainable regex rules (no black-box AI)
-- **5 Action Types** — SEND, CALL, FOLLOW_UP, PAY, VALIDATE
+- **Deterministic Detection** — Simple, explainable rules (no black-box AI)
+- **5 Native Action Types** — SEND, CALL, FOLLOW_UP, PAY, VALIDATE
+- **Custom Action Types** *(v0.5)* — User-defined types with keywords, color picker, snapshot history
+- **Regex Power** *(v0.6)* — Advanced mode with user-defined regex patterns + visual validation, anti-ReDoS sandbox (safe-regex + vm timeout 200ms), 12+ business templates (accounting / legal / IT / HR)
+- **Live Preview** — Test patterns against real email bodies with inline match highlighting
 - **Due Date Extraction** — Automatic detection of deadlines from email content
 - **Urgency Indicators** — Visual alerts for overdue (red) and urgent (orange) actions
 - **Source Transparency** — Every action shows the exact sentence that triggered it
 - **Exclusion Rules** — Block emails by sender, domain, or subject keyword
 - **Manual Override** — "Missing an action?" button available everywhere
 - **Email Digest** — Daily notification summary via Resend
-- **GDPR Compliant** — Email body is never stored, only minimal metadata
-- **Secure Credentials** — IMAP passwords encrypted with AES-256
+- **GDPR Compliant** — Email body is never stored, only minimal metadata; preview body cached in-memory 5 min then discarded
+- **Secure Credentials** — IMAP passwords + Microsoft Graph OAuth tokens encrypted with AES-256-CBC
 
 ## Tech Stack
 
@@ -113,8 +116,11 @@ MICROSOFT_CLIENT_ID=
 MICROSOFT_CLIENT_SECRET=
 MICROSOFT_TENANT_ID=common      # Use "common" for multi-tenant
 
-# IMAP Encryption
+# IMAP Encryption (required if IMAP providers connected)
 IMAP_MASTER_KEY=                # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+
+# Microsoft Graph token encryption (required for Microsoft Graph + regex-power v0.6.0)
+GRAPH_MASTER_KEY=               # Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
 
 # Database
 DATABASE_URL=                   # PostgreSQL connection string
@@ -186,6 +192,13 @@ The system uses regex patterns to detect explicit requests:
 | FOLLOW_UP | "follow up on...", "reminder to...", "don't forget to..." |
 | PAY | "pay the invoice", "transfer...", "payment due" |
 | VALIDATE | "approve...", "confirm...", "validate..." |
+| CUSTOM | User-defined types — keywords (e.g. "leave request") or regex (e.g. `FAC-\d{4}-\d+`) |
+
+**Custom types** are configured in **Settings → Custom Action Types** (max 10 / user). Two modes:
+- **Keywords** — comma-separated list (default, beginner-friendly)
+- **Regex** — full pattern with anti-ReDoS sandbox + visual test zone + business templates
+
+See [docs/features/custom-actions.md](docs/features/custom-actions.md) and [docs/features/regex-power.md](docs/features/regex-power.md).
 
 ### 4. Automatic Exclusions
 
@@ -253,10 +266,12 @@ pnpm email        # Start React Email dev server
 ### Key Models
 
 - **User** — Authentication, preferences, sync status
-- **Action** — Extracted tasks with type, status, due date
+- **Action** — Extracted tasks with type, status, due date (snapshots `customTypeLabel` / `customTypeColor` for CUSTOM)
+- **CustomActionType** *(v0.5+)* — User-defined types (`mode: KEYWORDS | REGEX`, `regexPattern`, `validated`, color, keywords)
 - **EmailMetadata** — Minimal email info (GDPR compliant)
-- **Account** — OAuth tokens (managed by Auth.js)
+- **Account** — OAuth tokens (managed by Auth.js, Microsoft tokens encrypted with `GRAPH_MASTER_KEY`)
 - **IMAPCredential** — IMAP configuration (encrypted password)
+- **MicrosoftGraphMailbox** — Microsoft Graph mailbox state (delta link, last sync)
 - **UserExclusion** — Exclusion rules by sender, domain, or subject
 
 ## Cron Jobs
@@ -269,16 +284,25 @@ pnpm email        # Start React Email dev server
 ## API Endpoints
 
 ### Actions
-- `GET /api/actions` — List actions (with filters)
-- `POST /api/actions/manual` — Create manual action
+- `GET /api/actions` — List actions (filters + pagination, returns `{ actions, total, hasMore }`)
+- `POST /api/actions/manual` — Create manual action (supports CUSTOM type with snapshots)
 - `POST /api/actions/[id]/done` — Mark as done
 - `POST /api/actions/[id]/ignore` — Ignore action
+- `POST /api/actions/[id]/schedule` — Schedule for later
+
+### Custom Action Types *(v0.5+)*
+- `GET /api/custom-action-types` — List user's custom types
+- `POST /api/custom-action-types` — Create custom type (mode: KEYWORDS | REGEX)
+- `PATCH /api/custom-action-types/[id]` — Update label / keywords / pattern / color / mode
+- `DELETE /api/custom-action-types/[id]` — Delete custom type (Actions keep snapshots)
+- `POST /api/custom-action-types/test-regex` *(v0.6)* — Test a regex pattern against sample text (returns match ranges)
 
 ### Email (Generic)
 - `POST /api/email/sync` — Sync new emails (auto-detects provider)
 - `POST /api/email/analyze` — Extract actions
 - `GET /api/email/status` — Connection status
 - `POST /api/email/disconnect` — Disconnect email provider
+- `GET /api/email/[id]/body` *(v0.6)* — Fetch sanitized email body for live regex preview (DOMPurify, 50 KB max, in-memory cache 5 min)
 
 ### Microsoft Graph
 - `GET /api/microsoft-graph/status` — Microsoft Graph status
