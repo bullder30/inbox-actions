@@ -19,7 +19,9 @@
 |----------------|-------------|
 | **Microsoft Graph API** | Accès natif aux emails Outlook/Microsoft 365 (sans configuration) |
 | **IMAP universel** | Gmail, Yahoo, iCloud, Fastmail, ProtonMail... |
-| **Extraction d'actions** | 5 types : SEND, CALL, FOLLOW_UP, PAY, VALIDATE |
+| **Extraction d'actions** | 5 types natifs : SEND, CALL, FOLLOW_UP, PAY, VALIDATE |
+| **Types custom (v0.5)** | Types définis par l'utilisateur — keywords ou regex (max 10/user) |
+| **Mode regex avancé (v0.6)** | Pattern regex + zone de test visuelle + preview live + 12+ templates métier (anti-ReDoS) |
 | **Exclusions utilisateur** | Filtrer expéditeurs, domaines ou sujets de l'analyse |
 | **Détection de deadlines** | Dates absolues, relatives, heures spécifiques |
 | **Temps réel** | Mises à jour via SSE (Server-Sent Events) |
@@ -111,11 +113,22 @@
 
 | Document | Description |
 |----------|-------------|
-| **[REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)** | **Système d'extraction regex** |
+| **[REGEX_EXTRACTION.md](./REGEX_EXTRACTION.md)** | **Système d'extraction regex (5 types natifs)** |
 | | - Patterns par type (SEND, CALL, FOLLOW_UP, PAY, VALIDATE) |
 | | - Détection de deadlines (dates, heures) |
 | | - Règles d'exclusion système (newsletters, no-reply) |
 | | - Conditions ignorées ("si tu peux", "éventuellement") |
+| **[features/custom-actions.md](./features/custom-actions.md)** | **Types d'actions personnalisés (v0.5)** |
+| | - CRUD types custom (max 10 / user) |
+| | - Keywords + couleur + slug + snapshots historiques |
+| | - API `/api/custom-action-types/*` |
+| **[features/regex-power.md](./features/regex-power.md)** | **Mode regex avancé (v0.6)** |
+| | - Toggle KEYWORDS / REGEX dans Settings |
+| | - Anti-ReDoS : safe-regex + vm sandbox timeout 200ms |
+| | - Zone de test visuelle inline + preview live email body |
+| | - Templates métier (Compta / Juridique / IT / RH) |
+| | - API `/api/custom-action-types/test-regex` + `/api/email/[id]/body` |
+| **[architecture/regex-power/](./architecture/regex-power/)** | **ADRs 005-007 + data model + contrats API regex-power** |
 | **[EXCLUSIONS.md](./EXCLUSIONS.md)** | **Exclusions utilisateur** |
 | | - Exclure un expéditeur, domaine ou sujet |
 | | - API GET / POST / DELETE |
@@ -127,9 +140,10 @@
 |----------|-------------|
 | **[DATABASE_MODEL.md](./DATABASE_MODEL.md)** | **Modèle Prisma complet** |
 | | - User, Account, Session (Auth.js) |
-| | - Action (avec imapUID et gmailMessageId) |
+| | - Action (avec imapUID, gmailMessageId, snapshots customTypeLabel/Color) |
+| | - CustomActionType (v0.5+ : mode KEYWORDS/REGEX, regexPattern, validated) |
 | | - EmailMetadata |
-| | - IMAPCredential |
+| | - IMAPCredential, MicrosoftGraphMailbox |
 | [EMAIL_STATUS_MIGRATION.md](./EMAIL_STATUS_MIGRATION.md) | Migration EXTRACTED → ANALYZED |
 
 ### Automatisation
@@ -317,8 +331,11 @@ L'extraction utilise des patterns regex déterministes :
 |--------|------------|
 | Mots de passe utilisateur | bcrypt (12 rounds) |
 | Mots de passe IMAP | AES-256-CBC + IMAP_MASTER_KEY |
-| Tokens OAuth | Stockés en DB (table Account) |
+| Tokens Microsoft Graph | AES-256-CBC + GRAPH_MASTER_KEY (v0.6+) |
+| Tokens OAuth (autres) | Stockés en DB (table Account) |
 | Sessions | JWT (AUTH_SECRET) |
+| Patterns regex user | safe-regex check + vm sandbox timeout 200ms (v0.6+) |
+| Email body preview | DOMPurify (sanitize HTML) + tronquage 50 KB (v0.6+) |
 
 **Détails** : [SECURITY_GDPR.md](./SECURITY_GDPR.md)
 
@@ -370,6 +387,11 @@ DATABASE_URL=postgresql://user:pass@host:5432/db
 # IMAP (pour les providers non-Microsoft)
 # ═══════════════════════════════════════════════════════════════
 IMAP_MASTER_KEY=                          # openssl rand -hex 32
+
+# ═══════════════════════════════════════════════════════════════
+# Microsoft Graph token encryption (v0.6.0 / security M-1)
+# ═══════════════════════════════════════════════════════════════
+GRAPH_MASTER_KEY=                         # openssl rand -hex 32
 
 # ═══════════════════════════════════════════════════════════════
 # NOTIFICATIONS (Resend)
@@ -433,5 +455,5 @@ Ce projet est sous licence **AGPL-3.0**. Voir [LICENSE](../LICENSE.md).
 
 ---
 
-**Dernière mise à jour** : 6 février 2026
-**Version** : 0.2.0 MVP
+**Dernière mise à jour** : 27 avril 2026
+**Version** : 0.6.0 (regex-power)
