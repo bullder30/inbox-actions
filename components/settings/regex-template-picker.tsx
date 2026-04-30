@@ -58,52 +58,64 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
           <ChevronsUpDown className="size-3.5 text-muted-foreground" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[320px] p-0" align="start">
-        <div className="max-h-80 overflow-y-auto">
-          {CATEGORY_ORDER.map((cat) => {
-            const items = grouped[cat];
-            if (!items || items.length === 0) return null;
-            return (
-              <div key={cat} className="py-1">
-                <p className="sticky top-0 z-10 bg-popover px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  {cat}
-                </p>
-                <ul>
-                  {items.map((tpl) => {
-                    const colors = colorToBadgeClasses[tpl.color];
-                    return (
-                      <li key={tpl.name}>
-                        <button
-                          type="button"
-                          onClick={() => handleSelect(tpl)}
-                          className="flex w-full flex-col items-start gap-1 px-3 py-2 text-left text-sm hover:bg-accent"
-                        >
-                          <span className="flex w-full items-center justify-between gap-2">
-                            <span className="truncate font-medium">{tpl.name}</span>
-                            <Badge
-                              variant="outline"
-                              className={cn(
-                                "shrink-0 text-[10px]",
-                                colors.bg,
-                                colors.text,
-                                "border-transparent"
-                              )}
-                            >
-                              {tpl.color}
-                            </Badge>
-                          </span>
-                          <code className="block w-full truncate font-mono text-[11px] text-muted-foreground">
-                            {tpl.pattern}
-                          </code>
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </div>
+      {/*
+       * Contrainte de hauteur + overflow appliqués DIRECTEMENT sur PopoverContent
+       * (et non sur un wrapper interne) : Radix UI bloque la propagation du wheel
+       * vers les sub-conteneurs scrollables quand le Popover est rendu dans un
+       * Dialog modal — ce qui est notre cas (settings/custom-action-types-section
+       * + missing-action). En déclarant le scroll sur le PopoverContent lui-même,
+       * Radix le détecte comme conteneur de scroll légitime.
+       *
+       * `overscroll-contain` empêche le chainage du scroll vers le document parent
+       * quand on atteint le bord (sinon Radix peut ré-intercepter le wheel).
+       */}
+      <PopoverContent
+        className="max-h-80 w-[320px] overflow-y-auto overscroll-contain p-0"
+        align="start"
+      >
+        {CATEGORY_ORDER.map((cat) => {
+          const items = grouped[cat];
+          if (!items || items.length === 0) return null;
+          return (
+            <div key={cat} className="py-1">
+              <p className="sticky top-0 z-10 bg-popover px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                {cat}
+              </p>
+              <ul>
+                {items.map((tpl) => {
+                  const colors = colorToBadgeClasses[tpl.color];
+                  return (
+                    <li key={tpl.name}>
+                      <button
+                        type="button"
+                        onClick={() => handleSelect(tpl)}
+                        className="flex w-full flex-col items-start gap-1 px-3 py-2 text-left text-sm hover:bg-accent"
+                      >
+                        <span className="flex w-full items-center justify-between gap-2">
+                          <span className="truncate font-medium">{tpl.name}</span>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "shrink-0 text-[10px]",
+                              colors.bg,
+                              colors.text,
+                              "border-transparent"
+                            )}
+                          >
+                            {tpl.color}
+                          </Badge>
+                        </span>
+                        <code className="block w-full truncate font-mono text-[11px] text-muted-foreground">
+                          {tpl.pattern}
+                        </code>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          );
+        })}
       </PopoverContent>
     </Popover>
   );
