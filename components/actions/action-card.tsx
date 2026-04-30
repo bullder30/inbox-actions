@@ -408,11 +408,17 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
           </div>
         )}
 
-        {/* Phrase source */}
+        {/* Phrase source — avec highlight du segment qui a déclenché l'action */}
         <blockquote className="overflow-hidden rounded-lg border-l-4 bg-muted/50 p-3">
           <div className="flex items-start justify-between gap-2">
             <p className="min-w-0 flex-1 break-words text-sm italic">
-              &ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;
+              &ldquo;
+              <HighlightedSource
+                text={action.sourceSentence}
+                start={action.matchStart}
+                end={action.matchEnd}
+              />
+              &rdquo;
             </p>
             {action.emailWebUrl && (
               <a
@@ -428,6 +434,14 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               </a>
             )}
           </div>
+          {action.triggerLabel && (
+            <p className="mt-2 text-[11px] not-italic text-muted-foreground">
+              Déclenché par&nbsp;:{" "}
+              <span className="rounded bg-yellow-100 px-1 py-0.5 font-mono text-[11px] text-yellow-900">
+                {action.triggerLabel}
+              </span>
+            </p>
+          )}
         </blockquote>
       </CardContent>
 
@@ -466,5 +480,57 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
         )}
       </CardFooter>
     </Card>
+  );
+}
+
+/**
+ * Affiche `text` en surlignant la portion `[start, end[` (le segment qui a
+ * déclenché la création de l'action). C'est la "preuve" produit côté UX :
+ * l'utilisateur voit instantanément pourquoi l'action existe au lieu de
+ * relire toute la phrase.
+ *
+ * Fallbacks :
+ *  - `start`/`end` null (actions héritées avant migration, ou actions
+ *    manuelles) → rendu simple sans highlight.
+ *  - Bornes incohérentes (start < 0, end > text.length, start >= end) →
+ *    rendu simple aussi (defense in depth).
+ *
+ * `decodeHtmlEntities` est appliqué sur chaque segment (et non sur le texte
+ * complet pré-split) pour préserver les offsets caractère-par-caractère :
+ * une entité comme `&amp;` (5 chars en stockage) se compresse en `&` (1 char
+ * en affichage) et casserait l'alignement si on l'appliquait avant le split.
+ */
+function HighlightedSource({
+  text,
+  start,
+  end,
+}: {
+  text: string;
+  start: number | null;
+  end: number | null;
+}) {
+  const validRange =
+    typeof start === "number" &&
+    typeof end === "number" &&
+    start >= 0 &&
+    end <= text.length &&
+    start < end;
+
+  if (!validRange) {
+    return <>{decodeHtmlEntities(text)}</>;
+  }
+
+  const before = text.substring(0, start as number);
+  const matched = text.substring(start as number, end as number);
+  const after = text.substring(end as number);
+
+  return (
+    <>
+      {decodeHtmlEntities(before)}
+      <mark className="rounded-sm bg-yellow-200/70 px-0.5 not-italic text-foreground">
+        {decodeHtmlEntities(matched)}
+      </mark>
+      {decodeHtmlEntities(after)}
+    </>
   );
 }

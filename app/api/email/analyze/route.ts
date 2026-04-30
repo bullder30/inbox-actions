@@ -109,6 +109,11 @@ export async function POST(req: NextRequest) {
                   title: action.title,
                   type: action.type,
                   sourceSentence: action.sourceSentence,
+                  // Trace de détection — preuve affichée à l'utilisateur (highlight UI)
+                  matchedSegment: action.matchedSegment,
+                  matchStart: action.matchStart,
+                  matchEnd: action.matchEnd,
+                  triggerLabel: action.triggerLabel,
                   emailFrom: emailMetadata.from,
                   emailReceivedAt: emailMetadata.receivedAt,
                   gmailMessageId: emailMetadata.gmailMessageId,

@@ -151,6 +151,15 @@ model Action {
   isScheduled      Boolean      @default(false)
   dueDate          DateTime?
   sourceSentence   String       @db.Text
+  // Trace de la détection : segment exact qui a déclenché la création de l'action.
+  // - matchedSegment : substring de sourceSentence (= match[0] de la regex, ou keyword pour custom KEYWORDS)
+  // - matchStart/matchEnd : offsets dans sourceSentence pour highlighting UI
+  // - triggerLabel : libellé du déclencheur (keyword exact pour custom KEYWORDS, null sinon)
+  // Tous nullable : actions héritées (avant cette migration) + actions manuelles n'ont pas ces traces.
+  matchedSegment   String?      @db.Text @map(name: "matched_segment")
+  matchStart       Int?         @map(name: "match_start")
+  matchEnd         Int?         @map(name: "match_end")
+  triggerLabel     String?      @db.VarChar(200) @map(name: "trigger_label")
   emailFrom        String
   emailReceivedAt  DateTime
   gmailMessageId   String?      @map(name: "gmail_message_id") // ID du message (Gmail ou Graph)
