@@ -112,6 +112,9 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
         ref={contentRef}
         align="start"
         sideOffset={4}
+        // Marge minimale avec les bords du viewport (Radix collision detection).
+        // Evite que le Popover colle aux bords sur mobile petit (320px viewport).
+        collisionPadding={12}
         // Scroll programmatique — voir handleWheel pour le pourquoi.
         onWheel={handleWheel}
         // Touch : on arrete la propagation pour eviter que le Dialog parent
@@ -121,7 +124,12 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
         // aussi en scroll programmatique via touchstart/touchmove.
         onTouchMove={(e) => e.stopPropagation()}
         className={cn(
-          "z-50 max-h-80 w-[320px] overflow-y-auto overscroll-contain rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+          // Largeur responsive : un peu plus etroit sur mobile pour respirer
+          // par rapport aux bords du viewport.
+          "z-50 max-h-80 w-[290px] sm:w-[320px] overflow-y-auto overscroll-contain rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+          // Scrollbar persistante (cf. globals.css) — indispensable mobile
+          // ou la scrollbar overlay ne s'affiche pas avec scroll programmatique.
+          "scrollbar-visible",
           "animate-in data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
         )}
       >
@@ -130,7 +138,7 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
           if (!items || items.length === 0) return null;
           return (
             <div key={cat} className="py-1">
-              <p className="sticky top-0 z-10 bg-popover px-3 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+              <p className="sticky top-0 z-10 bg-popover px-4 pb-1 pt-2 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground sm:px-3">
                 {cat}
               </p>
               <ul>
@@ -141,7 +149,11 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
                       <button
                         type="button"
                         onClick={() => handleSelect(tpl)}
-                        className="flex w-full flex-col items-start gap-1 px-3 py-2 text-left text-sm hover:bg-accent"
+                        // Padding mobile : 16px gauche/droite + 10px haut/bas pour
+                        // - donner de l'air au badge (sinon il colle au bord)
+                        // - atteindre une touch target ≥ 44px (Apple HIG / WCAG 2.5.5)
+                        // Desktop (sm+) : on resserre pour densifier la liste.
+                        className="flex w-full flex-col items-start gap-1 px-4 py-2.5 text-left text-sm hover:bg-accent sm:px-3 sm:py-2"
                       >
                         <span className="flex w-full items-center justify-between gap-2">
                           <span className="truncate font-medium">{tpl.name}</span>
