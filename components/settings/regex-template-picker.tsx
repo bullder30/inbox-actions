@@ -2,14 +2,11 @@
 
 import { useMemo, useState } from "react";
 import { ChevronsUpDown, Sparkles } from "lucide-react";
+import * as PopoverPrimitive from "@radix-ui/react-popover";
 
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
+import { Popover, PopoverTrigger } from "@/components/ui/popover";
 import {
   REGEX_TEMPLATES,
   type RegexTemplate,
@@ -59,19 +56,32 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
         </Button>
       </PopoverTrigger>
       {/*
-       * Contrainte de hauteur + overflow appliqués DIRECTEMENT sur PopoverContent
-       * (et non sur un wrapper interne) : Radix UI bloque la propagation du wheel
-       * vers les sub-conteneurs scrollables quand le Popover est rendu dans un
-       * Dialog modal — ce qui est notre cas (settings/custom-action-types-section
-       * + missing-action). En déclarant le scroll sur le PopoverContent lui-même,
-       * Radix le détecte comme conteneur de scroll légitime.
+       * IMPORTANT : on utilise <PopoverPrimitive.Content> directement (sans le
+       * wrapper shadcn `PopoverContent`) pour BYPASSER le Portal.
        *
-       * `overscroll-contain` empêche le chainage du scroll vers le document parent
-       * quand on atteint le bord (sinon Radix peut ré-intercepter le wheel).
+       * Pourquoi : ce picker est rendu dans des Dialogs Radix modals (settings +
+       * missing-action). Quand le Dialog est `modal=true` (default), Radix isole
+       * son arbre via inert/aria-hidden sur le reste du document. Un Popover
+       * portalé au niveau body se retrouve "outside" du Dialog et peut perdre
+       * la délégation des events wheel.
+       *
+       * En rendant le Popover inline (enfant DOM du DialogContent), il reste
+       * dans le scope du Dialog modal et le scroll fonctionne normalement.
+       *
+       * Trade-off : si un parent du picker a `overflow:hidden`, le Popover peut
+       * être visuellement clippé. Pas le cas ici (les Dialogs ont overflow auto).
        */}
-      <PopoverContent
-        className="max-h-80 w-[320px] overflow-y-auto overscroll-contain p-0"
+      <PopoverPrimitive.Content
         align="start"
+        sideOffset={4}
+        // arrête la propagation du wheel/touchmove pour empêcher Radix Dialog
+        // (parent modal) d'intercepter le scroll lorsqu'on est dans la liste
+        onWheel={(e) => e.stopPropagation()}
+        onTouchMove={(e) => e.stopPropagation()}
+        className={cn(
+          "z-50 max-h-80 w-[320px] overflow-y-auto overscroll-contain rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+          "animate-in data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+        )}
       >
         {CATEGORY_ORDER.map((cat) => {
           const items = grouped[cat];
@@ -116,7 +126,7 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
             </div>
           );
         })}
-      </PopoverContent>
+      </PopoverPrimitive.Content>
     </Popover>
   );
 }
