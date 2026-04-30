@@ -125,8 +125,9 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
         onTouchMove={(e) => e.stopPropagation()}
         className={cn(
           // Largeur responsive : un peu plus etroit sur mobile pour respirer
-          // par rapport aux bords du viewport.
-          "z-50 max-h-80 w-[290px] sm:w-[320px] overflow-y-auto overscroll-contain rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
+          // par rapport aux bords du viewport (sm:w-[320px] declare en suffixe
+          // pour respecter l'ordre canonique tailwindcss/classnames-order).
+          "z-50 max-h-80 w-[290px] overflow-y-auto overscroll-contain rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none sm:w-[320px]",
           // Scrollbar persistante (cf. globals.css) — indispensable mobile
           // ou la scrollbar overlay ne s'affiche pas avec scroll programmatique.
           "scrollbar-visible",
