@@ -780,3 +780,112 @@ describe("ExtractedAction - pas de statut (isScheduled géré par l'endpoint sch
     }
   });
 });
+
+// ============================================================================
+// TRACE DE DÉTECTION (matchedSegment / matchStart / matchEnd / triggerLabel)
+// ============================================================================
+
+describe("Trace de détection — natifs", () => {
+  it("renseigne matchedSegment + offsets pour un SEND simple", () => {
+    const context = createEmailContext("Peux-tu m'envoyer le rapport mensuel ?");
+    const actions = extractActionsFromEmail(context);
+
+    expect(actions).toHaveLength(1);
+    const action = actions[0];
+
+    expect(action.matchedSegment).toBeTruthy();
+    expect(action.matchedSegment).toContain("envoyer");
+    expect(typeof action.matchStart).toBe("number");
+    expect(typeof action.matchEnd).toBe("number");
+    // Le segment référencé par les offsets doit correspondre à matchedSegment
+    expect(
+      action.sourceSentence.substring(action.matchStart!, action.matchEnd!)
+    ).toBe(action.matchedSegment);
+  });
+
+  it("triggerLabel est null pour les actions natives", () => {
+    const context = createEmailContext("Rappelle-moi demain matin.");
+    const actions = extractActionsFromEmail(context);
+
+    expect(actions).toHaveLength(1);
+    expect(actions[0].triggerLabel).toBeNull();
+  });
+
+  it("offsets cohérents même sur une phrase longue (>200 chars)", () => {
+    const filler = "Bonjour, j'espère que tu vas bien depuis notre dernière réunion à Paris la semaine dernière, c'était très agréable de te revoir et de discuter du projet en cours, ";
+    const context = createEmailContext(
+      `${filler}peux-tu m'envoyer le rapport avant vendredi ?`
+    );
+    const actions = extractActionsFromEmail(context);
+
+    expect(actions).toHaveLength(1);
+    const action = actions[0];
+
+    // sourceSentence est tronquée mais les offsets pointent dedans
+    expect(action.sourceSentence.length).toBeLessThanOrEqual(200);
+    expect(action.matchStart).not.toBeNull();
+    expect(action.matchEnd).not.toBeNull();
+    expect(action.matchStart!).toBeGreaterThanOrEqual(0);
+    expect(action.matchEnd!).toBeLessThanOrEqual(action.sourceSentence.length);
+    // Le segment doit contenir le verbe d'action
+    const highlighted = action.sourceSentence.substring(
+      action.matchStart!,
+      action.matchEnd!
+    );
+    expect(highlighted).toContain("envoyer");
+  });
+
+  it("renseigne la trace pour un SUBJECT_PAY (fallback sur sujet)", () => {
+    // Body neutre (aucun pattern PAY) → SUBJECT_PAY est testé en fallback
+    const context = createEmailContext("Bonjour, merci de votre confiance.", {
+      subject: "Facture Électricité — Janvier 2026",
+    });
+    const actions = extractActionsFromEmail(context);
+
+    const payAction = actions.find((a) => a.type === "PAY");
+    expect(payAction).toBeDefined();
+    // Le subject contient "Facture" (regex SUBJECT_PAY)
+    expect(payAction!.matchedSegment).toBeTruthy();
+    expect(payAction!.matchedSegment!.toLowerCase()).toContain("facture");
+    // Offsets pointent sur la portion "Facture" dans le sujet
+    expect(payAction!.matchStart).not.toBeNull();
+    expect(payAction!.matchEnd).not.toBeNull();
+    expect(
+      payAction!.sourceSentence
+        .substring(payAction!.matchStart!, payAction!.matchEnd!)
+        .toLowerCase()
+    ).toContain("facture");
+  });
+});
+
+describe("Trace de détection — custom KEYWORDS", () => {
+  it("renseigne triggerLabel = keyword qui a matché", () => {
+    const customTypes = [
+      {
+        id: "ct-1",
+        name: "Comptabilité",
+        keywords: ["facture", "TVA", "bilan"],
+        color: "blue",
+        isActive: true,
+        mode: "KEYWORDS" as const,
+        regexPattern: null,
+        validated: true,
+      },
+    ];
+    const context = createEmailContext(
+      "Peux-tu vérifier la facture du mois avant vendredi ?"
+    );
+    const actions = extractActionsFromEmail(context, [], customTypes);
+
+    const customAction = actions.find((a) => a.type === "CUSTOM");
+    expect(customAction).toBeDefined();
+    expect(customAction!.triggerLabel?.toLowerCase()).toBe("facture");
+    expect(customAction!.matchedSegment?.toLowerCase()).toBe("facture");
+    // Offsets pointent bien sur "facture"
+    expect(
+      customAction!.sourceSentence
+        .substring(customAction!.matchStart!, customAction!.matchEnd!)
+        .toLowerCase()
+    ).toBe("facture");
+  });
+});

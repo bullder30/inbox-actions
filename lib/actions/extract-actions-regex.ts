@@ -11,12 +11,28 @@ import { safelyExecuteRegex } from "@/lib/actions/regex-executor";
 const REGEX_RUNTIME_TIMEOUT_MS = 200;
 
 /**
- * Type pour une action extraite
+ * Type pour une action extraite.
+ *
+ * Trace de détection (CRITIQUE pour la confiance utilisateur — sinon "pourquoi
+ * cette action a-t-elle été créée ?" reste sans réponse) :
+ *  - `matchedSegment` : le segment exact qui a déclenché (= match[0] regex,
+ *    ou le keyword pour custom KEYWORDS). Substring de `sourceSentence`.
+ *  - `matchStart` / `matchEnd` : offsets dans `sourceSentence` (post-truncation),
+ *    utilisés par l'UI pour highlighter le passage déclencheur.
+ *  - `triggerLabel` : libellé du déclencheur (keyword exact en custom KEYWORDS,
+ *    null sinon). Permet d'expliciter "ce mot a déclenché" dans l'UI.
+ *
+ * Tous nullable côté DB pour rétro-compat (actions antérieures à la migration
+ * + actions manuelles créées sans regex).
  */
 export type ExtractedAction = {
   title: string;
   type: ActionType;
   sourceSentence: string;
+  matchedSegment: string | null;
+  matchStart: number | null;
+  matchEnd: number | null;
+  triggerLabel: string | null;
   dueDate: Date | null;
   // Champs custom (présents uniquement quand type === "CUSTOM")
   customTypeId?: string | null;
@@ -760,6 +776,91 @@ function truncate(text: string, max: number, cutAt: number): string {
 }
 
 /**
+ * Construit la fenêtre `sourceSentence` affichée à l'utilisateur, centrée sur
+ * le segment qui a déclenché l'action. Calcule également les offsets du match
+ * dans cette fenêtre (utilisés par l'UI pour highlighter).
+ *
+ * Invariants :
+ *  - `sourceSentence.length <= SOURCE_MAX_LENGTH`
+ *  - Si offsets non null : `sourceSentence.substring(matchStart, matchEnd) === matchedSegment`
+ *    (sauf cas extrême où le match est plus long que la fenêtre cible)
+ *  - Si offsets fournis hors borne (devrait jamais arriver) : retourne null offsets
+ *    avec un fallback truncate classique pour ne pas casser l'extraction.
+ *
+ * Stratégies :
+ *  - Phrase ≤ 200 chars  → retourne tel quel + offsets directs
+ *  - Match ≥ 198 chars   → tronque le match, suffixe "…", offsets [0, 198]
+ *  - Sinon               → fenêtre 198 chars centrée sur le match,
+ *                           "…" préfixé/suffixé selon les bords coupés
+ */
+function buildSourceWindow(
+  sentence: string,
+  rawMatchStart: number,
+  matchLength: number
+): { sourceSentence: string; matchStart: number | null; matchEnd: number | null } {
+  // Sanity : offsets cohérents avec sentence
+  if (rawMatchStart < 0 || rawMatchStart + matchLength > sentence.length) {
+    return {
+      sourceSentence: truncate(sentence, SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT),
+      matchStart: null,
+      matchEnd: null,
+    };
+  }
+
+  if (sentence.length <= SOURCE_MAX_LENGTH) {
+    return {
+      sourceSentence: sentence,
+      matchStart: rawMatchStart,
+      matchEnd: rawMatchStart + matchLength,
+    };
+  }
+
+  const ELLIPSIS = "…";
+  // -2 pour réserver l'espace de 2 ellipsis potentielles
+  const TARGET_LEN = SOURCE_MAX_LENGTH - 2;
+
+  // Cas extrême : le match seul est plus long que la cible
+  if (matchLength >= TARGET_LEN) {
+    const truncated = sentence.substring(rawMatchStart, rawMatchStart + TARGET_LEN) + ELLIPSIS;
+    return {
+      sourceSentence: truncated,
+      matchStart: 0,
+      matchEnd: TARGET_LEN,
+    };
+  }
+
+  const remainingSpace = TARGET_LEN - matchLength;
+  const halfBefore = Math.floor(remainingSpace / 2);
+
+  let windowStart = Math.max(0, rawMatchStart - halfBefore);
+  let windowEnd = windowStart + TARGET_LEN;
+
+  if (windowEnd > sentence.length) {
+    windowEnd = sentence.length;
+    windowStart = Math.max(0, windowEnd - TARGET_LEN);
+  }
+
+  let windowText = sentence.substring(windowStart, windowEnd);
+  let newMatchStart = rawMatchStart - windowStart;
+  let newMatchEnd = newMatchStart + matchLength;
+
+  if (windowStart > 0) {
+    windowText = ELLIPSIS + windowText;
+    newMatchStart += 1;
+    newMatchEnd += 1;
+  }
+  if (windowEnd < sentence.length) {
+    windowText = windowText + ELLIPSIS;
+  }
+
+  return {
+    sourceSentence: windowText,
+    matchStart: newMatchStart,
+    matchEnd: newMatchEnd,
+  };
+}
+
+/**
  * Extrait les actions d'un type spécifique
  */
 function extractActionsByType(
@@ -792,13 +893,22 @@ function extractActionsByType(
         break; // pattern matché, mais trop vague -> aucune action
       }
 
+      // Trace de détection : segment exact + position dans la phrase trimée
+      const matchedSegment = match[0];
+      const rawMatchStart = match.index ?? sentence.indexOf(matchedSegment);
+      const trimmedSentence = sentence.trim();
+
       const title = truncate(buildNativeTitle(type, object), TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT);
-      const sourceSentence = truncate(sentence.trim(), SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT);
+      const window = buildSourceWindow(trimmedSentence, rawMatchStart, matchedSegment.length);
 
       actions.push({
         title,
         type,
-        sourceSentence,
+        sourceSentence: window.sourceSentence,
+        matchedSegment,
+        matchStart: window.matchStart,
+        matchEnd: window.matchEnd,
+        triggerLabel: null,
         dueDate,
       });
 
@@ -877,12 +987,28 @@ export function extractActionsFromEmail(
   if (context.subject && !actions.some((a) => a.type === "PAY")) {
     const normalizedSubject = normalizeText(context.subject);
     for (const pattern of SUBJECT_PAY_PATTERNS) {
-      if (pattern.test(normalizedSubject)) {
+      const subjectMatch = normalizedSubject.match(pattern);
+      if (subjectMatch) {
         const trimmedSubject = context.subject.trim();
+        const matchedSegment = subjectMatch[0];
+        // Mapper l'offset du subject normalisé vers le subject trimé : approximation
+        // par recherche directe (les normalisations changent rarement la longueur).
+        const rawMatchStart = trimmedSubject
+          .toLowerCase()
+          .indexOf(matchedSegment.toLowerCase());
+        const window =
+          rawMatchStart >= 0
+            ? buildSourceWindow(trimmedSubject, rawMatchStart, matchedSegment.length)
+            : { sourceSentence: trimmedSubject, matchStart: null, matchEnd: null };
+
         actions.push({
           title: truncate(`Payer – ${trimmedSubject}`, TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT),
           type: "PAY",
-          sourceSentence: trimmedSubject,
+          sourceSentence: window.sourceSentence,
+          matchedSegment,
+          matchStart: window.matchStart,
+          matchEnd: window.matchEnd,
+          triggerLabel: null,
           dueDate: null,
         });
         break;
@@ -975,6 +1101,10 @@ export function extractCustomActionsFromEmail(
 
 /**
  * Détection custom mode KEYWORDS (compileKeywordsRegex existant).
+ *
+ * Capture en plus le keyword exact qui a déclenché (group 1 de la regex
+ * compilée) pour le stocker en `triggerLabel`. C'est ce qui permet à l'UI
+ * d'afficher "déclenché par : facture" au lieu d'une ambiguïté.
  */
 function extractCustomActionForKeywordsType(
   customType: CustomActionTypeData,
@@ -990,12 +1120,27 @@ function extractCustomActionForKeywordsType(
 
     const dueDate = parseDueDate(sentence, receivedAt);
     if (!dueDate && hasWeakConditional(sentence)) continue;
-    if (!keywordRegex.test(sentence)) continue;
+
+    const match = sentence.match(keywordRegex);
+    if (!match) continue;
 
     // Gating anti-ambiguïté : exiger une dueDate (faute de marqueurs forts)
     if (!dueDate) continue;
 
-    return buildCustomAction(customType, sentence, dueDate);
+    // match[0] = keyword (le lookbehind/lookahead ne consomment rien)
+    // match[1] = capture group = même keyword (gardé pour clarté)
+    const matchedSegment = match[0];
+    const triggerLabel = match[1] ?? matchedSegment;
+    const rawMatchStart = match.index ?? sentence.indexOf(matchedSegment);
+
+    return buildCustomAction(
+      customType,
+      sentence,
+      dueDate,
+      matchedSegment,
+      rawMatchStart,
+      triggerLabel
+    );
   }
 
   return null;
@@ -1004,6 +1149,9 @@ function extractCustomActionForKeywordsType(
 /**
  * Détection custom mode REGEX via sandbox vm (ADR-005).
  * Skip l'email pour ce type sur timeout (US-5.4 / AC-6) sans crasher le scan.
+ *
+ * Utilise la PREMIÈRE occurrence (`result.matches[0]`) pour le segment trace.
+ * Cohérent avec l'endpoint /test-regex qui renvoie tous les ranges au user.
  */
 function extractCustomActionForRegexType(
   customType: CustomActionTypeData,
@@ -1032,27 +1180,56 @@ function extractCustomActionForRegexType(
     // Gating anti-ambiguïté partagé : exiger une dueDate
     if (!dueDate) continue;
 
-    return buildCustomAction(customType, sentence, dueDate);
+    const firstMatch = result.matches[0];
+    const matchedSegment = sentence.substring(
+      firstMatch.index,
+      firstMatch.index + firstMatch.length
+    );
+
+    return buildCustomAction(
+      customType,
+      sentence,
+      dueDate,
+      matchedSegment,
+      firstMatch.index,
+      null // pas de "keyword" en mode REGEX, l'UI s'appuiera sur le matchedSegment
+    );
   }
 
   return null;
 }
 
 /**
- * Construit une action CUSTOM avec les snapshots label/color requis par AC-7.
+ * Construit une action CUSTOM avec les snapshots label/color requis par AC-7,
+ * et la trace de détection (segment exact + position + libellé déclencheur).
  */
 function buildCustomAction(
   customType: CustomActionTypeData,
   sentence: string,
-  dueDate: Date
+  dueDate: Date,
+  matchedSegment: string,
+  rawMatchStart: number,
+  triggerLabel: string | null
 ): ExtractedAction {
   const title = truncate(customType.name, TITLE_MAX_LENGTH, TITLE_TRUNCATE_AT);
-  const sourceSentence = truncate(sentence.trim(), SOURCE_MAX_LENGTH, SOURCE_TRUNCATE_AT);
+  const trimmedSentence = sentence.trim();
+  // Si la sentence passée n'est pas trimée, recalibrer rawMatchStart
+  const trimOffset = sentence.indexOf(trimmedSentence);
+  const adjustedStart = trimOffset > 0 ? rawMatchStart - trimOffset : rawMatchStart;
+  const window = buildSourceWindow(
+    trimmedSentence,
+    Math.max(0, adjustedStart),
+    matchedSegment.length
+  );
 
   return {
     title,
     type: "CUSTOM" as ActionType,
-    sourceSentence,
+    sourceSentence: window.sourceSentence,
+    matchedSegment,
+    matchStart: window.matchStart,
+    matchEnd: window.matchEnd,
+    triggerLabel,
     dueDate,
     customTypeId: customType.id,
     customTypeLabel: customType.name,
