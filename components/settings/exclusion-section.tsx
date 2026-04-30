@@ -20,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, ShieldOff, Trash2, UserX, Globe, Tag } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 type ExclusionType = "SENDER" | "DOMAIN" | "SUBJECT";
 
@@ -165,9 +166,30 @@ export function ExclusionSection() {
                   className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
                 >
                   <div className="flex min-w-0 flex-1 items-center gap-2">
-                    <Badge variant="outline" className={`flex items-center gap-1 text-xs ${config.color}`}>
+                    {/*
+                     * Mobile : pour SENDER et DOMAIN on n'affiche que l'icone
+                     * (label cache via `hidden sm:inline`) afin de laisser plus
+                     * de place a l'email/domaine a exclure, qui sont generalement
+                     * longs et tronques sur petit ecran.
+                     * Le badge SUBJECT conserve son label car les mots-cles sont
+                     * souvent courts (et la demande explicite ne couvrait que
+                     * SENDER + DOMAIN).
+                     * `aria-label` preserve l'info pour les lecteurs d'ecran.
+                     */}
+                    <Badge
+                      variant="outline"
+                      className={`flex items-center gap-1 text-xs ${config.color}`}
+                      aria-label={config.label}
+                    >
                       {config.icon}
-                      {config.label}
+                      <span
+                        className={cn(
+                          (exclusion.type === "SENDER" || exclusion.type === "DOMAIN") &&
+                            "hidden sm:inline"
+                        )}
+                      >
+                        {config.label}
+                      </span>
                     </Badge>
                     <span className="min-w-0 truncate text-sm">{exclusion.label || exclusion.value}</span>
                     {exclusion.label && exclusion.label !== exclusion.value && (
