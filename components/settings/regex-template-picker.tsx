@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ChevronsUpDown, Sparkles } from "lucide-react";
 import * as PopoverPrimitive from "@radix-ui/react-popover";
 
@@ -32,11 +32,48 @@ const CATEGORY_ORDER: RegexTemplateCategory[] = ["Compta", "Juridique", "IT", "R
  */
 export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
   const [open, setOpen] = useState(false);
+  const contentRef = useRef<HTMLDivElement>(null);
   const grouped = useMemo(() => groupTemplatesByCategory(REGEX_TEMPLATES), []);
 
   function handleSelect(tpl: RegexTemplate) {
     onSelect(tpl);
     setOpen(false);
+  }
+
+  /**
+   * Scroll PROGRAMMATIQUE de la liste au lieu de compter sur le scroll
+   * natif du browser.
+   *
+   * Pourquoi : ce picker est rendu dans des Dialogs Radix modaux. Radix
+   * Dialog attache un listener wheel (capture-phase, niveau document) qui
+   * `preventDefault()` les events outside du DialogContent — ce qui
+   * empeche le navigateur de scroller meme une zone scrollable interne.
+   * Un simple `stopPropagation()` cote bubble n'arrive PAS a temps.
+   *
+   * En modifiant `scrollTop` manuellement, on contourne completement le
+   * `preventDefault()` du browser. Notre script tourne quand meme dans
+   * le handler React et le scroll a lieu visuellement.
+   */
+  function handleWheel(e: React.WheelEvent<HTMLDivElement>) {
+    const el = contentRef.current;
+    if (!el) return;
+    // Pas la peine de scroll si le contenu tient deja dans la fenetre
+    if (el.scrollHeight <= el.clientHeight) return;
+
+    // Normalisation du deltaMode (rare en desktop modern, mais robuste) :
+    //  - mode 0 : pixels (par defaut sur Chrome/Firefox/Safari modernes)
+    //  - mode 1 : lignes (~16px par ligne)
+    //  - mode 2 : pages (hauteur du viewport)
+    const lineHeight = 16;
+    const delta =
+      e.deltaMode === 1
+        ? e.deltaY * lineHeight
+        : e.deltaMode === 2
+        ? e.deltaY * el.clientHeight
+        : e.deltaY;
+
+    el.scrollTop += delta;
+    e.stopPropagation();
   }
 
   return (
@@ -72,11 +109,16 @@ export function RegexTemplatePicker({ onSelect }: RegexTemplatePickerProps) {
        * être visuellement clippé. Pas le cas ici (les Dialogs ont overflow auto).
        */}
       <PopoverPrimitive.Content
+        ref={contentRef}
         align="start"
         sideOffset={4}
-        // arrête la propagation du wheel/touchmove pour empêcher Radix Dialog
-        // (parent modal) d'intercepter le scroll lorsqu'on est dans la liste
-        onWheel={(e) => e.stopPropagation()}
+        // Scroll programmatique — voir handleWheel pour le pourquoi.
+        onWheel={handleWheel}
+        // Touch : on arrete la propagation pour eviter que le Dialog parent
+        // ne reagisse au geste. Le scroll natif tactile fonctionne
+        // generalement meme dans les Dialogs (les browsers le gerent
+        // differemment du wheel). Si bug remonte sur mobile, basculer
+        // aussi en scroll programmatique via touchstart/touchmove.
         onTouchMove={(e) => e.stopPropagation()}
         className={cn(
           "z-50 max-h-80 w-[320px] overflow-y-auto overscroll-contain rounded-md border bg-popover p-0 text-popover-foreground shadow-md outline-none",
