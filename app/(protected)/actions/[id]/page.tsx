@@ -194,6 +194,14 @@ export default function ActionDetailPage({
     new Date(action.dueDate) < new Date() &&
     action.status === "TODO";
 
+  // L'`emailFrom` peut etre `Nom <email>` — on extrait l'adresse pour
+  // l'affichage compact, comme le fait `action-card.tsx`. Evite l'enroulement
+  // sur 2-3 lignes en mobile et garde une info utile (le domaine).
+  const displaySender = (() => {
+    const match = action.emailFrom.match(/<([^>]+)>/);
+    return (match ? match[1] : action.emailFrom).trim();
+  })();
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -208,33 +216,41 @@ export default function ActionDetailPage({
           isUrgent && !isOverdue && "border-orange-300 bg-orange-50/50"
         )}
       >
-        <CardHeader>
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex-1 space-y-1">
-              <CardTitle className="text-2xl">{decodeHtmlEntities(action.title)}</CardTitle>
-              <CardDescription className="flex flex-wrap items-center gap-2 text-base">
-                <Mail className="size-4" />
-                <span>{action.emailFrom}</span>
-                <span>•</span>
-                <Clock className="size-4" />
-                <span>
-                  Reçu{" "}
-                  {formatDistanceToNow(new Date(action.emailReceivedAt), {
-                    locale: fr,
-                    addSuffix: true,
-                  })}
-                </span>
-              </CardDescription>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className={typeDisplay.badgeClasses}>
-                {typeDisplay.label}
-              </Badge>
-              <Badge variant="secondary" className={statusInfo.color}>
-                {statusInfo.label}
-              </Badge>
-            </div>
+        <CardHeader className="space-y-3">
+          {/* Ligne badges — leur propre rangee (calque sur action-card) :
+              les libelles custom longs cessent ainsi d'ecraser le titre */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <Badge variant="outline" className={cn(typeDisplay.badgeClasses, "max-w-full break-words text-xs")}>
+              {typeDisplay.label}
+            </Badge>
+            <Badge variant="secondary" className={cn(statusInfo.color, "text-xs")}>
+              {statusInfo.label}
+            </Badge>
           </div>
+
+          {/* Titre — responsive */}
+          <CardTitle className="break-words text-xl leading-snug sm:text-2xl">
+            {decodeHtmlEntities(action.title)}
+          </CardTitle>
+
+          {/* Metadonnees — flex-wrap sans bullet ; le retour a la ligne
+              naturel evite le `•` orphelin de la version precedente */}
+          <CardDescription className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="flex min-w-0 items-center gap-1.5">
+              <Mail className="size-4 shrink-0" />
+              <span className="break-all">{displaySender}</span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Clock className="size-4 shrink-0" />
+              <span>
+                Reçu{" "}
+                {formatDistanceToNow(new Date(action.emailReceivedAt), {
+                  locale: fr,
+                  addSuffix: true,
+                })}
+              </span>
+            </span>
+          </CardDescription>
         </CardHeader>
 
         <CardContent className="space-y-6">
@@ -244,17 +260,24 @@ export default function ActionDetailPage({
               Phrase source
             </h3>
             <div className="rounded-lg border bg-muted/50 p-4">
-              <div className="flex items-start justify-between gap-4">
-                <p className="flex-1 text-sm italic">&ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;</p>
+              <div className="flex items-start justify-between gap-2 sm:gap-4">
+                <p className="min-w-0 flex-1 break-words text-sm italic">
+                  &ldquo;{decodeHtmlEntities(action.sourceSentence)}&rdquo;
+                </p>
                 {action.emailWebUrl && (
                   <a
                     href={action.emailWebUrl}
                     target="_blank"
                     rel="noopener noreferrer"
+                    aria-label="Ouvrir l'email source"
                   >
-                    <Button variant="ghost" size="sm" className="gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="size-9 shrink-0 p-0 sm:size-auto sm:gap-2 sm:px-3"
+                    >
                       <MailOpen className="size-4" />
-                      Voir email
+                      <span className="hidden sm:inline">Voir email</span>
                     </Button>
                   </a>
                 )}
@@ -336,13 +359,13 @@ export default function ActionDetailPage({
           </div>
         </CardContent>
 
-        <CardFooter className="flex gap-2">
+        <CardFooter className="flex flex-col gap-2 sm:flex-row">
           {action.status === "TODO" ? (
             <>
               <Button
                 onClick={handleMarkDone}
                 disabled={actionLoading}
-                className="flex-1"
+                className="h-11 w-full sm:h-10 sm:flex-1"
               >
                 <Check className="mr-2 size-4" />
                 Marquer comme fait
@@ -351,7 +374,7 @@ export default function ActionDetailPage({
                 onClick={handleMarkIgnored}
                 disabled={actionLoading}
                 variant="outline"
-                className="flex-1"
+                className="h-11 w-full sm:h-10 sm:flex-1"
               >
                 <X className="mr-2 size-4" />
                 Ignorer
