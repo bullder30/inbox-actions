@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { formatDistanceToNow, format } from "date-fns";
 import { fr } from "date-fns/locale";
@@ -45,6 +44,7 @@ import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
 import { markActionAsDone, markActionAsIgnored } from "@/lib/api/actions";
 import { getActionTypeDisplay } from "@/lib/actions/action-display";
+import { ActionDetailDialog } from "@/components/actions/action-detail-dialog";
 
 interface ActionCardProps {
   // Accepte les deux types: API (imapUID string) et Prisma (imapUID BigInt)
@@ -63,6 +63,7 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
   const [loading, setLoading] = useState(false);
   const [scheduleOpen, setScheduleOpen] = useState(false);
   const [exclusionOpen, setExclusionOpen] = useState(false);
+  const [detailOpen, setDetailOpen] = useState(false);
   const exclusionTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const router = useRouter();
 
@@ -303,15 +304,24 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
               </div>
             )}
             <div className="flex gap-2 sm:ml-auto">
-              <Link href={`/actions/${action.id}`} className="w-full sm:w-auto">
-                <Button variant="ghost" size="sm" className="h-11 w-full sm:h-9 sm:w-auto">
-                  <ExternalLink className="mr-2 size-4 sm:mr-0" />
-                  <span className="sm:hidden">Voir</span>
-                </Button>
-              </Link>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setDetailOpen(true)}
+                className="h-11 w-full sm:h-9 sm:w-auto"
+              >
+                <ExternalLink className="mr-2 size-4 sm:mr-0" />
+                <span className="sm:hidden">Voir</span>
+              </Button>
             </div>
           </div>
         </CardFooter>
+        <ActionDetailDialog
+          open={detailOpen}
+          onOpenChange={setDetailOpen}
+          action={action}
+          onUpdate={onUpdate}
+        />
       </Card>
     );
   }
@@ -471,14 +481,22 @@ export function ActionCard({ action, onUpdate, variant = "default" }: ActionCard
             </Button>
           </>
         ) : (
-          <Link href={`/actions/${action.id}`} className="w-full">
-            <Button variant="outline" className="h-11 w-full sm:h-10">
-              <ExternalLink className="mr-2 size-4" />
-              Voir les détails
-            </Button>
-          </Link>
+          <Button
+            variant="outline"
+            onClick={() => setDetailOpen(true)}
+            className="h-11 w-full sm:h-10"
+          >
+            <ExternalLink className="mr-2 size-4" />
+            Voir les détails
+          </Button>
         )}
       </CardFooter>
+      <ActionDetailDialog
+        open={detailOpen}
+        onOpenChange={setDetailOpen}
+        action={action}
+        onUpdate={onUpdate}
+      />
     </Card>
   );
 }
