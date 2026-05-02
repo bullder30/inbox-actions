@@ -31,14 +31,7 @@ import {
 import { BackButton } from "@/components/shared/back-button";
 import { cn, decodeHtmlEntities } from "@/lib/utils";
 import { toast } from "sonner";
-
-const actionTypeLabels = {
-  SEND: { label: "Envoyer", color: "bg-blue-100 text-blue-800 border-blue-200" },
-  CALL: { label: "Appeler", color: "bg-green-100 text-green-800 border-green-200" },
-  FOLLOW_UP: { label: "Relancer", color: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  PAY: { label: "Payer", color: "bg-purple-100 text-purple-800 border-purple-200" },
-  VALIDATE: { label: "Valider", color: "bg-orange-100 text-orange-800 border-orange-200" },
-};
+import { getActionTypeDisplay } from "@/lib/actions/action-display";
 
 const actionStatusLabels = {
   TODO: { label: "À faire", color: "bg-slate-100 text-slate-800" },
@@ -184,7 +177,11 @@ export default function ActionDetailPage({
     return null;
   }
 
-  const typeInfo = actionTypeLabels[action.type];
+  const typeDisplay = getActionTypeDisplay({
+    type: action.type,
+    customTypeLabel: action.customTypeLabel,
+    customTypeColor: action.customTypeColor,
+  });
   const statusInfo = actionStatusLabels[action.status];
 
   const isUrgent =
@@ -230,8 +227,8 @@ export default function ActionDetailPage({
               </CardDescription>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant="outline" className={typeInfo.color}>
-                {typeInfo.label}
+              <Badge variant="outline" className={typeDisplay.badgeClasses}>
+                {typeDisplay.label}
               </Badge>
               <Badge variant="secondary" className={statusInfo.color}>
                 {statusInfo.label}
